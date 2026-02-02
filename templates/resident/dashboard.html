@@ -27,31 +27,16 @@
 
         {% if resident.enrollment_status != 'enrolled' %}
         <!-- Upsell Banner -->
-        <div class="card border-primary mb-4">
-            <div class="card-body text-center p-4">
-                <i class="bi bi-graph-up-arrow fs-1 text-primary mb-3"></i>
-                <h4 class="card-title">Build Credit with Your Rent Payments</h4>
-                <p class="card-text">
-                    Start building your credit history by reporting your on-time rent payments to credit bureaus.
-                    It's easy, secure, and can help improve your credit score!
-                </p>
-                <a href="{{ url_for('resident_enroll') }}" class="btn btn-primary btn-lg">
-                    <i class="bi bi-check-circle"></i> Enroll in Rent Reporting
-                </a>
-            </div>
-        </div>
-        {% else %}
-        <!-- Active Status -->
-        <div class="alert alert-success d-flex align-items-center justify-content-between mb-4" role="alert">
+        <div class="alert alert-primary d-flex align-items-center justify-content-between mb-4" role="alert">
             <div class="d-flex align-items-center">
-                <i class="bi bi-check-circle-fill fs-4 me-3"></i>
+                <i class="bi bi-graph-up-arrow fs-4 me-3"></i>
                 <div>
-                    <strong>Rent Reporting Active</strong>
-                    <p class="mb-0">Your rent payments are being reported to credit bureaus. <a href="{{ url_for('resident_rent_reporting') }}" class="alert-link">View Details</a></p>
+                    <strong>Build Credit with Your Rent Payments</strong>
+                    <p class="mb-0 small">Start building your credit history by reporting your on-time rent payments to credit bureaus.</p>
                 </div>
             </div>
-            <a href="{{ url_for('resident_opt_out') }}" class="btn btn-outline-danger ms-4">
-                <i class="bi bi-x-circle"></i> Opt Out
+            <a href="{{ url_for('resident_enroll') }}" class="btn btn-primary ms-4">
+                <i class="bi bi-check-circle"></i> Enroll Now
             </a>
         </div>
         {% endif %}
@@ -60,15 +45,15 @@
             <!-- Left Column -->
             <div class="col-md-6">
                 <!-- Resident Info -->
-                <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-person"></i> Personal Information</h5>
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h6 class="mb-0"><i class="bi bi-person"></i> Personal Information</h6>
                         <a href="{{ url_for('resident_profile') }}" class="btn btn-sm btn-light">
                             <i class="bi bi-pencil"></i> Update
                         </a>
                     </div>
-                    <div class="card-body">
-                        <dl class="row mb-0">
+                    <div class="card-body py-2">
+                        <dl class="row mb-0 small">
                             <dt class="col-sm-5">Account Number:</dt>
                             <dd class="col-sm-7"><strong>{{ resident.account_number }}</strong></dd>
 
@@ -87,12 +72,26 @@
                             <dt class="col-sm-5">SSN:</dt>
                             <dd class="col-sm-7">{{ resident.ssn }}</dd>
 
-                            <dt class="col-sm-5">Active:</dt>
+                            <dt class="col-sm-5">Enrolled:</dt>
                             <dd class="col-sm-7">
                                 {% if resident.enrollment_status == 'enrolled' %}
-                                    <span class="badge bg-success">Yes</span>
+                                    <span class="badge bg-success" 
+                                          data-bs-toggle="popover" 
+                                          data-bs-trigger="hover focus"
+                                          data-bs-placement="right"
+                                          data-bs-html="true"
+                                          data-bs-title="Enrollment History"
+                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
+                                          style="cursor: pointer;">Yes <i class="bi bi-info-circle"></i></span>
                                 {% else %}
-                                    <span class="badge bg-secondary">No</span>
+                                    <span class="badge bg-secondary" 
+                                          data-bs-toggle="popover" 
+                                          data-bs-trigger="hover focus"
+                                          data-bs-placement="right"
+                                          data-bs-html="true"
+                                          data-bs-title="Enrollment History"
+                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
+                                          style="cursor: pointer;">No <i class="bi bi-info-circle"></i></span>
                                 {% endif %}
                             </dd>
 
@@ -122,63 +121,26 @@
                         </dl>
                     </div>
                 </div>
-
-                <!-- Enrollment History -->
-                {% if resident.enrollment_history %}
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Enrollment History</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Action</th>
-                                        <th>Timestamp</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for event in resident.enrollment_history %}
-                                    <tr>
-                                        <td>
-                                            {% if event.action == 'enrolled' %}
-                                                <i class="bi bi-check-circle text-success"></i>
-                                            {% elif event.action == 'revoked consent' %}
-                                                <i class="bi bi-x-circle text-danger"></i>
-                                            {% endif %}
-                                            {{ event.action|title }}
-                                        </td>
-                                        <td><small>{{ event.timestamp }}</small></td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
             </div>
 
             <!-- Right Column -->
             <div class="col-md-6">
                 <!-- Payment History -->
-                <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-credit-card"></i> Payment History</h5>
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h6 class="mb-0"><i class="bi bi-credit-card"></i> Payment History</h6>
                         <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-sm btn-light">
                             <i class="bi bi-file-earmark-text"></i> Full Details
                         </a>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body py-2">
                         <div class="table-responsive">
-                            <table class="table table-sm table-hover">
+                            <table class="table table-sm table-hover mb-0 small">
                                 <thead>
                                     <tr>
                                         <th>Month</th>
                                         <th>Amount</th>
                                         <th>Status</th>
-                                        <th>Reported</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -195,13 +157,6 @@
                                                 <span class="badge bg-danger">{{ payment.status }}</span>
                                             {% endif %}
                                         </td>
-                                        <td>
-                                            {% if payment.reported %}
-                                                <i class="bi bi-check-circle-fill text-success"></i>
-                                            {% else %}
-                                                <i class="bi bi-x-circle text-muted"></i>
-                                            {% endif %}
-                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -211,30 +166,42 @@
                 </div>
 
                 <!-- Quick Actions -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h6>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body py-2">
                         <div class="d-grid gap-2">
-                            {% if not resident.enrolled %}
-                            <a href="{{ url_for('resident_enroll') }}" class="btn btn-primary">
-                                <i class="bi bi-check-circle"></i> Enroll in Rent Reporting
-                            </a>
-                            {% endif %}
+                            <button class="btn btn-primary" onclick="alert('Financial Education feature coming soon')">
+                                <i class="bi bi-book"></i> Access Financial Education
+                            </button>
                             
-                            <a href="{{ url_for('resident_profile') }}" class="btn btn-outline-primary">
-                                <i class="bi bi-person-circle"></i> Update Personal Information
-                            </a>
-                            
-                            <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-outline-secondary">
-                                <i class="bi bi-file-earmark-text"></i> View Rent Reporting Details
-                            </a>
+                            <button class="btn btn-outline-primary" onclick="alert('Financial Advisement feature coming soon')">
+                                <i class="bi bi-person-badge"></i> Access Financial Advisement
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        {% if resident.enrollment_status == 'enrolled' %}
+        <div class="text-center mt-4">
+            <a href="{{ url_for('resident_opt_out') }}" class="text-muted">
+                Opt Out
+            </a>
+        </div>
+        {% endif %}
     </div>
 </div>
+
+<script>
+    // Initialize Bootstrap popovers
+    document.addEventListener('DOMContentLoaded', function() {
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl);
+        });
+    });
+</script>
 {% endblock %}
