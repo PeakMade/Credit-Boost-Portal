@@ -68,13 +68,13 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <h4>
-                            {% if resident.enrollment_status == 'active' %}
+                            {% if resident.enrollment_status == 'enrolled' %}
                                 <span class="badge bg-success status-badge">
-                                    <i class="bi bi-check-circle"></i> Reporting Active
+                                    <i class="bi bi-check-circle"></i> Enrolled
                                 </span>
                             {% else %}
                                 <span class="badge bg-secondary status-badge">
-                                    <i class="bi bi-x-circle"></i> Reporting Inactive
+                                    <i class="bi bi-x-circle"></i> Not Enrolled
                                 </span>
                             {% endif %}
                         </h4>

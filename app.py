@@ -94,7 +94,7 @@ def resident_enroll():
             
             # Match successful - enroll resident
             resident['enrolled'] = True
-            resident['enrollment_status'] = 'active'
+            resident['enrollment_status'] = 'enrolled'
             resident['tradeline_created'] = True
             resident['enrollment_history'].append({
                 'action': 'enrolled',
@@ -152,7 +152,7 @@ def resident_opt_out():
     
     if request.method == 'POST':
         resident['enrolled'] = False
-        resident['enrollment_status'] = 'inactive'
+        resident['enrollment_status'] = 'not_enrolled'
         resident['enrollment_history'].append({
             'action': 'revoked consent',
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')

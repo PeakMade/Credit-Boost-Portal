@@ -12,7 +12,7 @@
       "last4_ssn": "1234",
       "ssn": "***-**-1234",
       "enrolled": false,
-      "enrollment_status": "inactive",
+      "enrollment_status": "not_enrolled",
       "tradeline_created": true,
       "enrollment_history": [
         {
@@ -81,7 +81,7 @@
       "last4_ssn": "5678",
       "ssn": "***-**-5678",
       "enrolled": true,
-      "enrollment_status": "active",
+      "enrollment_status": "enrolled",
       "tradeline_created": true,
       "enrollment_history": [
         {
@@ -130,7 +130,7 @@
       "last4_ssn": "9876",
       "ssn": "***-**-9876",
       "enrolled": true,
-      "enrollment_status": "active",
+      "enrollment_status": "enrolled",
       "tradeline_created": true,
       "enrollment_history": [
         {
