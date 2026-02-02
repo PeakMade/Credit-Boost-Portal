@@ -2,9 +2,13 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from datetime import datetime
 import json
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (for local development)
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'demo-secret-key-change-in-production'
+app.secret_key = os.environ.get('SECRET_KEY', 'demo-secret-key-change-in-production')
 
 # Load test data from JSON file
 def load_test_data():
@@ -379,4 +383,7 @@ def admin_audit_logs():
     return render_template('admin/audit_logs.html', audit_logs=audit_logs)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Get configuration from environment variables
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
