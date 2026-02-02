@@ -12,7 +12,7 @@
       "last4_ssn": "1234",
       "ssn": "***-**-1234",
       "enrolled": false,
-      "enrollment_status": "not_enrolled",
+      "enrollment_status": "not enrolled",
       "tradeline_created": true,
       "enrollment_history": [
         {

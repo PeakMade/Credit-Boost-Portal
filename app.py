@@ -152,7 +152,7 @@ def resident_opt_out():
     
     if request.method == 'POST':
         resident['enrolled'] = False
-        resident['enrollment_status'] = 'not_enrolled'
+        resident['enrollment_status'] = 'not enrolled'
         resident['enrollment_history'].append({
             'action': 'revoked consent',
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')

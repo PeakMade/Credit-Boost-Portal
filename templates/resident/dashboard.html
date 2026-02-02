@@ -8,7 +8,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>Welcome, {{ resident.name }}!</h2>
             <span class="badge {% if resident.enrollment_status == 'enrolled' %}bg-success{% else %}bg-secondary{% endif %} fs-6">
-                {{ resident.enrollment_status|replace('_', ' ')|title }}
+                {{ resident.enrollment_status|title }}
             </span>
         </div>
 
@@ -41,12 +41,12 @@
             </div>
         </div>
         {% else %}
-        <!-- Enrolled Status -->
+        <!-- Active Status -->
         <div class="alert alert-success d-flex align-items-center justify-content-between mb-4" role="alert">
             <div class="d-flex align-items-center">
                 <i class="bi bi-check-circle-fill fs-4 me-3"></i>
                 <div>
-                    <strong>Rent Reporting Enrolled</strong>
+                    <strong>Rent Reporting Active</strong>
                     <p class="mb-0">Your rent payments are being reported to credit bureaus. <a href="{{ url_for('resident_rent_reporting') }}" class="alert-link">View Details</a></p>
                 </div>
             </div>
@@ -87,11 +87,11 @@
                             <dt class="col-sm-5">SSN:</dt>
                             <dd class="col-sm-7">{{ resident.ssn }}</dd>
 
-                            <dt class="col-sm-5">Enrolled:</dt>
+                            <dt class="col-sm-5">Active:</dt>
                             <dd class="col-sm-7">
                                 {% if resident.enrollment_status == 'enrolled' %}
                                     <span class="badge bg-success">Yes</span>
-                                {% else %>
+                                {% else %}
                                     <span class="badge bg-secondary">No</span>
                                 {% endif %}
                             </dd>
