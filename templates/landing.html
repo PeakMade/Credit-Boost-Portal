@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Rent Reporting Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0">Welcome to Rent Reporting Portal</h4>
+            </div>
+            <div class="card-body p-5">
+                <p class="text-center mb-4">Please select your role to continue</p>
+                
+                <form method="POST" action="{{ url_for('select_role') }}">
+                    <div class="d-grid gap-3">
+                        <div class="form-check p-3 border rounded">
+                            <input class="form-check-input" type="radio" name="role" id="roleResident" value="resident" checked>
+                            <label class="form-check-label w-100" for="roleResident">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-person fs-2 me-3 text-primary"></i>
+                                    <div>
+                                        <h5 class="mb-0">Resident</h5>
+                                        <small class="text-muted">Enroll and manage your rent reporting</small>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="form-check p-3 border rounded">
+                            <input class="form-check-input" type="radio" name="role" id="roleAdmin" value="admin">
+                            <label class="form-check-label w-100" for="roleAdmin">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-shield-check fs-2 me-3 text-success"></i>
+                                    <div>
+                                        <h5 class="mb-0">Admin</h5>
+                                        <small class="text-muted">Manage residents and reporting</small>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Continue <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

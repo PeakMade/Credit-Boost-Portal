@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Opt Out - Rent Reporting{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('resident_dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('resident_rent_reporting') }}">Rent Reporting</a></li>
+                <li class="breadcrumb-item active">Opt Out</li>
+            </ol>
+        </nav>
+
+        <h2 class="mb-4">Opt Out of Rent Reporting</h2>
+
+        <div class="card border-warning">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Confirm Opt-Out</h5>
+            </div>
+            <div class="card-body">
+                <p class="lead">Are you sure you want to revoke consent and stop future rent reporting?</p>
+                
+                <div class="alert alert-info">
+                    <h6 class="fw-bold">What This Means:</h6>
+                    <ul>
+                        <li>Future rent payments will <strong>not</strong> be reported to credit bureaus</li>
+                        <li>Your tradeline will be updated to stop future reporting</li>
+                        <li>Previously reported payments will remain on your credit report</li>
+                        <li>You can re-enroll at any time if you change your mind</li>
+                    </ul>
+                </div>
+
+                <div class="alert alert-warning">
+                    <h6 class="fw-bold">Important Notes:</h6>
+                    <ul class="mb-0">
+                        <li>This action will take effect according to our reporting schedule</li>
+                        <li>Historical reporting data cannot be removed</li>
+                        <li>You may need to wait for the next reporting cycle for changes to take effect</li>
+                    </ul>
+                </div>
+
+                <form method="POST" action="{{ url_for('resident_opt_out') }}">
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-x-circle"></i> Yes, Revoke Consent
+                        </button>
+                        <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> No, Keep Reporting Enrolled
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

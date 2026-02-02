@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Rent Reporting Portal{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        /* Standard PeakMade Header Styling */
+        .header-container {
+            background: linear-gradient(90deg, #ffb6b6 0%, #1f51ff 50%, #90eeff 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            height: 80px;
+            padding: 0;
+            margin-bottom: 0;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 40px;
+            height: 80px;
+        }
+        
+        .logo-left {
+            flex: 1;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            height: 80px;
+        }
+        
+        .logo-left img {
+            height: 48px;
+            width: auto;
+        }
+        
+        .app-title {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 80px;
+        }
+        
+        .app-title h1 {
+            font-size: 28px;
+            font-family: 'Open Sans', Arial, sans-serif;
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            line-height: 80px;
+        }
+        
+        .logo-right {
+            flex: 1;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            height: 80px;
+        }
+        
+        .logo-right img {
+            height: 32px;
+            width: auto;
+        }
+        
+        /* Main content styling */
+        .main-content {
+            padding: 0;
+            margin: 0;
+            min-height: calc(100vh - 90px);
+            background-color: #f8f9fa;
+        }
+        
+        .content-wrapper {
+            width: 100%;
+            max-width: none;
+            padding: 15px 40px;
+            margin: 0;
+        }
+        
+        /* Card styling */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            border: none;
+            padding: 7px 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .card-body {
+            padding: 25px;
+        }
+        
+        /* Button styling */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 25px;
+            font-weight: 500;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 25px;
+            font-weight: 500;
+        }
+        
+        .btn-outline-primary, .btn-outline-secondary, .btn-outline-warning, .btn-outline-danger {
+            border-radius: 8px;
+            padding: 10px 25px;
+            font-weight: 500;
+        }
+        
+        /* Alert styling */
+        .alert {
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            padding: 7px 18px;
+            font-size: 1rem;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            padding: 7px 18px;
+            font-size: 1rem;
+        }
+        
+        .alert-info {
+            background: linear-gradient(135deg, #cce8ff 0%, #b3d9ff 100%);
+            color: #004085;
+            padding: 7px 18px;
+            font-size: 1rem;
+        }
+        
+        .alert-warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            color: #856404;
+            padding: 7px 18px;
+            font-size: 1rem;
+        }
+        
+        .status-badge {
+            font-size: 0.9rem;
+        }
+        
+        /* Animation effects */
+        .fade-in {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+        
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Darker border for admin quick access cards */
+        .quick-access-card {
+            border-width: 2.5px !important;
+            border-color: #222 !important;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Standard PeakMade Header -->
+    <header class="header-container">
+        <div class="header-content">
+            <!-- Left Logo (PeakMade) -->
+            <div class="logo-left">
+                <img src="{{ url_for('static', filename='images/Peakmade_logo.png') }}" alt="PeakMade Logo">
+            </div>
+            
+            <!-- Center Title -->
+            <div class="app-title">
+                <h1>{% block app_title %}Rent Reporting Portal{% endblock %}</h1>
+            </div>
+            
+            <!-- Right Logo (Redpoint) -->
+            <div class="logo-right">
+                <img src="{{ url_for('static', filename='images/Redpoint_logo.png') }}" alt="Redpoint Logo">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Page Content -->
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,179 @@
+{
+  "residents": [
+    {
+      "id": 1,
+      "account_number": "ACC2024001234",
+      "name": "Jane Doe",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "dob": "1990-01-01",
+      "address": "123 Main St, Apt 4B",
+      "unit": "A-101",
+      "last4_ssn": "1234",
+      "ssn": "***-**-1234",
+      "enrolled": false,
+      "enrollment_status": "inactive",
+      "tradeline_created": true,
+      "enrollment_history": [
+        {
+          "action": "enrolled",
+          "timestamp": "2026-01-28 10:43:56"
+        },
+        {
+          "action": "revoked consent",
+          "timestamp": "2026-01-28 10:46:30"
+        }
+      ],
+      "account_status": "Current",
+      "date_opened": "2023-06-15",
+      "payment_schedule": "Monthly",
+      "scheduled_monthly_payment": 1200.0,
+      "date_last_payment": "2025-01-05",
+      "date_first_delinquency": null,
+      "days_late": 0,
+      "highest_credit_amount": 1200.0,
+      "amount_past_due": 0.0,
+      "current_balance": 0.0,
+      "payments": [
+        {
+          "month": "2025-01",
+          "amount": 1200.0,
+          "status": "Paid",
+          "reported": true,
+          "date_paid": "2025-01-05",
+          "days_late": 0
+        },
+        {
+          "month": "2024-12",
+          "amount": 1200.0,
+          "status": "Paid",
+          "reported": true,
+          "date_paid": "2024-12-03",
+          "days_late": 0
+        },
+        {
+          "month": "2024-11",
+          "amount": 1200.0,
+          "status": "Late",
+          "reported": false,
+          "date_paid": "2024-11-25",
+          "days_late": 20
+        },
+        {
+          "month": "2024-10",
+          "amount": 1200.0,
+          "status": "Paid",
+          "reported": true,
+          "date_paid": "2024-10-02",
+          "days_late": 0
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "account_number": "ACC2024005678",
+      "name": "John Smith",
+      "first_name": "John",
+      "last_name": "Smith",
+      "dob": "1985-05-15",
+      "address": "456 Oak Ave, Unit 2C",
+      "unit": "B-203",
+      "last4_ssn": "5678",
+      "ssn": "***-**-5678",
+      "enrolled": true,
+      "enrollment_status": "active",
+      "tradeline_created": true,
+      "enrollment_history": [
+        {
+          "action": "enrolled",
+          "timestamp": "2024-10-01 10:30:00"
+        }
+      ],
+      "account_status": "Current",
+      "date_opened": "2023-03-10",
+      "payment_schedule": "Monthly",
+      "scheduled_monthly_payment": 1500.0,
+      "date_last_payment": "2025-01-01",
+      "date_first_delinquency": null,
+      "days_late": 0,
+      "highest_credit_amount": 1500.0,
+      "amount_past_due": 0.0,
+      "current_balance": 0.0,
+      "payments": [
+        {
+          "month": "2025-01",
+          "amount": 1500.0,
+          "status": "Paid",
+          "reported": true,
+          "date_paid": "2025-01-01",
+          "days_late": 0
+        },
+        {
+          "month": "2024-12",
+          "amount": 1500.0,
+          "status": "Paid",
+          "reported": true,
+          "date_paid": "2024-12-01",
+          "days_late": 0
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "account_number": "ACC2024009876",
+      "name": "Maria Garcia",
+      "first_name": "Maria",
+      "last_name": "Garcia",
+      "dob": "1992-08-22",
+      "address": "789 Elm Street, Unit 5A",
+      "unit": "C-305",
+      "last4_ssn": "9876",
+      "ssn": "***-**-9876",
+      "enrolled": true,
+      "enrollment_status": "active",
+      "tradeline_created": true,
+      "enrollment_history": [
+        {
+          "action": "enrolled",
+          "timestamp": "2024-08-15 14:20:00"
+        }
+      ],
+      "account_status": "30 Days Delinquent",
+      "date_opened": "2023-01-20",
+      "payment_schedule": "Monthly",
+      "scheduled_monthly_payment": 1350.0,
+      "date_last_payment": "2024-12-15",
+      "date_first_delinquency": "2025-02-01",
+      "days_late": 30,
+      "highest_credit_amount": 1350.0,
+      "amount_past_due": 1350.0,
+      "current_balance": 1350.0,
+      "payments": [
+        {
+          "month": "2025-01",
+          "amount": 1350.0,
+          "status": "Unpaid",
+          "reported": true,
+          "date_paid": null,
+          "days_late": 30
+        },
+        {
+          "month": "2024-12",
+          "amount": 1350.0,
+          "status": "Paid",
+          "reported": true,
+          "date_paid": "2024-12-15",
+          "days_late": 10
+        },
+        {
+          "month": "2024-11",
+          "amount": 1350.0,
+          "status": "Paid",
+          "reported": true,
+          "date_paid": "2024-11-03",
+          "days_late": 0
+        }
+      ]
+    }
+  ]
+}

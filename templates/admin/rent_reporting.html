@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Rent Reporting Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Rent Reporting</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Rent Reporting Management</h2>
+            <div>
+                <button class="btn btn-outline-primary me-2" onclick="alert('CSV Export feature coming soon')">
+                    <i class="bi bi-download"></i> Export List
+                </button>
+                <button class="btn btn-primary" onclick="alert('Reporting Runs feature coming soon')">
+                    <i class="bi bi-calendar-check"></i> View Reporting Runs
+                </button>
+            </div>
+        </div>
+
+        <!-- Current Reporting Cycle Info -->
+        <div class="alert alert-info mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle fs-4 me-3"></i>
+                <div>
+                    <strong>Current Reporting Cycle: January 2026</strong>
+                    <p class="mb-0 small">Next scheduled reporting run: January 31, 2026 | Status: Pending</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search/Filter -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('admin_rent_reporting') }}">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label small text-muted mb-1">Search by Property</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                                <input type="text" class="form-control" name="property" 
+                                       placeholder="Property/Unit number..." 
+                                       value="{{ property_query if property_query else '' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small text-muted mb-1">Search by Name</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" name="name" 
+                                       placeholder="Resident name..." 
+                                       value="{{ name_query if name_query else '' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">&nbsp;</label>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search"></i> Search
+                                </button>
+                                {% if property_query or name_query %}
+                                <a href="{{ url_for('admin_rent_reporting') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-x"></i> Clear
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Residents Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Residents ({{ residents|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if residents %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Unit</th>
+                                <th>Enrolled</th>
+                                <th>Status</th>
+                                <th>Last Reported</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for resident in residents %}
+                            <tr>
+                                <td>{{ resident.name }}</td>
+                                <td>{{ resident.unit }}</td>
+                                <td>
+                                    {% if resident.enrolled %}
+                                        <i class="bi bi-check-circle-fill text-success"></i> Yes
+                                    {% else %}
+                                        <i class="bi bi-x-circle text-muted"></i> No
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if resident.enrollment_status == 'enrolled' %}
+                                        <span class="badge bg-success">Enrolled</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ resident.last_reported }}</td>
+                                <td>
+                                    <a href="{{ url_for('admin_resident_detail', resident_id=resident.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> No residents found matching your search criteria.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

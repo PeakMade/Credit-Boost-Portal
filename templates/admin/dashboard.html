@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <h2 class="mb-4">Admin Dashboard</h2>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-speedometer2"></i> Quick Access</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <a href="{{ url_for('admin_rent_reporting') }}" class="text-decoration-none">
+                            <div class="card border-primary border-2 quick-access-card h-100">
+                                <div class="card-body text-center p-4">
+                                    <i class="bi bi-file-earmark-text text-primary" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">Rent Reporting</h5>
+                                    <p class="text-muted mb-0">Manage residents and reporting</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('admin_reporting_runs') }}" class="text-decoration-none">
+                            <div class="card border-info border-2 quick-access-card h-100">
+                                <div class="card-body text-center p-4">
+                                    <i class="bi bi-calendar-check text-info" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">Reporting Runs</h5>
+                                    <p class="text-muted mb-0">Metro 2 file generation</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('admin_disputes') }}" class="text-decoration-none">
+                            <div class="card border-warning border-2 quick-access-card h-100">
+                                <div class="card-body text-center p-4">
+                                    <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">Disputes</h5>
+                                    <p class="text-muted mb-0">Track dispute cases</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        <a href="#" class="text-decoration-none" onclick="alert('Configuration feature coming soon'); return false;">
+                            <div class="card border-secondary border-2 quick-access-card h-100">
+                                <div class="card-body text-center p-4">
+                                    <i class="bi bi-gear text-secondary" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">Configuration</h5>
+                                    <p class="text-muted mb-0">System and property settings</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ url_for('admin_audit_logs') }}" class="text-decoration-none">
+                            <div class="card border-dark border-2 quick-access-card h-100">
+                                <div class="card-body text-center p-4">
+                                    <i class="bi bi-shield-check text-dark" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">Audit Logs</h5>
+                                    <p class="text-muted mb-0">Security and compliance</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Quick Stats</h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="alert('CSV Export feature coming soon')">
+                    <i class="bi bi-download"></i> Export CSV
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-4">
+                    <div class="col-md-3">
+                        <h3 class="text-primary">{{ stats.total_residents }}</h3>
+                        <p class="text-muted mb-0">Total Residents</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-success">{{ stats.enrolled_count }}</h3>
+                        <p class="text-muted mb-0">Enrolled</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-warning">{{ stats.not_enrolled_count }}</h3>
+                        <p class="text-muted mb-0">Not Enrolled</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-info">{{ stats.reported_payments }}/{{ stats.total_payments }}</h3>
+                        <p class="text-muted mb-0">Payments Reported</p>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h4 class="text-success">{{ stats.current_accounts }}</h4>
+                        <p class="text-muted mb-0"><small>Current Accounts</small></p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-danger">{{ stats.delinquent_accounts }}</h4>
+                        <p class="text-muted mb-0"><small>Delinquent Accounts</small></p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="{% if stats.total_past_due > 0 %}text-danger{% else %}text-success{% endif %}">${{ "%.2f"|format(stats.total_past_due) }}</h4>
+                        <p class="text-muted mb-0"><small>Total Past Due</small></p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-primary">${{ "%.2f"|format(stats.total_monthly_revenue) }}</h4>
+                        <p class="text-muted mb-0"><small>Monthly Revenue</small></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}Resident Detail - {{ resident.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_rent_reporting') }}">Rent Reporting</a></li>
+                <li class="breadcrumb-item active">{{ resident.name }}</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>{{ resident.name }}</h2>
+            <div>
+                <button class="btn btn-outline-primary me-2" onclick="alert('View Audit Log feature coming soon')">
+                    <i class="bi bi-shield-check"></i> View Audit Log
+                </button>
+                <span class="badge {% if resident.enrollment_status == 'active' %}bg-success{% else %}bg-secondary{% endif %} fs-6">
+                    {{ resident.enrollment_status|title }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Alerts Section -->
+        {% if resident.days_late > 0 %}
+        <div class="alert alert-danger mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                <div>
+                    <strong>Payment Delinquency Alert</strong>
+                    <p class="mb-0">This resident is {{ resident.days_late }} days late on payment. Will be reported as delinquent if not resolved.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-md-6">
+                <!-- Resident Info -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-person"></i> Resident Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Account Number:</dt>
+                            <dd class="col-sm-7"><strong>{{ resident.account_number }}</strong></dd>
+
+                            <dt class="col-sm-5">Name:</dt>
+                            <dd class="col-sm-7">{{ resident.first_name }} {{ resident.last_name }}</dd>
+
+                            <dt class="col-sm-5">Date of Birth:</dt>
+                            <dd class="col-sm-7">{{ resident.dob }}</dd>
+
+                            <dt class="col-sm-5">Address:</dt>
+                            <dd class="col-sm-7">{{ resident.address }}</dd>
+
+                            <dt class="col-sm-5">Unit:</dt>
+                            <dd class="col-sm-7">{{ resident.unit }}</dd>
+
+                            <dt class="col-sm-5">SSN:</dt>
+                            <dd class="col-sm-7">{{ resident.ssn }}</dd>
+
+                            <dt class="col-sm-5">Enrolled:</dt>
+                            <dd class="col-sm-7">
+                                {% if resident.enrolled %}
+                                    <span class="badge bg-success">Yes</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">No</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-5">Tradeline Created:</dt>
+                            <dd class="col-sm-7">
+                                {% if resident.tradeline_created %}
+                                    <i class="bi bi-check-circle-fill text-success"></i> Yes
+                                {% else %}
+                                    <i class="bi bi-x-circle text-muted"></i> No
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Account Information -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-credit-card-2-front"></i> Account Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Account Status:</dt>
+                            <dd class="col-sm-7">
+                                {% if resident.account_status == 'Current' %}
+                                    <span class="badge bg-success">{{ resident.account_status }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ resident.account_status }}</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-5">Date Opened:</dt>
+                            <dd class="col-sm-7">{{ resident.date_opened }}</dd>
+
+                            <dt class="col-sm-5">Payment Schedule:</dt>
+                            <dd class="col-sm-7">{{ resident.payment_schedule }}</dd>
+
+                            <dt class="col-sm-5">Scheduled Payment:</dt>
+                            <dd class="col-sm-7">${{ "%.2f"|format(resident.scheduled_monthly_payment) }}</dd>
+
+                            <dt class="col-sm-5">Last Payment Date:</dt>
+                            <dd class="col-sm-7">{{ resident.date_last_payment }}</dd>
+
+                            <dt class="col-sm-5">Days Late:</dt>
+                            <dd class="col-sm-7">
+                                {% if resident.days_late > 0 %}
+                                    <span class="badge bg-danger">{{ resident.days_late }} days</span>
+                                {% else %}
+                                    <span class="text-success">0 days</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-5">First Delinquency:</dt>
+                            <dd class="col-sm-7">
+                                {% if resident.date_first_delinquency %}
+                                    <span class="text-danger">{{ resident.date_first_delinquency }}</span>
+                                {% else %}
+                                    <span class="text-success">None</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-5">Amount Past Due:</dt>
+                            <dd class="col-sm-7">
+                                {% if resident.amount_past_due > 0 %}
+                                    <span class="text-danger"><strong>${{ "%.2f"|format(resident.amount_past_due) }}</strong></span>
+                                {% else %}
+                                    <span class="text-success">${{ "%.2f"|format(resident.amount_past_due) }}</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-5">Current Balance:</dt>
+                            <dd class="col-sm-7">${{ "%.2f"|format(resident.current_balance) }}</dd>
+
+                            <dt class="col-sm-5">Highest Credit:</dt>
+                            <dd class="col-sm-7">${{ "%.2f"|format(resident.highest_credit_amount) }}</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Enrollment & Consent Log -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Enrollment History</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if resident.enrollment_history %}
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in resident.enrollment_history %}
+                                    <tr>
+                                        <td>
+                                            {% if event.action == 'enrolled' %}
+                                                <i class="bi bi-check-circle text-success"></i>
+                                            {% elif event.action == 'revoked consent' %}
+                                                <i class="bi bi-x-circle text-danger"></i>
+                                            {% endif %}
+                                            {{ event.action|title }}
+                                        </td>
+                                        <td><small>{{ event.timestamp }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0">No enrollment history available.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-md-6">
+                <!-- Payment History -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-credit-card"></i> Payment History</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Month</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Days Late</th>
+                                        <th>Date Paid</th>
+                                        <th>Reported</th>
+                                        <th>Delinquent</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payment in resident.payments %}
+                                    <tr>
+                                        <td>{{ payment.month }}</td>
+                                        <td>${{ "%.2f"|format(payment.amount) }}</td>
+                                        <td>
+                                            {% if payment.status == 'Paid' %}
+                                                <span class="badge bg-success">{{ payment.status }}</span>
+                                            {% elif payment.status == 'Late' %}
+                                                <span class="badge bg-warning text-dark">{{ payment.status }}</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ payment.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if payment.days_late > 0 %}
+                                                <span class="badge bg-warning text-dark">{{ payment.days_late }}</span>
+                                            {% else %}
+                                                <span class="text-success">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if payment.date_paid %}
+                                                <small>{{ payment.date_paid }}</small>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if payment.reported %}
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            {% else %}
+                                                <i class="bi bi-x-circle text-muted"></i>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if payment.reported and payment.days_late > 30 %}
+                                                <span class="badge bg-danger">Yes</span>
+                                            {% elif payment.reported and payment.days_late > 0 %}
+                                                <span class="badge bg-warning text-dark">Late</span>
+                                            {% else %}
+                                                <span class="text-success">No</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Issue Management -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Issue Management</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Handle common resident issues:</p>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('admin_data_mismatch', resident_id=resident.id) }}" 
+                               class="btn btn-outline-warning">
+                                <i class="bi bi-exclamation-circle"></i> Data Mismatch Issue
+                            </a>
+                            <a href="{{ url_for('admin_payment_issue', resident_id=resident.id) }}" 
+                               class="btn btn-outline-danger">
+                                <i class="bi bi-cash-stack"></i> Late/Missing Payment Issue
+                            </a>
+                            <button class="btn btn-outline-info" onclick="alert('View Disputes feature coming soon')">
+                                <i class="bi bi-question-circle"></i> View Disputes (Coming Soon)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" onclick="alert('Send Notification feature coming soon')">
+                                <i class="bi bi-envelope"></i> Send Notification to Resident
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="alert('Download Report feature coming soon')">
+                                <i class="bi bi-download"></i> Download Payment Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Back Button -->
+        <div class="mt-4">
+            <a href="{{ url_for('admin_rent_reporting') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Residents
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

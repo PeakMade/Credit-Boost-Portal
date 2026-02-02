@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Enrollment Successful{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto text-center">
+        <div class="card border-success shadow">
+            <div class="card-body p-5">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                <h2 class="mt-4 mb-3">You're Enrolled!</h2>
+                <p class="lead">Rent Reporting is Now Enrolled</p>
+                <p class="text-muted">
+                    Your rent payments will now be reported to credit bureaus. 
+                    Keep making on-time payments to build your credit history!
+                </p>
+
+                <div class="alert alert-info mt-4 text-start">
+                    <h6 class="fw-bold"><i class="bi bi-lightbulb"></i> What Happens Next:</h6>
+                    <ul class="mb-0">
+                        <li>Your payment history will be reported monthly</li>
+                        <li>Changes may appear on your credit report in 30-60 days</li>
+                        <li>You can view your reporting status anytime in your dashboard</li>
+                    </ul>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-file-earmark-text"></i> View Rent Reporting Details
+                    </a>
+                    <a href="{{ url_for('resident_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-house-door"></i> Return to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

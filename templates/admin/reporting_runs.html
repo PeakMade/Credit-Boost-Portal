@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Reporting Runs{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-calendar-check"></i> Reporting Runs</h2>
+            <div>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRunModal">
+                    <i class="bi bi-plus-circle"></i> Generate New Run
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card border-primary">
+                    <div class="card-body text-center">
+                        <h4 class="text-primary">{{ runs|length }}</h4>
+                        <p class="text-muted mb-0">Total Runs</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <h4 class="text-success">{{ successful_runs }}</h4>
+                        <p class="text-muted mb-0">Successful</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-danger">
+                    <div class="card-body text-center">
+                        <h4 class="text-danger">{{ failed_runs }}</h4>
+                        <p class="text-muted mb-0">Failed</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-info">
+                    <div class="card-body text-center">
+                        <h4 class="text-info">{{ total_accounts }}</h4>
+                        <p class="text-muted mb-0">Accounts Reported</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Date Range</label>
+                        <select class="form-select">
+                            <option selected>Last 30 Days</option>
+                            <option>Last 90 Days</option>
+                            <option>Last 6 Months</option>
+                            <option>All Time</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select">
+                            <option selected>All Statuses</option>
+                            <option>Completed</option>
+                            <option>Failed</option>
+                            <option>Processing</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Run Type</label>
+                        <select class="form-select">
+                            <option selected>All Types</option>
+                            <option>Monthly Full</option>
+                            <option>Correction</option>
+                            <option>Test</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-funnel"></i> Apply Filters
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Reporting Runs Table -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-table"></i> Recent Reporting Runs</h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="alert('Export feature coming soon')">
+                    <i class="bi bi-download"></i> Export
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Run ID</th>
+                                <th>Date/Time</th>
+                                <th>Type</th>
+                                <th>Reporting Period</th>
+                                <th>Accounts</th>
+                                <th>Status</th>
+                                <th>Metro 2 File</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for run in runs %}
+                            <tr>
+                                <td><strong>{{ run.id }}</strong></td>
+                                <td>{{ run.date }}</td>
+                                <td><span class="badge bg-secondary">{{ run.type }}</span></td>
+                                <td>{{ run.period }}</td>
+                                <td>{{ run.accounts }}</td>
+                                <td>
+                                    {% if run.status == 'Completed' %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> {{ run.status }}</span>
+                                    {% elif run.status == 'Failed' %}
+                                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> {{ run.status }}</span>
+                                    {% elif run.status == 'Processing' %}
+                                    <span class="badge bg-warning"><i class="bi bi-hourglass-split"></i> {{ run.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if run.status == 'Completed' %}
+                                    <button class="btn btn-sm btn-outline-primary" onclick="alert('Download Metro 2 file: {{ run.file }}')">
+                                        <i class="bi bi-download"></i> {{ run.file }}
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-info" onclick="alert('View details for run {{ run.id }}')" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        {% if run.status == 'Completed' %}
+                                        <button class="btn btn-outline-secondary" onclick="alert('Resubmit run {{ run.id }}')" title="Resubmit">
+                                            <i class="bi bi-arrow-repeat"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- New Run Modal -->
+<div class="modal fade" id="newRunModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Generate New Reporting Run</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Run Type</label>
+                        <select class="form-select" required>
+                            <option value="">Select run type...</option>
+                            <option value="monthly">Monthly Full Report</option>
+                            <option value="correction">Correction Report</option>
+                            <option value="test">Test Report</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reporting Period</label>
+                        <input type="month" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Include</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeEnrolled" checked>
+                            <label class="form-check-label" for="includeEnrolled">
+                                Enrolled Residents Only
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeCurrent" checked>
+                            <label class="form-check-label" for="includeCurrent">
+                                Current Accounts
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeDelinquent" checked>
+                            <label class="form-check-label" for="includeDelinquent">
+                                Delinquent Accounts
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" rows="3" placeholder="Add any notes about this reporting run..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="alert('Generating Metro 2 file... This would normally process the report.'); $('#newRunModal').modal('hide');">
+                    <i class="bi bi-gear"></i> Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

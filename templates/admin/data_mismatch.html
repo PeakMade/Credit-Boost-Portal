@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Data Mismatch Issue - {{ resident.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_rent_reporting') }}">Rent Reporting</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_resident_detail', resident_id=resident.id) }}">{{ resident.name }}</a></li>
+                <li class="breadcrumb-item active">Data Mismatch</li>
+            </ol>
+        </nav>
+
+        <h2 class="mb-4">Data Mismatch Issue</h2>
+
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong>Data Mismatch Detected</strong>
+            <p class="mb-0">The following information does not match between our system and the credit bureau records.</p>
+        </div>
+
+        <!-- Resident Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Resident: {{ resident.name }}</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Unit:</dt>
+                    <dd class="col-sm-9">{{ resident.unit }}</dd>
+
+                    <dt class="col-sm-3">Address:</dt>
+                    <dd class="col-sm-9">{{ resident.address }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Mismatch Details -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-exclamation-circle"></i> Mismatch Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Field</th>
+                                <th>Our System</th>
+                                <th>Credit Bureau</th>
+                                <th>Match</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>SSN (Last 4)</strong></td>
+                                <td>{{ mismatch_data.ssn_system }}</td>
+                                <td>{{ mismatch_data.ssn_bureau }}</td>
+                                <td>
+                                    {% if mismatch_data.ssn_system == mismatch_data.ssn_bureau %}
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    {% else %}
+                                        <i class="bi bi-x-circle-fill text-danger"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Name</strong></td>
+                                <td>{{ mismatch_data.name_system }}</td>
+                                <td>{{ mismatch_data.name_bureau }}</td>
+                                <td>
+                                    {% if mismatch_data.name_system.lower() == mismatch_data.name_bureau.lower() %}
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    {% else %}
+                                        <i class="bi bi-x-circle-fill text-danger"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Date of Birth</strong></td>
+                                <td>{{ mismatch_data.dob_system }}</td>
+                                <td>{{ mismatch_data.dob_bureau }}</td>
+                                <td>
+                                    {% if mismatch_data.dob_system == mismatch_data.dob_bureau %}
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    {% else %}
+                                        <i class="bi bi-x-circle-fill text-danger"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resolution Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-tools"></i> Resolution Options</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Choose an action to resolve this issue:</p>
+                
+                <form method="POST" action="{{ url_for('admin_data_mismatch', resident_id=resident.id) }}">
+                    <div class="d-grid gap-3">
+                        <button type="submit" name="action" value="fix" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Fix Data
+                            <small class="d-block text-white-50">Update and correct the mismatch in our system</small>
+                        </button>
+
+                        <button type="submit" name="action" value="notify" class="btn btn-primary btn-lg">
+                            <i class="bi bi-envelope"></i> Notify Resident
+                            <small class="d-block text-white-50">Send notification to resident to update their information</small>
+                        </button>
+
+                        <button type="submit" name="action" value="escalate" class="btn btn-warning btn-lg">
+                            <i class="bi bi-arrow-up-circle"></i> Escalate to Support
+                            <small class="d-block text-dark-50">Create support ticket for manual review</small>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="{{ url_for('admin_resident_detail', resident_id=resident.id) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Resident Details
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Logs{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-11 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-shield-check"></i> Audit Logs</h2>
+            <div>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+                <button class="btn btn-primary" onclick="alert('Archive logs feature coming soon')">
+                    <i class="bi bi-archive"></i> Archive Logs
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card border-primary">
+                    <div class="card-body text-center">
+                        <h4 class="text-primary">{{ logs|length }}</h4>
+                        <p class="text-muted mb-0">Total Events (24h)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <h4 class="text-success">{{ successful_logins }}</h4>
+                        <p class="text-muted mb-0">Successful Logins</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-warning">
+                    <div class="card-body text-center">
+                        <h4 class="text-warning">{{ data_changes }}</h4>
+                        <p class="text-muted mb-0">Data Changes</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-danger">
+                    <div class="card-body text-center">
+                        <h4 class="text-danger">{{ security_events }}</h4>
+                        <p class="text-muted mb-0">Security Events</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label">Time Range</label>
+                        <select class="form-select">
+                            <option selected>Last 24 Hours</option>
+                            <option>Last 7 Days</option>
+                            <option>Last 30 Days</option>
+                            <option>Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Event Type</label>
+                        <select class="form-select">
+                            <option selected>All Events</option>
+                            <option>Login/Logout</option>
+                            <option>Data Access</option>
+                            <option>Data Modification</option>
+                            <option>Report Generation</option>
+                            <option>Security Events</option>
+                            <option>System Events</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Severity</label>
+                        <select class="form-select">
+                            <option selected>All Levels</option>
+                            <option>Critical</option>
+                            <option>Warning</option>
+                            <option>Info</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">User</label>
+                        <select class="form-select">
+                            <option selected>All Users</option>
+                            <option>Admin User</option>
+                            <option>System</option>
+                            <option>API Service</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-control" placeholder="Event details...">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-funnel"></i> Apply
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-danger w-100" onclick="alert('Failed login attempts report feature coming soon')">
+                            <i class="bi bi-key"></i> Failed Logins
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-warning w-100" onclick="alert('Data access report feature coming soon')">
+                            <i class="bi bi-eye"></i> Data Access
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-info w-100" onclick="alert('Export activity feature coming soon')">
+                            <i class="bi bi-file-earmark-text"></i> Export Report
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-primary w-100" onclick="alert('Compliance report feature coming soon')">
+                            <i class="bi bi-clipboard-check"></i> Compliance
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Log Table -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary me-2" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="alert('Export feature coming soon')">
+                        <i class="bi bi-download"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th style="width: 180px;">Timestamp</th>
+                                <th style="width: 100px;">Severity</th>
+                                <th style="width: 150px;">Event Type</th>
+                                <th style="width: 120px;">User</th>
+                                <th style="width: 120px;">IP Address</th>
+                                <th>Event Description</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td><small>{{ log.timestamp }}</small></td>
+                                <td>
+                                    {% if log.severity == 'Critical' %}
+                                    <span class="badge bg-danger">Critical</span>
+                                    {% elif log.severity == 'Warning' %}
+                                    <span class="badge bg-warning">Warning</span>
+                                    {% else %}
+                                    <span class="badge bg-info">Info</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        {% if log.event_type == 'Login' %}
+                                        <i class="bi bi-box-arrow-in-right"></i>
+                                        {% elif log.event_type == 'Logout' %}
+                                        <i class="bi bi-box-arrow-left"></i>
+                                        {% elif log.event_type == 'Data Access' %}
+                                        <i class="bi bi-eye"></i>
+                                        {% elif log.event_type == 'Data Change' %}
+                                        <i class="bi bi-pencil"></i>
+                                        {% elif log.event_type == 'Report' %}
+                                        <i class="bi bi-file-earmark"></i>
+                                        {% elif log.event_type == 'Security' %}
+                                        <i class="bi bi-shield-exclamation"></i>
+                                        {% else %}
+                                        <i class="bi bi-gear"></i>
+                                        {% endif %}
+                                        {{ log.event_type }}
+                                    </span>
+                                </td>
+                                <td>{{ log.user }}</td>
+                                <td><code>{{ log.ip_address }}</code></td>
+                                <td>{{ log.description }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info" onclick="alert('Event Details:\n\nID: {{ log.id }}\nTimestamp: {{ log.timestamp }}\nUser: {{ log.user }}\nIP: {{ log.ip_address }}\nEvent: {{ log.event_type }}\n\n{{ log.description }}\n\nAdditional metadata would be shown here.')" title="View Details">
+                                        <i class="bi bi-info-circle"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Compliance Notice -->
+        <div class="alert alert-info mt-4" role="alert">
+            <i class="bi bi-info-circle-fill"></i>
+            <strong>Compliance:</strong> Audit logs are retained for 7 years in accordance with FCRA regulations. 
+            All access to consumer data is logged and monitored. For compliance reports or log exports, contact your system administrator.
+        </div>
+    </div>
+</div>
+{% endblock %}

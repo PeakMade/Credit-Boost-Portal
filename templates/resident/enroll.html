@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Enroll in Rent Reporting{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('resident_dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Enroll</li>
+            </ol>
+        </nav>
+
+        <h2 class="mb-4">Enroll in Rent Reporting</h2>
+
+        {% if not show_form %}
+        <!-- Step 1: Consent & Explanation -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> What You Need to Know</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="fw-bold">What Will Be Reported:</h6>
+                <ul>
+                    <li>Your monthly rent payment amount</li>
+                    <li>Payment dates and status (on-time, late, or missed)</li>
+                    <li>Your lease information and rental history</li>
+                    <li>Your identifying information (name, DOB, address, SSN)</li>
+                </ul>
+
+                <h6 class="fw-bold mt-3">Benefits:</h6>
+                <ul>
+                    <li>Build credit history with on-time rent payments</li>
+                    <li>Potentially improve your credit score</li>
+                    <li>Demonstrate financial responsibility to future lenders</li>
+                </ul>
+
+                <h6 class="fw-bold mt-3">Important Considerations:</h6>
+                <ul>
+                    <li>Late or missed payments will also be reported</li>
+                    <li>Information will be shared with credit bureaus</li>
+                    <li>You can opt-out at any time, but past reporting will remain on your credit report</li>
+                    <li>It may take 30-60 days for reporting to appear on your credit report</li>
+                </ul>
+
+                <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Disclaimer:</strong> By enrolling, you consent to have your rent payment information 
+                    reported to credit bureaus. This is a voluntary service and you may revoke consent at any time.
+                </div>
+            </div>
+        </div>
+
+        <!-- Consent Agreement -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Consent Agreement</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    I understand and agree that by clicking "I Agree & Continue" below, I am providing my consent 
+                    to have my rent payment information reported to credit bureaus. I have read and understood the 
+                    information provided above.
+                </p>
+                
+                <form method="POST" action="{{ url_for('resident_enroll') }}">
+                    <input type="hidden" name="consent" value="agreed">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> I Agree & Continue
+                        </button>
+                        <a href="{{ url_for('resident_dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Step 2: Identity Verification Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Verify Your Identity</h5>
+            </div>
+            <div class="card-body">
+                <p>Please confirm your information to complete enrollment. All fields must match our records exactly.</p>
+                
+                <form method="POST" action="{{ url_for('resident_enroll') }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="{{ form_data.name if form_data else '' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="dob" class="form-label">Date of Birth <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="dob" name="dob" 
+                               value="{{ form_data.dob if form_data else '' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Current Address <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="address" name="address" 
+                               value="{{ form_data.address if form_data else '' }}" 
+                               placeholder="123 Main St, Apt 4B" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="last4_ssn" class="form-label">Last 4 Digits of SSN <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="last4_ssn" name="last4_ssn" 
+                               value="{{ form_data.last4_ssn if form_data else '' }}" 
+                               maxlength="4" pattern="\d{4}" required>
+                        <small class="form-text text-muted">Enter only the last 4 digits</small>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Complete Enrollment
+                        </button>
+                        <a href="{{ url_for('resident_dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
