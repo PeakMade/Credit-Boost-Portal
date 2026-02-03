@@ -151,43 +151,6 @@
                     </div>
                 </div>
 
-                <!-- Enrollment & Consent Log -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Enrollment History</h5>
-                    </div>
-                    <div class="card-body">
-                        {% if resident.enrollment_history %}
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Action</th>
-                                        <th>Timestamp</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for event in resident.enrollment_history %}
-                                    <tr>
-                                        <td>
-                                            {% if event.action == 'enrolled' %}
-                                                <i class="bi bi-check-circle text-success"></i>
-                                            {% elif event.action == 'revoked consent' %}
-                                                <i class="bi bi-x-circle text-danger"></i>
-                                            {% endif %}
-                                            {{ event.action|title }}
-                                        </td>
-                                        <td><small>{{ event.timestamp }}</small></td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <p class="text-muted mb-0">No enrollment history available.</p>
-                        {% endif %}
-                    </div>
-                </div>
             </div>
 
             <!-- Right Column -->
@@ -271,14 +234,6 @@
                     <div class="card-body">
                         <p class="text-muted">Handle common resident issues:</p>
                         <div class="d-grid gap-2">
-                            <a href="{{ url_for('admin_data_mismatch', resident_id=resident.id) }}" 
-                               class="btn btn-outline-warning">
-                                <i class="bi bi-exclamation-circle"></i> Data Mismatch Issue
-                            </a>
-                            <a href="{{ url_for('admin_payment_issue', resident_id=resident.id) }}" 
-                               class="btn btn-outline-danger">
-                                <i class="bi bi-cash-stack"></i> Late/Missing Payment Issue
-                            </a>
                             <button class="btn btn-outline-info" onclick="alert('View Disputes feature coming soon')">
                                 <i class="bi bi-question-circle"></i> View Disputes (Coming Soon)
                             </button>
@@ -286,20 +241,41 @@
                     </div>
                 </div>
 
-                <!-- Quick Actions -->
+                <!-- Enrollment History -->
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Enrollment History</h5>
                     </div>
                     <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-outline-primary" onclick="alert('Send Notification feature coming soon')">
-                                <i class="bi bi-envelope"></i> Send Notification to Resident
-                            </button>
-                            <button class="btn btn-outline-secondary" onclick="alert('Download Report feature coming soon')">
-                                <i class="bi bi-download"></i> Download Payment Report
-                            </button>
+                        {% if resident.enrollment_history %}
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in resident.enrollment_history %}
+                                    <tr>
+                                        <td>
+                                            {% if event.action == 'enrolled' %}
+                                                <i class="bi bi-check-circle text-success"></i>
+                                            {% elif event.action == 'revoked consent' %}
+                                                <i class="bi bi-x-circle text-danger"></i>
+                                            {% endif %}
+                                            {{ event.action|title }}
+                                        </td>
+                                        <td><small>{{ event.timestamp }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
+                        {% else %}
+                        <p class="text-muted mb-0">No enrollment history available.</p>
+                        {% endif %}
                     </div>
                 </div>
             </div>

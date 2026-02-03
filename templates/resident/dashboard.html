@@ -46,11 +46,8 @@
             <div class="col-md-6">
                 <!-- Resident Info -->
                 <div class="card mb-3">
-                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <div class="card-header py-2">
                         <h6 class="mb-0"><i class="bi bi-person"></i> Personal Information</h6>
-                        <a href="{{ url_for('resident_profile') }}" class="btn btn-sm btn-light">
-                            <i class="bi bi-pencil"></i> Update
-                        </a>
                     </div>
                     <div class="card-body py-2">
                         <dl class="row mb-0 small">
@@ -95,15 +92,6 @@
                                 {% endif %}
                             </dd>
 
-                            <dt class="col-sm-5">Tradeline Created:</dt>
-                            <dd class="col-sm-7">
-                                {% if resident.tradeline_created %}
-                                    <i class="bi bi-check-circle-fill text-success"></i> Yes
-                                {% else %}
-                                    <i class="bi bi-x-circle text-muted"></i> No
-                                {% endif %}
-                            </dd>
-
                             <dt class="col-sm-5">Account Status:</dt>
                             <dd class="col-sm-7">
                                 {% if resident.account_status == 'Current' %}
@@ -130,7 +118,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center py-2">
                         <h6 class="mb-0"><i class="bi bi-credit-card"></i> Payment History</h6>
                         <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-sm btn-light">
-                            <i class="bi bi-file-earmark-text"></i> Full Details
+                            <i class="bi bi-file-earmark-text"></i> Reporting Info
                         </a>
                     </div>
                     <div class="card-body py-2">
