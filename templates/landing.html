@@ -4,46 +4,46 @@
 
 {% block content %}
 <div class="row justify-content-center mt-5">
-    <div class="col-md-6">
+    <div class="col-md-5">
         <div class="card shadow">
             <div class="card-header bg-primary text-white text-center">
-                <h4 class="mb-0">Welcome to Rent Reporting Portal</h4>
+                <h4 class="mb-0">Rent Reporting Portal</h4>
             </div>
             <div class="card-body p-5">
-                <p class="text-center mb-4">Please select your role to continue</p>
+                <div class="text-center mb-4">
+                    <i class="bi bi-shield-lock text-primary" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">Sign In</h5>
+                    <p class="text-muted">Enter your credentials to continue</p>
+                </div>
                 
-                <form method="POST" action="{{ url_for('select_role') }}">
-                    <div class="d-grid gap-3">
-                        <div class="form-check p-3 border rounded">
-                            <input class="form-check-input" type="radio" name="role" id="roleResident" value="resident" checked>
-                            <label class="form-check-label w-100" for="roleResident">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-person fs-2 me-3 text-primary"></i>
-                                    <div>
-                                        <h5 class="mb-0">Resident</h5>
-                                        <small class="text-muted">Enroll and manage your rent reporting</small>
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-
-                        <div class="form-check p-3 border rounded">
-                            <input class="form-check-input" type="radio" name="role" id="roleAdmin" value="admin">
-                            <label class="form-check-label w-100" for="roleAdmin">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-shield-check fs-2 me-3 text-success"></i>
-                                    <div>
-                                        <h5 class="mb-0">Admin</h5>
-                                        <small class="text-muted">Manage residents and reporting</small>
-                                    </div>
-                                </div>
-                            </label>
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+                </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   placeholder="Enter your email" required>
                         </div>
                     </div>
 
-                    <div class="d-grid mt-4">
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Enter your password" required>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
                         <button type="submit" class="btn btn-primary btn-lg">
-                            Continue <i class="bi bi-arrow-right"></i>
+                            <i class="bi bi-box-arrow-in-right"></i> Sign In
                         </button>
                     </div>
                 </form>

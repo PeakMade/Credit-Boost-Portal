@@ -89,8 +89,8 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Unit</th>
-                                <th>Enrolled</th>
                                 <th>Status</th>
+                                <th>Latest Payment</th>
                                 <th>Last Reported</th>
                                 <th>Actions</th>
                             </tr>
@@ -101,17 +101,27 @@
                                 <td>{{ resident.name }}</td>
                                 <td>{{ resident.unit }}</td>
                                 <td>
-                                    {% if resident.enrolled %}
-                                        <i class="bi bi-check-circle-fill text-success"></i> Yes
-                                    {% else %}
-                                        <i class="bi bi-x-circle text-muted"></i> No
-                                    {% endif %}
-                                </td>
-                                <td>
                                     {% if resident.enrollment_status == 'enrolled' %}
                                         <span class="badge bg-success">Enrolled</span>
                                     {% else %}
                                         <span class="badge bg-secondary">Not Enrolled</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if resident.payments %}
+                                    {% set latest_payment = resident.payments[0] %}
+                                    <span class="badge {% if latest_payment.status == 'Paid' %}bg-success{% elif latest_payment.status == 'Late' %}bg-warning text-dark{% else %}bg-danger{% endif %}" 
+                                          data-bs-toggle="popover" 
+                                          data-bs-trigger="hover focus"
+                                          data-bs-placement="left"
+                                          data-bs-html="true"
+                                          data-bs-title="Latest Payment Details"
+                                          data-bs-content="<div class='text-start'><strong>Month:</strong> {{ latest_payment.month }}<br><strong>Amount:</strong> ${{ '%.2f'|format(latest_payment.amount) }}<br><strong>Status:</strong> {{ latest_payment.status }}<br><strong>Days Late:</strong> {{ latest_payment.days_late }}<br><strong>Date Paid:</strong> {{ latest_payment.date_paid if latest_payment.date_paid else 'Not paid' }}<br><strong>Reported:</strong> {{ 'Yes' if latest_payment.reported else 'No' }}</div>"
+                                          style="cursor: pointer;">
+                                        {{ latest_payment.month }} <i class="bi bi-info-circle"></i>
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
                                     {% endif %}
                                 </td>
                                 <td>{{ resident.last_reported }}</td>
@@ -135,4 +145,14 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Initialize Bootstrap popovers
+    document.addEventListener('DOMContentLoaded', function() {
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl);
+        });
+    });
+</script>
 {% endblock %}

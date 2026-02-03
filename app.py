@@ -53,6 +53,24 @@ def landing():
     return render_template('landing.html')
 
 
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '').strip()
+    
+    # Hardcoded credentials for demo
+    if email == 'pbatson@peakmade.com' and password == 'admin':
+        session['role'] = 'admin'
+        session['user_email'] = email
+        return redirect(url_for('admin_dashboard'))
+    elif email == 'jdoe@test.com' and password == 'resident':
+        session['role'] = 'resident'
+        session['user_email'] = email
+        return redirect(url_for('resident_dashboard'))
+    else:
+        return render_template('landing.html', error='Invalid email or password')
+
+
 @app.route('/select-role', methods=['POST'])
 def select_role():
     role = request.form.get('role')
