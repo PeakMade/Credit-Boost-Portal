@@ -6,7 +6,18 @@
 <div class="row">
     <div class="col-md-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Welcome, {{ resident.name }}!</h2>
+            <div>
+                <h2 class="mb-1">Welcome, {{ resident.name }}!</h2>
+                {% if resident.enrollment_status != 'enrolled' %}
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-graph-up-arrow text-primary me-2"></i>
+                    <small class="text-muted me-3">Build credit with your rent payments</small>
+                    <a href="{{ url_for('resident_enroll') }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-check-circle"></i> Enroll Now
+                    </a>
+                </div>
+                {% endif %}
+            </div>
             <span class="badge {% if resident.enrollment_status == 'enrolled' %}bg-success{% else %}bg-secondary{% endif %} fs-6">
                 {{ resident.enrollment_status|title }}
             </span>
@@ -25,21 +36,24 @@
         </div>
         {% endif %}
 
-        {% if resident.enrollment_status != 'enrolled' %}
-        <!-- Upsell Banner -->
-        <div class="alert alert-primary d-flex align-items-center justify-content-between mb-4" role="alert">
-            <div class="d-flex align-items-center">
-                <i class="bi bi-graph-up-arrow fs-4 me-3"></i>
-                <div>
-                    <strong>Build Credit with Your Rent Payments</strong>
-                    <p class="mb-0 small">Start building your credit history by reporting your on-time rent payments to credit bureaus.</p>
-                </div>
-            </div>
-            <a href="{{ url_for('resident_enroll') }}" class="btn btn-primary ms-4">
-                <i class="bi bi-check-circle"></i> Enroll Now
-            </a>
-        </div>
+        {% set score = resident.credit_score|default(0) %}
+        {% if score >= 800 %}
+            {% set rating = "Exceptional" %}
+            {% set color = "#10b981" %}
+        {% elif score >= 740 %}
+            {% set rating = "Very Good" %}
+            {% set color = "#34d399" %}
+        {% elif score >= 670 %}
+            {% set rating = "Good" %}
+            {% set color = "#fbbf24" %}
+        {% elif score >= 580 %}
+            {% set rating = "Fair" %}
+            {% set color = "#fb923c" %}
+        {% else %}
+            {% set rating = "Poor" %}
+            {% set color = "#ef4444" %}
         {% endif %}
+        {% set needle_angle = ((score - 300) / 550.0 * 180)|int %}
 
         <div class="row">
             <!-- Left Column -->
@@ -50,6 +64,52 @@
                         <h6 class="mb-0"><i class="bi bi-person"></i> Personal Information</h6>
                     </div>
                     <div class="card-body py-2">
+                        <!-- Credit Score Gauge -->
+                        <div class="text-center mb-3 pb-2 border-bottom">
+                            <div class="credit-score-gauge mx-auto" style="max-width: 280px;">
+                                <svg viewBox="0 0 200 105" style="width: 100%; height: auto;">
+                                    <defs>
+                                        <filter id="shadow">
+                                            <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.3"/>
+                                        </filter>
+                                    </defs>
+                                    
+                                    <!-- Poor section (Red) -->
+                                    <path d="M 100 100 L 30 100 A 70 70 0 0 1 43.7 59.2 Z" fill="#ef4444" stroke="white" stroke-width="2"/>
+                                    <text x="48" y="90" font-size="9" fill="white" font-weight="bold">POOR</text>
+                                    
+                                    <!-- Fair section (Orange) -->
+                                    <path d="M 100 100 L 43.7 59.2 A 70 70 0 0 1 78.1 33.6 Z" fill="#fb923c" stroke="white" stroke-width="2"/>
+                                    <text x="60" y="58" font-size="9" fill="white" font-weight="bold">FAIR</text>
+                                    
+                                    <!-- Good section (Yellow) -->
+                                    <path d="M 100 100 L 78.1 33.6 A 70 70 0 0 1 121.9 33.6 Z" fill="#fbbf24" stroke="white" stroke-width="2"/>
+                                    <text x="88" y="48" font-size="9" fill="white" font-weight="bold">GOOD</text>
+                                    
+                                    <!-- Very Good section (Light Green) -->
+                                    <path d="M 100 100 L 121.9 33.6 A 70 70 0 0 1 156.3 59.2 Z" fill="#34d399" stroke="white" stroke-width="2"/>
+                                    <text x="120" y="58" font-size="8" fill="white" font-weight="bold">GREAT</text>
+                                    
+                                    <!-- Exceptional section (Green) -->
+                                    <path d="M 100 100 L 156.3 59.2 A 70 70 0 0 1 170 100 Z" fill="#10b981" stroke="white" stroke-width="2"/>
+                                    <text x="125" y="90" font-size="6" fill="white" font-weight="bold">EXCEPTIONAL</text>
+                                    
+                                    <!-- Center cover circle -->
+                                    <circle cx="100" cy="100" r="6" fill="#e5e7eb" filter="url(#shadow)"/>
+                                    
+                                    <!-- Needle -->
+                                    <g transform="translate(100, 100)">
+                                        <line x1="0" y1="0" x2="0" y2="-55" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" transform="rotate({{ needle_angle - 90 }})" filter="url(#shadow)"/>
+                                        <circle cx="0" cy="0" r="5" fill="#64748b" filter="url(#shadow)"/>
+                                    </g>
+                                </svg>
+                                <div class="mt-1">
+                                    <h4 class="mb-0" style="color: {{ color }}; font-weight: bold;">{{ score }}</h4>
+                                    <small class="text-muted"><strong>{{ rating }}</strong> (300-850)</small>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <dl class="row mb-0 small">
                             <dt class="col-sm-5">Account Number:</dt>
                             <dd class="col-sm-7"><strong>{{ resident.account_number }}</strong></dd>

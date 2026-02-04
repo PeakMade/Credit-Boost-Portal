@@ -11,6 +11,7 @@
       "unit": "A-101",
       "last4_ssn": "1234",
       "ssn": "***-**-1234",
+      "credit_score": 720,
       "enrolled": false,
       "enrollment_status": "not enrolled",
       "tradeline_created": true,
