@@ -42,20 +42,24 @@
                     <div class="row g-3">
                         <div class="col-md-5">
                             <label class="form-label small text-muted mb-1">Search by Property</label>
-                            <div class="input-group">
+                            <div class="input-group position-relative">
                                 <span class="input-group-text"><i class="bi bi-building"></i></span>
-                                <input type="text" class="form-control" name="property" 
+                                <input type="text" class="form-control" name="property" id="propertySearch"
                                        placeholder="Property/Unit number..." 
-                                       value="{{ property_query if property_query else '' }}">
+                                       value="{{ property_query if property_query else '' }}"
+                                       autocomplete="off">
+                                <div id="propertyDropdown" class="autocomplete-dropdown"></div>
                             </div>
                         </div>
                         <div class="col-md-5">
                             <label class="form-label small text-muted mb-1">Search by Name</label>
-                            <div class="input-group">
+                            <div class="input-group position-relative">
                                 <span class="input-group-text"><i class="bi bi-person"></i></span>
-                                <input type="text" class="form-control" name="name" 
+                                <input type="text" class="form-control" name="name" id="nameSearch"
                                        placeholder="Resident name..." 
-                                       value="{{ name_query if name_query else '' }}">
+                                       value="{{ name_query if name_query else '' }}"
+                                       autocomplete="off">
+                                <div id="nameDropdown" class="autocomplete-dropdown"></div>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -84,11 +88,12 @@
             <div class="card-body">
                 {% if residents %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="residentsTable">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Unit</th>
+                                <th class="sortable" data-column="name" style="cursor: pointer;">Name <i class="bi bi-arrow-down-up text-muted"></i></th>
+                                <th class="sortable" data-column="property" style="cursor: pointer;">Property <i class="bi bi-arrow-down-up text-muted"></i></th>
+                                <th class="sortable" data-column="unit" style="cursor: pointer;">Unit <i class="bi bi-arrow-down-up text-muted"></i></th>
                                 <th>Status</th>
                                 <th>Latest Payment</th>
                                 <th>Last Reported</th>
@@ -98,8 +103,9 @@
                         <tbody>
                             {% for resident in residents %}
                             <tr>
-                                <td>{{ resident.name }}</td>
-                                <td>{{ resident.unit }}</td>
+                                <td data-value="{{ resident.name }}">{{ resident.name }}</td>
+                                <td data-value="{{ resident.property }}">{{ resident.property }}</td>
+                                <td data-value="{{ resident.unit }}">{{ resident.unit }}</td>
                                 <td>
                                     {% if resident.enrollment_status == 'enrolled' %}
                                         <span class="badge bg-success">Enrolled</span>
@@ -146,12 +152,328 @@
     </div>
 </div>
 
+{% block extra_css %}
+<style>
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 0 0 8px 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        display: none;
+        margin-top: 2px;
+    }
+    
+    .autocomplete-dropdown.show {
+        display: block;
+    }
+    
+    .autocomplete-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s;
+    }
+    
+    .autocomplete-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    
+    .autocomplete-item.active {
+        background-color: #e9ecef;
+    }
+    
+    .input-group.position-relative {
+        position: relative;
+    }
+    
+    .autocomplete-dropdown::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .autocomplete-dropdown::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 0 0 8px 0;
+    }
+    
+    .autocomplete-dropdown::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    .autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    
+    .sortable {
+        user-select: none;
+        position: relative;
+    }
+    
+    .sortable:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .sortable i {
+        font-size: 0.8rem;
+        margin-left: 5px;
+    }
+    
+    .sortable.asc i.bi-arrow-down-up,
+    .sortable.desc i.bi-arrow-down-up {
+        display: none;
+    }
+    
+    .sortable.asc i.bi-arrow-up,
+    .sortable.desc i.bi-arrow-down {
+        display: inline;
+        color: #667eea !important;
+    }
+</style>
+{% endblock %}
+
 <script>
     // Initialize Bootstrap popovers
     document.addEventListener('DOMContentLoaded', function() {
         var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
         var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
             return new bootstrap.Popover(popoverTriggerEl);
+        });
+        
+        // Table sorting functionality
+        const table = document.getElementById('residentsTable');
+        const headers = table.querySelectorAll('th.sortable');
+        
+        headers.forEach(header => {
+            // Add arrow icons for sorting
+            const arrow = document.createElement('i');
+            arrow.className = 'bi bi-arrow-up';
+            arrow.style.display = 'none';
+            arrow.style.marginLeft = '5px';
+            header.appendChild(arrow);
+            
+            const arrowDown = document.createElement('i');
+            arrowDown.className = 'bi bi-arrow-down';
+            arrowDown.style.display = 'none';
+            arrowDown.style.marginLeft = '5px';
+            header.appendChild(arrowDown);
+            
+            header.addEventListener('click', function() {
+                const column = this.dataset.column;
+                const currentOrder = this.classList.contains('asc') ? 'asc' : 
+                                   this.classList.contains('desc') ? 'desc' : 'none';
+                
+                // Remove sorting from all headers
+                headers.forEach(h => {
+                    h.classList.remove('asc', 'desc');
+                    h.querySelectorAll('i.bi-arrow-up, i.bi-arrow-down').forEach(icon => {
+                        icon.style.display = 'none';
+                    });
+                    h.querySelector('i.bi-arrow-down-up').style.color = '';
+                });
+                
+                // Determine new sort order
+                let newOrder;
+                if (currentOrder === 'none' || currentOrder === 'desc') {
+                    newOrder = 'asc';
+                } else {
+                    newOrder = 'desc';
+                }
+                
+                // Apply new sort order
+                this.classList.add(newOrder);
+                if (newOrder === 'asc') {
+                    this.querySelector('i.bi-arrow-up').style.display = 'inline';
+                } else {
+                    this.querySelector('i.bi-arrow-down').style.display = 'inline';
+                }
+                
+                // Sort the table
+                sortTable(column, newOrder);
+            });
+        });
+        
+        function sortTable(column, order) {
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            rows.sort((a, b) => {
+                let aValue = a.querySelector(`td[data-value]`).getAttribute('data-value');
+                let bValue = b.querySelector(`td[data-value]`).getAttribute('data-value');
+                
+                // Get the correct column based on position
+                const columnIndex = Array.from(table.querySelectorAll('th')).findIndex(
+                    th => th.dataset.column === column
+                );
+                
+                aValue = a.children[columnIndex].getAttribute('data-value');
+                bValue = b.children[columnIndex].getAttribute('data-value');
+                
+                // Check if values are numeric
+                const aNum = parseFloat(aValue);
+                const bNum = parseFloat(bValue);
+                const isNumeric = !isNaN(aNum) && !isNaN(bNum);
+                
+                let comparison;
+                if (isNumeric) {
+                    comparison = aNum - bNum;
+                } else {
+                    // String comparison (case-insensitive)
+                    comparison = aValue.toLowerCase().localeCompare(bValue.toLowerCase());
+                }
+                
+                return order === 'asc' ? comparison : -comparison;
+            });
+            
+            // Clear and re-append sorted rows
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+        }
+        
+        // Prepare resident data for autocomplete
+        const residents = {{ residents | tojson | safe }};
+        
+        // Extract unique properties and units (sorted)
+        const properties = [...new Set(residents.map(r => r.property))].sort();
+        const units = [...new Set(residents.map(r => r.unit))].sort();
+        const propertyItems = [...properties, ...units].sort();
+        
+        // Get filtered names based on property/unit selection
+        function getFilteredNames(propertyFilter) {
+            if (!propertyFilter) {
+                // No filter, return all names
+                return [...new Set(residents.map(r => r.name))].sort();
+            }
+            
+            // Filter residents by property or unit
+            const filtered = residents.filter(r => 
+                r.property.toLowerCase() === propertyFilter.toLowerCase() || 
+                r.unit.toLowerCase() === propertyFilter.toLowerCase()
+            );
+            
+            return [...new Set(filtered.map(r => r.name))].sort();
+        }
+        
+        // Autocomplete functionality with dynamic items
+        function setupAutocomplete(inputId, dropdownId, getItemsFunc) {
+            const input = document.getElementById(inputId);
+            const dropdown = document.getElementById(dropdownId);
+            let activeIndex = -1;
+            
+            // Show dropdown on focus
+            input.addEventListener('focus', function() {
+                updateDropdown(input.value);
+            });
+            
+            // Update dropdown on input
+            input.addEventListener('input', function() {
+                updateDropdown(this.value);
+                activeIndex = -1;
+            });
+            
+            // Handle keyboard navigation
+            input.addEventListener('keydown', function(e) {
+                const dropdownItems = dropdown.querySelectorAll('.autocomplete-item');
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = Math.min(activeIndex + 1, dropdownItems.length - 1);
+                    updateActive(dropdownItems);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = Math.max(activeIndex - 1, -1);
+                    updateActive(dropdownItems);
+                } else if (e.key === 'Enter' && activeIndex >= 0) {
+                    e.preventDefault();
+                    dropdownItems[activeIndex].click();
+                } else if (e.key === 'Escape') {
+                    dropdown.classList.remove('show');
+                }
+            });
+            
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('show');
+                }
+            });
+            
+            function updateDropdown(query) {
+                dropdown.innerHTML = '';
+                const items = getItemsFunc();
+                const filtered = items.filter(item => 
+                    item.toLowerCase().startsWith(query.toLowerCase())
+                );
+                
+                if (filtered.length === 0) {
+                    dropdown.classList.remove('show');
+                    return;
+                }
+                
+                filtered.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-item';
+                    div.textContent = item;
+                    div.addEventListener('click', function() {
+                        input.value = item;
+                        dropdown.classList.remove('show');
+                        activeIndex = -1;
+                    });
+                    dropdown.appendChild(div);
+                });
+                
+                dropdown.classList.add('show');
+            }
+            
+            function updateActive(items) {
+                items.forEach((item, index) => {
+                    if (index === activeIndex) {
+                        item.classList.add('active');
+                        item.scrollIntoView({ block: 'nearest' });
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            }
+            
+            return {
+                refresh: function() {
+                    if (dropdown.classList.contains('show')) {
+                        updateDropdown(input.value);
+                    }
+                }
+            };
+        }
+        
+        // Initialize property autocomplete
+        const propertyAutocomplete = setupAutocomplete('propertySearch', 'propertyDropdown', function() {
+            return propertyItems;
+        });
+        
+        // Initialize name autocomplete with dynamic filtering
+        const nameAutocomplete = setupAutocomplete('nameSearch', 'nameDropdown', function() {
+            const propertyInput = document.getElementById('propertySearch');
+            return getFilteredNames(propertyInput.value.trim());
+        });
+        
+        // Listen for changes in property field to refresh name dropdown
+        document.getElementById('propertySearch').addEventListener('input', function() {
+            nameAutocomplete.refresh();
+        });
+        
+        // Also refresh when property is selected from dropdown
+        document.getElementById('propertySearch').addEventListener('change', function() {
+            nameAutocomplete.refresh();
         });
     });
 </script>

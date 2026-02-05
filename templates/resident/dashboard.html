@@ -18,9 +18,14 @@
                 </div>
                 {% endif %}
             </div>
-            <span class="badge {% if resident.enrollment_status == 'enrolled' %}bg-success{% else %}bg-secondary{% endif %} fs-6">
-                {{ resident.enrollment_status|title }}
-            </span>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge {% if resident.enrollment_status == 'enrolled' %}bg-success{% else %}bg-secondary{% endif %} fs-6">
+                    {{ resident.enrollment_status|title }}
+                </span>
+                <a href="{{ url_for('resident_settings') }}" class="text-secondary" style="font-size: 1.5rem;" title="Account Settings">
+                    <i class="bi bi-gear"></i>
+                </a>
+            </div>
         </div>
 
         <!-- Next Reporting Date Banner -->
@@ -232,14 +237,6 @@
                 </div>
             </div>
         </div>
-
-        {% if resident.enrollment_status == 'enrolled' %}
-        <div class="text-center mt-4">
-            <a href="{{ url_for('resident_opt_out') }}" class="text-muted">
-                Opt Out
-            </a>
-        </div>
-        {% endif %}
     </div>
 </div>
 

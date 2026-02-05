@@ -15,6 +15,12 @@ venv/
 ENV/
 env/
 
+# Excel Files (contains PII - never commit)
+*.xlsx
+*.xls
+# Exception: Allow test data file for deployment
+!Resident PII Test.xlsx
+
 # IDE
 .vscode/
 .idea/

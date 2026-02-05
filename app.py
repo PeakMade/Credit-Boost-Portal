@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import os
 from dotenv import load_dotenv
+from utils.data_loader import load_residents_from_excel
 
 # Load environment variables from .env file (for local development)
 load_dotenv()
@@ -10,7 +11,7 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'demo-secret-key-change-in-production')
 
-# Load test data from JSON file
+# Load test data from JSON file (fallback)
 def load_test_data():
     """Load resident data from test_data.json"""
     data_file = os.path.join(os.path.dirname(__file__), 'test_data.json')
@@ -25,9 +26,18 @@ def load_test_data():
         print(f"Error parsing test_data.json: {e}")
         return []
 
-# In-memory data structures (loaded from test_data.json)
+# In-memory data structures (loaded from Excel with encrypted SSNs)
 CURRENT_RESIDENT_ID = 1
-residents = load_test_data()
+
+# Try to load from Excel first, fallback to JSON if it fails
+try:
+    residents = load_residents_from_excel('Resident PII Test.xlsx')
+    if not residents:
+        print("Excel file empty or not found, falling back to JSON")
+        residents = load_test_data()
+except Exception as e:
+    print(f"Error loading Excel file: {e}, falling back to JSON")
+    residents = load_test_data()
 
 
 def get_resident_by_id(resident_id):
@@ -63,10 +73,21 @@ def login():
         session['role'] = 'admin'
         session['user_email'] = email
         return redirect(url_for('admin_dashboard'))
-    elif email == 'jdoe@test.com' and password == 'resident':
-        session['role'] = 'resident'
-        session['user_email'] = email
-        return redirect(url_for('resident_dashboard'))
+    elif password == 'resident':
+        # Check if email matches any resident in the data
+        resident_found = None
+        for resident in residents:
+            if resident.get('email', '').lower() == email.lower():
+                resident_found = resident
+                break
+        
+        if resident_found:
+            session['role'] = 'resident'
+            session['user_email'] = email
+            session['resident_id'] = resident_found['id']
+            return redirect(url_for('resident_dashboard'))
+        else:
+            return render_template('landing.html', error='Email not found')
     else:
         return render_template('landing.html', error='Invalid email or password')
 
@@ -89,13 +110,17 @@ def select_role():
 
 @app.route('/resident/dashboard')
 def resident_dashboard():
-    resident = get_resident_by_id(CURRENT_RESIDENT_ID)
+    # Get resident from session or default to first resident
+    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident = get_resident_by_id(resident_id)
     return render_template('resident/dashboard.html', resident=resident)
 
 
 @app.route('/resident/enroll', methods=['GET', 'POST'])
 def resident_enroll():
-    resident = get_resident_by_id(CURRENT_RESIDENT_ID)
+    # Get resident from session or default to first resident
+    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident = get_resident_by_id(resident_id)
     
     if request.method == 'POST':
         # Get form data
@@ -144,13 +169,22 @@ def resident_enroll_success():
 
 @app.route('/resident/rent-reporting')
 def resident_rent_reporting():
-    resident = get_resident_by_id(CURRENT_RESIDENT_ID)
+    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident = get_resident_by_id(resident_id)
     return render_template('resident/rent_reporting.html', resident=resident)
+
+
+@app.route('/resident/settings')
+def resident_settings():
+    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident = get_resident_by_id(resident_id)
+    return render_template('resident/settings.html', resident=resident)
 
 
 @app.route('/resident/profile', methods=['GET', 'POST'])
 def resident_profile():
-    resident = get_resident_by_id(CURRENT_RESIDENT_ID)
+    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident = get_resident_by_id(resident_id)
     
     if request.method == 'POST':
         resident['name'] = request.form.get('name', resident['name'])
@@ -166,7 +200,8 @@ def resident_profile():
 
 @app.route('/resident/opt-out', methods=['GET', 'POST'])
 def resident_opt_out():
-    resident = get_resident_by_id(CURRENT_RESIDENT_ID)
+    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident = get_resident_by_id(resident_id)
     
     if request.method == 'POST':
         resident['enrolled'] = False
@@ -220,11 +255,11 @@ def admin_rent_reporting():
     
     filtered_residents = residents
     
-    # Filter by property (unit)
+    # Filter by property name
     if property_query:
         filtered_residents = [
             r for r in filtered_residents 
-            if property_query in r['unit'].lower()
+            if property_query in r.get('property', '').lower() or property_query in r.get('unit', '').lower()
         ]
     
     # Filter by name

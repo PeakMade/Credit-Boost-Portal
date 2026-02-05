@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="d-flex align-items-center mb-4">
+            <a href="{{ url_for('resident_dashboard') }}" class="btn btn-sm btn-light me-3">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+            <h2 class="mb-0">Account Settings</h2>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Profile</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Name</label>
+                        <div class="fw-bold">{{ resident.name }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Community Name</label>
+                        <div class="fw-bold">{{ resident.community_name|default('Peak Campus') }}</div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="phoneNumber" class="form-label text-muted small">Phone Number</label>
+                        <div class="input-group">
+                            <input type="tel" class="form-control" id="phoneNumber" value="{{ resident.phone|default('555-555-5555') }}" placeholder="555-555-5555">
+                            <button class="btn btn-outline-primary" type="button" onclick="updatePhoneNumber()">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Email Address</label>
+                        <div class="fw-bold">{{ resident.email|default('jdoe@test.com') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscription Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Subscription</h5>
+            </div>
+            <div class="card-body">
+                {% if resident.enrollment_status == 'enrolled' %}
+                <div class="mb-3">
+                    <strong>Cancel Subscription</strong>
+                    <p class="mb-2">To cancel your RentPlus subscription, <a href="{{ url_for('resident_opt_out') }}">click here</a>.</p>
+                </div>
+                {% else %}
+                <div class="alert alert-secondary mb-0">
+                    <i class="bi bi-info-circle"></i> You are not currently enrolled in rent reporting.
+                    <a href="{{ url_for('resident_enroll') }}" class="alert-link">Enroll now</a> to start building your credit!
+                </div>
+                {% endif %}
+                
+                <div class="pt-3 border-top">
+                    <strong>Remove PII</strong>
+                    <p class="text-muted small mb-0">
+                        The California Consumer Privacy Act (CCPA) states that a person has the right to know what type of personal 
+                        information (PII) that is stored about them and has the right to opt out of allowing businesses to store that 
+                        information. Transparency is important to RentPlus. 
+                        <a href="#" onclick="alert('For PII removal requests, please contact support@rentplus.com'); return false;">Click here</a> or call 
+                        800-388-5314 to request a full disclosure of the personal information we store about you and why.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Password Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Password</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">To reset your password, <a href="#" onclick="resetPassword(); return false;">click here</a>.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updatePhoneNumber() {
+    const phoneInput = document.getElementById('phoneNumber');
+    const newPhone = phoneInput.value;
+    
+    // Basic validation
+    if (!newPhone || newPhone.length < 10) {
+        alert('Please enter a valid phone number');
+        return;
+    }
+    
+    // TODO: Implement actual phone number update via API
+    alert('Phone number update functionality will be implemented. New number: ' + newPhone);
+    
+    // In production, this would make an API call:
+    // fetch('/api/resident/update-phone', {
+    //     method: 'POST',
+    //     headers: {'Content-Type': 'application/json'},
+    //     body: JSON.stringify({phone: newPhone})
+    // }).then(response => response.json())
+    //   .then(data => alert('Phone number updated successfully!'));
+}
+
+function resetPassword() {
+    // TODO: Implement password reset flow
+    alert('Password reset functionality will be implemented. A reset link would be sent to your email.');
+    
+    // In production, this would redirect to a password reset page or send an email:
+    // window.location.href = '/resident/reset-password';
+}
+</script>
+{% endblock %}
