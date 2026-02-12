@@ -25,7 +25,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Community Name</label>
-                        <div class="fw-bold">{{ resident.community_name|default('Peak Campus') }}</div>
+                        <div class="fw-bold">{{ resident.property|default('48 West') }}</div>
                     </div>
                 </div>
                 
@@ -56,7 +56,7 @@
                 {% if resident.enrollment_status == 'enrolled' %}
                 <div class="mb-3">
                     <strong>Cancel Subscription</strong>
-                    <p class="mb-2">To cancel your RentPlus subscription, <a href="{{ url_for('resident_opt_out') }}">click here</a>.</p>
+                    <p class="mb-2">To cancel your subscription, <a href="{{ url_for('resident_opt_out') }}">click here</a>.</p>
                 </div>
                 {% else %}
                 <div class="alert alert-secondary mb-0">
@@ -64,17 +64,6 @@
                     <a href="{{ url_for('resident_enroll') }}" class="alert-link">Enroll now</a> to start building your credit!
                 </div>
                 {% endif %}
-                
-                <div class="pt-3 border-top">
-                    <strong>Remove PII</strong>
-                    <p class="text-muted small mb-0">
-                        The California Consumer Privacy Act (CCPA) states that a person has the right to know what type of personal 
-                        information (PII) that is stored about them and has the right to opt out of allowing businesses to store that 
-                        information. Transparency is important to RentPlus. 
-                        <a href="#" onclick="alert('For PII removal requests, please contact support@rentplus.com'); return false;">Click here</a> or call 
-                        800-388-5314 to request a full disclosure of the personal information we store about you and why.
-                    </p>
-                </div>
             </div>
         </div>
 

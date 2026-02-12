@@ -34,8 +34,8 @@
             <div class="d-flex align-items-center">
                 <i class="bi bi-calendar-check fs-4 me-3"></i>
                 <div>
-                    <strong>Next Reporting Date: January 31, 2026</strong>
-                    <p class="mb-0 small">Your payment history will be reported to credit bureaus on this date</p>
+                    <strong>Next Reporting Date: {{ next_run_date }}</strong>
+                    <p class="mb-0 small">Your reporting history will be reported to credit bureaus on this date</p>
                 </div>
             </div>
         </div>
@@ -45,18 +45,23 @@
         {% if score >= 800 %}
             {% set rating = "Exceptional" %}
             {% set color = "#10b981" %}
+            {% set range = "800-850" %}
         {% elif score >= 740 %}
             {% set rating = "Very Good" %}
             {% set color = "#34d399" %}
+            {% set range = "740-799" %}
         {% elif score >= 670 %}
             {% set rating = "Good" %}
             {% set color = "#fbbf24" %}
+            {% set range = "670-739" %}
         {% elif score >= 580 %}
             {% set rating = "Fair" %}
             {% set color = "#fb923c" %}
+            {% set range = "580-669" %}
         {% else %}
             {% set rating = "Poor" %}
             {% set color = "#ef4444" %}
+            {% set range = "300-579" %}
         {% endif %}
         {% set needle_angle = ((score - 300) / 550.0 * 180)|int %}
 
@@ -65,11 +70,16 @@
             <div class="col-md-6">
                 <!-- Resident Info -->
                 <div class="card mb-3">
-                    <div class="card-header py-2">
-                        <h6 class="mb-0"><i class="bi bi-person"></i> Personal Information</h6>
+                    <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#personalInfoCollapse" style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-person"></i> Personal Information</h6>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
                     </div>
+                    <div id="personalInfoCollapse" class="collapse show">
                     <div class="card-body py-2">
                         <!-- Credit Score Gauge -->
+                        {% if resident.enrollment_status == 'enrolled' and resident.payments and resident.payments|selectattr('reported', 'equalto', true)|list|length > 0 %}
                         <div class="text-center mb-3 pb-2 border-bottom">
                             <div class="credit-score-gauge mx-auto" style="max-width: 280px;">
                                 <svg viewBox="0 0 200 105" style="width: 100%; height: auto;">
@@ -110,10 +120,27 @@
                                 </svg>
                                 <div class="mt-1">
                                     <h4 class="mb-0" style="color: {{ color }}; font-weight: bold;">{{ score }}</h4>
-                                    <small class="text-muted"><strong>{{ rating }}</strong> (300-850)</small>
+                                    <small class="text-muted"><strong>{{ rating }}</strong> ({{ range }})</small>
+                                    <br>
+                                    <small class="text-muted" style="font-size: 0.75rem;">As of {{ resident.credit_score_date|date_format }}</small>
                                 </div>
                             </div>
                         </div>
+                        {% else %}
+                        <div class="text-center mb-3 pb-2 border-bottom">
+                            <div class="alert alert-info mb-0 py-3" style="max-width: 350px; margin: 0 auto;">
+                                <i class="bi bi-info-circle fs-4 mb-2"></i>
+                                <h6 class="mb-1">Credit Score Not Available</h6>
+                                <p class="mb-0 small">
+                                    {% if resident.enrollment_status != 'enrolled' %}
+                                    Enroll in rent reporting to start building your credit history.
+                                    {% else %}
+                                    Your credit score will be available after your first payment is reported to the credit bureaus.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
                         
                         <dl class="row mb-0 small">
                             <dt class="col-sm-5">Account Number:</dt>
@@ -123,7 +150,7 @@
                             <dd class="col-sm-7">{{ resident.name }}</dd>
 
                             <dt class="col-sm-5">Date of Birth:</dt>
-                            <dd class="col-sm-7">{{ resident.dob }}</dd>
+                            <dd class="col-sm-7">{{ resident.dob|date_format }}</dd>
 
                             <dt class="col-sm-5">Address:</dt>
                             <dd class="col-sm-7">{{ resident.address }}</dd>
@@ -143,7 +170,7 @@
                                           data-bs-placement="right"
                                           data-bs-html="true"
                                           data-bs-title="Enrollment History"
-                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
+                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp|date_format }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
                                           style="cursor: pointer;">Yes <i class="bi bi-info-circle"></i></span>
                                 {% else %}
                                     <span class="badge bg-secondary" 
@@ -152,7 +179,7 @@
                                           data-bs-placement="right"
                                           data-bs-html="true"
                                           data-bs-title="Enrollment History"
-                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
+                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp|date_format }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
                                           style="cursor: pointer;">No <i class="bi bi-info-circle"></i></span>
                                 {% endif %}
                             </dd>
@@ -167,25 +194,30 @@
                             </dd>
 
                             <dt class="col-sm-5">Account Opened:</dt>
-                            <dd class="col-sm-7">{{ resident.date_opened }}</dd>
+                            <dd class="col-sm-7">{{ resident.date_opened|date_format }}</dd>
 
                             <dt class="col-sm-5">Monthly Payment:</dt>
-                            <dd class="col-sm-7">${{ "%.2f"|format(resident.scheduled_monthly_payment) }}</dd>
+                            <dd class="col-sm-7">{{ resident.scheduled_monthly_payment|currency }}</dd>
                         </dl>
+                    </div>
                     </div>
                 </div>
             </div>
 
             <!-- Right Column -->
             <div class="col-md-6">
-                <!-- Payment History -->
+                <!-- Reporting History -->
                 <div class="card mb-3">
-                    <div class="card-header d-flex justify-content-between align-items-center py-2">
-                        <h6 class="mb-0"><i class="bi bi-credit-card"></i> Payment History</h6>
-                        <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-sm btn-light">
-                            <i class="bi bi-file-earmark-text"></i> Reporting Info
-                        </a>
+                    <div class="card-header d-flex justify-content-between align-items-center py-2" data-bs-toggle="collapse" data-bs-target="#reportingHistoryCollapse" style="cursor: pointer;">
+                        <h6 class="mb-0"><i class="bi bi-credit-card"></i> Reporting History</h6>
+                        <div>
+                            <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-sm btn-light me-2" onclick="event.stopPropagation();">
+                                <i class="bi bi-file-earmark-text"></i> Reporting Info
+                            </a>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
                     </div>
+                    <div id="reportingHistoryCollapse" class="collapse show">
                     <div class="card-body py-2">
                         <div class="table-responsive">
                             <table class="table table-sm table-hover mb-0 small">
@@ -197,10 +229,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for payment in resident.payments %}
+                                    {% for payment in resident.payments|enrolled_payments(resident.enrollment_history) %}
                                     <tr>
                                         <td>{{ payment.month }}</td>
-                                        <td>${{ "%.2f"|format(payment.amount) }}</td>
+                                        <td>{{ payment.amount|currency }}</td>
                                         <td>
                                             {% if payment.status == 'Paid' %}
                                                 <span class="badge bg-success">{{ payment.status }}</span>
@@ -216,23 +248,70 @@
                             </table>
                         </div>
                     </div>
+                    </div>
                 </div>
 
-                <!-- Quick Actions -->
+                <!-- Financial Education -->
                 <div class="card mb-3">
-                    <div class="card-header py-2">
-                        <h6 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h6>
-                    </div>
-                    <div class="card-body py-2">
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-primary" onclick="alert('Financial Education feature coming soon')">
-                                <i class="bi bi-book"></i> Access Financial Education
-                            </button>
-                            
-                            <button class="btn btn-outline-primary" onclick="alert('Financial Advisement feature coming soon')">
-                                <i class="bi bi-person-badge"></i> Access Financial Advisement
-                            </button>
+                    <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#financialEducationCollapse" style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-book"></i> Financial Education</h6>
+                            <i class="bi bi-chevron-down"></i>
                         </div>
+                    </div>
+                    <div id="financialEducationCollapse" class="collapse">
+                    <div class="card-body py-2">
+                        <div class="alert alert-info mb-3 py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Enroll in Financial Education</strong>
+                                    <p class="mb-0 small">Get access to comprehensive credit and financial literacy resources.</p>
+                                </div>
+                                <button class="btn btn-success btn-sm" onclick="alert('Financial Education enrollment coming soon')">
+                                    <i class="bi bi-check-circle"></i> Enroll Now
+                                </button>
+                            </div>
+                        </div>
+                        <p class="mb-2 small text-muted">Available resources include:</p>
+                        <ul class="small mb-0">
+                            <li>Understanding Credit Scores & Reports</li>
+                            <li>Budgeting & Money Management</li>
+                            <li>Debt Management Strategies</li>
+                            <li>Savings & Investment Basics</li>
+                        </ul>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- Financial Advisement -->
+                <div class="card mb-3">
+                    <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#financialAdvisementCollapse" style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-person-badge"></i> Financial Advisement</h6>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div id="financialAdvisementCollapse" class="collapse">
+                    <div class="card-body py-2">
+                        <div class="alert alert-success mb-3 py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Enroll in Financial Advisement</strong>
+                                    <p class="mb-0 small">Connect with certified financial advisors for personalized guidance.</p>
+                                </div>
+                                <button class="btn btn-success btn-sm" onclick="alert('Financial Advisement enrollment coming soon')">
+                                    <i class="bi bi-check-circle"></i> Enroll Now
+                                </button>
+                            </div>
+                        </div>
+                        <p class="mb-2 small text-muted">Services include:</p>
+                        <ul class="small mb-0">
+                            <li>One-on-One Credit Counseling Sessions</li>
+                            <li>Personalized Financial Planning</li>
+                            <li>Budget Review & Optimization</li>
+                            <li>Goal Setting & Progress Tracking</li>
+                        </ul>
+                    </div>
                     </div>
                 </div>
             </div>

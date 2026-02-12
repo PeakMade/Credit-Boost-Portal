@@ -4,8 +4,44 @@ Handles SSN decryption and data transformation
 """
 import os
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.encryption import mask_ssn, get_last4_ssn
+
+
+def calculate_last_quarter_date():
+    """
+    Calculate the last quarter end date (Mar 31, Jun 30, Sep 30, Dec 31)
+    Credit scores are typically received quarterly
+    """
+    current_date = datetime.now()
+    year = current_date.year
+    month = current_date.month
+    
+    # Determine the last completed quarter
+    if month <= 3:
+        # Q4 of previous year
+        quarter_month = 12
+        quarter_year = year - 1
+    elif month <= 6:
+        # Q1 of current year
+        quarter_month = 3
+        quarter_year = year
+    elif month <= 9:
+        # Q2 of current year
+        quarter_month = 6
+        quarter_year = year
+    else:
+        # Q3 of current year
+        quarter_month = 9
+        quarter_year = year
+    
+    # Get the last day of the quarter month
+    if quarter_month in [3, 12]:
+        day = 31
+    else:
+        day = 30
+    
+    return f"{quarter_year}-{quarter_month:02d}-{day:02d}"
 
 
 def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
@@ -54,6 +90,7 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
                 'last4_ssn': last4_ssn,
                 'encrypted_ssn': encrypted_ssn,  # Store encrypted version for later use
                 'credit_score': int(row.get('Credit Score', 650)),
+                'credit_score_date': calculate_last_quarter_date(),  # Quarterly credit score update
                 'lease_start_date': str(row.get('Lease Start', '')),
                 'lease_end_date': str(row.get('Lease End', '')),
                 'monthly_rent': monthly_rent,
@@ -73,16 +110,16 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
                 'highest_credit_amount': monthly_rent,
                 'amount_past_due': 0.0,
                 'current_balance': 0.0,
-                'last_reported': 'January 2026',
+                'last_reported': 'Jan 2026',
                 
                 # Payment history (generate sample data)
                 'payments': generate_sample_payments(resident_id, monthly_rent),
                 
-                # Enrollment history
+                # Enrollment history (enrolled 6 months ago so all payment history shows)
                 'enrollment_history': [
                     {
                         'action': 'enrolled',
-                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        'timestamp': (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d %H:%M:%S')
                     }
                 ],
                 
@@ -113,7 +150,7 @@ def generate_sample_payments(resident_id, monthly_rent):
     # Generate last 6 months of payments
     for i in range(6):
         payment_date = current_date - timedelta(days=30 * i)
-        month = payment_date.strftime('%B %Y')
+        month = payment_date.strftime('%b %Y')
         
         # Occasionally make a payment late (10% chance)
         is_late = random.random() < 0.1 and i > 0  # Never make current month late
@@ -127,6 +164,7 @@ def generate_sample_payments(resident_id, monthly_rent):
             'month': month,
             'amount': monthly_rent,
             'date_paid': (payment_date + timedelta(days=days_late)).strftime('%Y-%m-%d'),
+            'payment_date': payment_date.strftime('%Y-%m-%d'),  # Track when payment occurred
             'status': status,
             'days_late': days_late,
             'reported': reported,

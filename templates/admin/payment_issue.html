@@ -59,7 +59,7 @@
                             {% for payment in resident.payments %}
                             <tr>
                                 <td>{{ payment.month }}</td>
-                                <td>${{ "%.2f"|format(payment.amount) }}</td>
+                                <td>{{ payment.amount|currency }}</td>
                                 <td>
                                     {% if payment.status == 'Paid' %}
                                         <span class="badge bg-success">{{ payment.status }}</span>

@@ -81,8 +81,8 @@
                             </tr>
                             <tr>
                                 <td><strong>Date of Birth</strong></td>
-                                <td>{{ mismatch_data.dob_system }}</td>
-                                <td>{{ mismatch_data.dob_bureau }}</td>
+                                <td>{{ mismatch_data.dob_system|date_format }}</td>
+                                <td>{{ mismatch_data.dob_bureau|date_format }}</td>
                                 <td>
                                     {% if mismatch_data.dob_system == mismatch_data.dob_bureau %}
                                         <i class="bi bi-check-circle-fill text-success"></i>

@@ -55,7 +55,7 @@
                             <dd class="col-sm-7">{{ resident.first_name }} {{ resident.last_name }}</dd>
 
                             <dt class="col-sm-5">Date of Birth:</dt>
-                            <dd class="col-sm-7">{{ resident.dob }}</dd>
+                            <dd class="col-sm-7">{{ resident.dob|date_format }}</dd>
 
                             <dt class="col-sm-5">Address:</dt>
                             <dd class="col-sm-7">{{ resident.address }}</dd>
@@ -104,16 +104,16 @@
                             </dd>
 
                             <dt class="col-sm-5">Date Opened:</dt>
-                            <dd class="col-sm-7">{{ resident.date_opened }}</dd>
+                            <dd class="col-sm-7">{{ resident.date_opened|date_format }}</dd>
 
                             <dt class="col-sm-5">Payment Schedule:</dt>
                             <dd class="col-sm-7">{{ resident.payment_schedule }}</dd>
 
                             <dt class="col-sm-5">Scheduled Payment:</dt>
-                            <dd class="col-sm-7">${{ "%.2f"|format(resident.scheduled_monthly_payment) }}</dd>
+                            <dd class="col-sm-7">{{ resident.scheduled_monthly_payment|currency }}</dd>
 
                             <dt class="col-sm-5">Last Payment Date:</dt>
-                            <dd class="col-sm-7">{{ resident.date_last_payment }}</dd>
+                            <dd class="col-sm-7">{{ resident.date_last_payment|date_format }}</dd>
 
                             <dt class="col-sm-5">Days Late:</dt>
                             <dd class="col-sm-7">
@@ -127,7 +127,7 @@
                             <dt class="col-sm-5">First Delinquency:</dt>
                             <dd class="col-sm-7">
                                 {% if resident.date_first_delinquency %}
-                                    <span class="text-danger">{{ resident.date_first_delinquency }}</span>
+                                    <span class="text-danger">{{ resident.date_first_delinquency|date_format }}</span>
                                 {% else %}
                                     <span class="text-success">None</span>
                                 {% endif %}
@@ -136,17 +136,17 @@
                             <dt class="col-sm-5">Amount Past Due:</dt>
                             <dd class="col-sm-7">
                                 {% if resident.amount_past_due > 0 %}
-                                    <span class="text-danger"><strong>${{ "%.2f"|format(resident.amount_past_due) }}</strong></span>
+                                    <span class="text-danger"><strong>{{ resident.amount_past_due|currency }}</strong></span>
                                 {% else %}
-                                    <span class="text-success">${{ "%.2f"|format(resident.amount_past_due) }}</span>
+                                    <span class="text-success">{{ resident.amount_past_due|currency }}</span>
                                 {% endif %}
                             </dd>
 
                             <dt class="col-sm-5">Current Balance:</dt>
-                            <dd class="col-sm-7">${{ "%.2f"|format(resident.current_balance) }}</dd>
+                            <dd class="col-sm-7">{{ resident.current_balance|currency }}</dd>
 
                             <dt class="col-sm-5">Highest Credit:</dt>
-                            <dd class="col-sm-7">${{ "%.2f"|format(resident.highest_credit_amount) }}</dd>
+                            <dd class="col-sm-7">{{ resident.highest_credit_amount|currency }}</dd>
                         </dl>
                     </div>
                 </div>
@@ -155,10 +155,10 @@
 
             <!-- Right Column -->
             <div class="col-md-6">
-                <!-- Payment History -->
+                <!-- Reporting History -->
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-credit-card"></i> Payment History</h5>
+                        <h5 class="mb-0"><i class="bi bi-credit-card"></i> Reporting History</h5>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -168,17 +168,15 @@
                                         <th>Month</th>
                                         <th>Amount</th>
                                         <th>Status</th>
-                                        <th>Days Late</th>
                                         <th>Date Paid</th>
-                                        <th>Reported</th>
                                         <th>Delinquent</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for payment in resident.payments %}
+                                    {% for payment in resident.payments|enrolled_payments(resident.enrollment_history) %}
                                     <tr>
                                         <td>{{ payment.month }}</td>
-                                        <td>${{ "%.2f"|format(payment.amount) }}</td>
+                                        <td>{{ payment.amount|currency }}</td>
                                         <td>
                                             {% if payment.status == 'Paid' %}
                                                 <span class="badge bg-success">{{ payment.status }}</span>
@@ -189,33 +187,21 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if payment.days_late > 0 %}
-                                                <span class="badge bg-warning text-dark">{{ payment.days_late }}</span>
-                                            {% else %}
-                                                <span class="text-success">0</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
                                             {% if payment.date_paid %}
-                                                <small>{{ payment.date_paid }}</small>
+                                                <small>{{ payment.date_paid|date_format }}</small>
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if payment.reported %}
-                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            {% if payment.days_late >= 90 %}
+                                                <span class="badge bg-danger">3 (90+ Days Late)</span>
+                                            {% elif payment.days_late >= 60 %}
+                                                <span class="badge bg-danger">2 (60 Days Late)</span>
+                                            {% elif payment.days_late >= 30 %}
+                                                <span class="badge bg-warning text-dark">1 (30 Days Late)</span>
                                             {% else %}
-                                                <i class="bi bi-x-circle text-muted"></i>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if payment.reported and payment.days_late > 30 %}
-                                                <span class="badge bg-danger">Yes</span>
-                                            {% elif payment.reported and payment.days_late > 0 %}
-                                                <span class="badge bg-warning text-dark">Late</span>
-                                            {% else %}
-                                                <span class="text-success">No</span>
+                                                <span class="text-success">0</span>
                                             {% endif %}
                                         </td>
                                     </tr>
@@ -267,7 +253,7 @@
                                             {% endif %}
                                             {{ event.action|title }}
                                         </td>
-                                        <td><small>{{ event.timestamp }}</small></td>
+                                        <td><small>{{ event.timestamp|date_format }}</small></td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

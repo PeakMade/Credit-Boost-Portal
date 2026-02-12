@@ -145,9 +145,9 @@
                     <button class="btn btn-sm btn-outline-secondary me-2" onclick="location.reload()">
                         <i class="bi bi-arrow-clockwise"></i> Refresh
                     </button>
-                    <button class="btn btn-sm btn-outline-primary" onclick="alert('Export feature coming soon')">
+                    <a href="{{ url_for('export_audit_logs') }}" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-download"></i> Export CSV
-                    </button>
+                    </a>
                 </div>
             </div>
             <div class="card-body">
@@ -167,7 +167,7 @@
                         <tbody>
                             {% for log in logs %}
                             <tr>
-                                <td><small>{{ log.timestamp }}</small></td>
+                                <td><small>{{ log.timestamp|date_format }}</small></td>
                                 <td>
                                     {% if log.severity == 'Critical' %}
                                     <span class="badge bg-danger">Critical</span>

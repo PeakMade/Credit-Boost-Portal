@@ -15,9 +15,9 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>Rent Reporting Management</h2>
             <div>
-                <button class="btn btn-outline-primary me-2" onclick="alert('CSV Export feature coming soon')">
+                <a href="{{ url_for('export_residents') }}" class="btn btn-outline-primary me-2">
                     <i class="bi bi-download"></i> Export List
-                </button>
+                </a>
                 <button class="btn btn-primary" onclick="alert('Reporting Runs feature coming soon')">
                     <i class="bi bi-calendar-check"></i> View Reporting Runs
                 </button>
@@ -29,8 +29,8 @@
             <div class="d-flex align-items-center">
                 <i class="bi bi-info-circle fs-4 me-3"></i>
                 <div>
-                    <strong>Current Reporting Cycle: January 2026</strong>
-                    <p class="mb-0 small">Next scheduled reporting run: January 31, 2026 | Status: Pending</p>
+                    <strong>Current Reporting Cycle: {{ current_cycle }}</strong>
+                    <p class="mb-0 small">Next scheduled reporting run: {{ next_run_date }} | Status: Pending</p>
                 </div>
             </div>
         </div>
@@ -40,26 +40,14 @@
             <div class="card-body">
                 <form method="GET" action="{{ url_for('admin_rent_reporting') }}">
                     <div class="row g-3">
-                        <div class="col-md-5">
-                            <label class="form-label small text-muted mb-1">Search by Property</label>
-                            <div class="input-group position-relative">
-                                <span class="input-group-text"><i class="bi bi-building"></i></span>
-                                <input type="text" class="form-control" name="property" id="propertySearch"
-                                       placeholder="Property/Unit number..." 
-                                       value="{{ property_query if property_query else '' }}"
+                        <div class="col-md-10">
+                            <label class="form-label small text-muted mb-1">Search Residents</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" name="search" id="globalSearch"
+                                       placeholder="Search by name, property, or unit..." 
+                                       value="{{ request.args.get('search', '') }}"
                                        autocomplete="off">
-                                <div id="propertyDropdown" class="autocomplete-dropdown"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label small text-muted mb-1">Search by Name</label>
-                            <div class="input-group position-relative">
-                                <span class="input-group-text"><i class="bi bi-person"></i></span>
-                                <input type="text" class="form-control" name="name" id="nameSearch"
-                                       placeholder="Resident name..." 
-                                       value="{{ name_query if name_query else '' }}"
-                                       autocomplete="off">
-                                <div id="nameDropdown" class="autocomplete-dropdown"></div>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -68,7 +56,7 @@
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-search"></i> Search
                                 </button>
-                                {% if property_query or name_query %}
+                                {% if request.args.get('search') %}
                                 <a href="{{ url_for('admin_rent_reporting') }}" class="btn btn-outline-secondary btn-sm">
                                     <i class="bi bi-x"></i> Clear
                                 </a>
@@ -91,29 +79,47 @@
                     <table class="table table-hover" id="residentsTable">
                         <thead>
                             <tr>
-                                <th class="sortable" data-column="name" style="cursor: pointer;">Name <i class="bi bi-arrow-down-up text-muted"></i></th>
-                                <th class="sortable" data-column="property" style="cursor: pointer;">Property <i class="bi bi-arrow-down-up text-muted"></i></th>
-                                <th class="sortable" data-column="unit" style="cursor: pointer;">Unit <i class="bi bi-arrow-down-up text-muted"></i></th>
-                                <th>Status</th>
-                                <th>Latest Payment</th>
-                                <th>Last Reported</th>
-                                <th>Actions</th>
+                                <th class="filterable" data-column="0" style="cursor: pointer; position: relative;">
+                                    Name <i class="bi bi-funnel"></i>
+                                    <div class="filter-dropdown" id="filter-0"></div>
+                                </th>
+                                <th class="filterable" data-column="1" style="cursor: pointer; position: relative;">
+                                    Property <i class="bi bi-funnel"></i>
+                                    <div class="filter-dropdown" id="filter-1"></div>
+                                </th>
+                                <th class="filterable" data-column="2" style="cursor: pointer; position: relative;">
+                                    Unit <i class="bi bi-funnel"></i>
+                                    <div class="filter-dropdown" id="filter-2"></div>
+                                </th>
+                                <th class="filterable" data-column="3" style="cursor: pointer; position: relative;">
+                                    Status <i class="bi bi-funnel"></i>
+                                    <div class="filter-dropdown" id="filter-3"></div>
+                                </th>
+                                <th class="filterable" data-column="4" style="cursor: pointer; position: relative;">
+                                    Latest Payment <i class="bi bi-funnel"></i>
+                                    <div class="filter-dropdown" id="filter-4"></div>
+                                </th>
+                                <th>Resident Details</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for resident in residents %}
                             <tr>
-                                <td data-value="{{ resident.name }}">{{ resident.name }}</td>
+                                <td data-value="{{ resident.name }}">
+                                    <a href="{{ url_for('admin_resident_detail', resident_id=resident.id) }}" class="text-decoration-none">
+                                        {{ resident.name }}
+                                    </a>
+                                </td>
                                 <td data-value="{{ resident.property }}">{{ resident.property }}</td>
                                 <td data-value="{{ resident.unit }}">{{ resident.unit }}</td>
-                                <td>
+                                <td data-value="{{ resident.enrollment_status }}">
                                     {% if resident.enrollment_status == 'enrolled' %}
                                         <span class="badge bg-success">Enrolled</span>
                                     {% else %}
                                         <span class="badge bg-secondary">Not Enrolled</span>
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td data-value="{{ resident.payments[0].month if resident.payments else 'zzz' }}">
                                     {% if resident.payments %}
                                     {% set latest_payment = resident.payments[0] %}
                                     <span class="badge {% if latest_payment.status == 'Paid' %}bg-success{% elif latest_payment.status == 'Late' %}bg-warning text-dark{% else %}bg-danger{% endif %}" 
@@ -122,7 +128,7 @@
                                           data-bs-placement="left"
                                           data-bs-html="true"
                                           data-bs-title="Latest Payment Details"
-                                          data-bs-content="<div class='text-start'><strong>Month:</strong> {{ latest_payment.month }}<br><strong>Amount:</strong> ${{ '%.2f'|format(latest_payment.amount) }}<br><strong>Status:</strong> {{ latest_payment.status }}<br><strong>Days Late:</strong> {{ latest_payment.days_late }}<br><strong>Date Paid:</strong> {{ latest_payment.date_paid if latest_payment.date_paid else 'Not paid' }}<br><strong>Reported:</strong> {{ 'Yes' if latest_payment.reported else 'No' }}</div>"
+                                          data-bs-content="<div class='text-start'><strong>Month:</strong> {{ latest_payment.month }}<br><strong>Amount:</strong> {{ latest_payment.amount|currency }}<br><strong>Status:</strong> {{ latest_payment.status }}<br><strong>Days Late:</strong> {{ latest_payment.days_late }}<br><strong>Date Paid:</strong> {{ latest_payment.date_paid|date_format if latest_payment.date_paid else 'Not paid' }}<br><strong>Reported:</strong> {{ 'Yes' if latest_payment.reported else 'No' }}</div>"
                                           style="cursor: pointer;">
                                         {{ latest_payment.month }} <i class="bi bi-info-circle"></i>
                                     </span>
@@ -130,7 +136,6 @@
                                     <span class="text-muted">N/A</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ resident.last_reported }}</td>
                                 <td>
                                     <a href="{{ url_for('admin_resident_detail', resident_id=resident.id) }}" 
                                        class="btn btn-sm btn-outline-primary">
@@ -154,90 +159,123 @@
 
 {% block extra_css %}
 <style>
-    .autocomplete-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 0 0 8px 8px;
-        max-height: 250px;
-        overflow-y: auto;
-        z-index: 1000;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        display: none;
-        margin-top: 2px;
-    }
-    
-    .autocomplete-dropdown.show {
-        display: block;
-    }
-    
-    .autocomplete-item {
-        padding: 10px 15px;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        transition: background-color 0.2s;
-    }
-    
-    .autocomplete-item:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .autocomplete-item:last-child {
-        border-bottom: none;
-    }
-    
-    .autocomplete-item.active {
-        background-color: #e9ecef;
-    }
-    
-    .input-group.position-relative {
-        position: relative;
-    }
-    
-    .autocomplete-dropdown::-webkit-scrollbar {
-        width: 8px;
-    }
-    
-    .autocomplete-dropdown::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 0 0 8px 0;
-    }
-    
-    .autocomplete-dropdown::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 4px;
-    }
-    
-    .autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
-    
-    .sortable {
+    .filterable {
         user-select: none;
         position: relative;
     }
     
-    .sortable:hover {
+    .filterable:hover {
         background-color: #f8f9fa;
     }
     
-    .sortable i {
+    .filterable i {
         font-size: 0.8rem;
         margin-left: 5px;
+        color: #6c757d;
     }
     
-    .sortable.asc i.bi-arrow-down-up,
-    .sortable.desc i.bi-arrow-down-up {
+    .filterable.active i {
+        color: #667eea;
+    }
+    
+    .filter-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        min-width: 250px;
+        max-height: 400px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         display: none;
+        padding: 10px;
+        margin-top: 5px;
     }
     
-    .sortable.asc i.bi-arrow-up,
-    .sortable.desc i.bi-arrow-down {
-        display: inline;
-        color: #667eea !important;
+    .filter-dropdown.show {
+        display: block;
+    }
+    
+    .filter-search {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    
+    .filter-item {
+        padding: 6px 10px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .filter-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .filter-item input[type="checkbox"] {
+        margin-right: 8px;
+        cursor: pointer;
+    }
+    
+    .filter-item label {
+        cursor: pointer;
+        margin: 0;
+        flex: 1;
+    }
+    
+    .filter-actions {
+        border-top: 1px solid #ddd;
+        padding-top: 10px;
+        margin-top: 10px;
+        display: flex;
+        gap: 5px;
+    }
+    
+    .filter-actions button {
+        flex: 1;
+        padding: 6px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    
+    .filter-actions .btn-apply {
+        background-color: #667eea;
+        color: white;
+    }
+    
+    .filter-actions .btn-clear {
+        background-color: #e9ecef;
+        color: #495057;
+    }
+    
+    .filter-dropdown::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .filter-dropdown::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 8px;
+    }
+    
+    .filter-dropdown::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    .filter-dropdown::-webkit-scrollbar-thumb:hover {
+        background: #555;
     }
 </style>
 {% endblock %}
@@ -250,231 +288,180 @@
             return new bootstrap.Popover(popoverTriggerEl);
         });
         
-        // Table sorting functionality
+        // Table filtering functionality
         const table = document.getElementById('residentsTable');
-        const headers = table.querySelectorAll('th.sortable');
+        const headers = table.querySelectorAll('th.filterable');
+        const tbody = table.querySelector('tbody');
+        const allRows = Array.from(tbody.querySelectorAll('tr'));
+        
+        // Store active filters for each column
+        const activeFilters = {};
         
         headers.forEach(header => {
-            // Add arrow icons for sorting
-            const arrow = document.createElement('i');
-            arrow.className = 'bi bi-arrow-up';
-            arrow.style.display = 'none';
-            arrow.style.marginLeft = '5px';
-            header.appendChild(arrow);
+            const columnIndex = parseInt(header.dataset.column);
+            const filterDropdown = header.querySelector('.filter-dropdown');
             
-            const arrowDown = document.createElement('i');
-            arrowDown.className = 'bi bi-arrow-down';
-            arrowDown.style.display = 'none';
-            arrowDown.style.marginLeft = '5px';
-            header.appendChild(arrowDown);
-            
-            header.addEventListener('click', function() {
-                const column = this.dataset.column;
-                const currentOrder = this.classList.contains('asc') ? 'asc' : 
-                                   this.classList.contains('desc') ? 'desc' : 'none';
+            // Click header to show/hide filter dropdown
+            header.addEventListener('click', function(e) {
+                e.stopPropagation();
                 
-                // Remove sorting from all headers
+                // Close all other dropdowns
                 headers.forEach(h => {
-                    h.classList.remove('asc', 'desc');
-                    h.querySelectorAll('i.bi-arrow-up, i.bi-arrow-down').forEach(icon => {
-                        icon.style.display = 'none';
-                    });
-                    h.querySelector('i.bi-arrow-down-up').style.color = '';
+                    if (h !== header) {
+                        h.querySelector('.filter-dropdown').classList.remove('show');
+                    }
                 });
                 
-                // Determine new sort order
-                let newOrder;
-                if (currentOrder === 'none' || currentOrder === 'desc') {
-                    newOrder = 'asc';
-                } else {
-                    newOrder = 'desc';
-                }
+                // Toggle this dropdown
+                const isShown = filterDropdown.classList.toggle('show');
                 
-                // Apply new sort order
-                this.classList.add(newOrder);
-                if (newOrder === 'asc') {
-                    this.querySelector('i.bi-arrow-up').style.display = 'inline';
-                } else {
-                    this.querySelector('i.bi-arrow-down').style.display = 'inline';
+                if (isShown) {
+                    populateFilterDropdown(columnIndex, filterDropdown);
                 }
-                
-                // Sort the table
-                sortTable(column, newOrder);
             });
         });
         
-        function sortTable(column, order) {
-            const tbody = table.querySelector('tbody');
-            const rows = Array.from(tbody.querySelectorAll('tr'));
-            
-            rows.sort((a, b) => {
-                let aValue = a.querySelector(`td[data-value]`).getAttribute('data-value');
-                let bValue = b.querySelector(`td[data-value]`).getAttribute('data-value');
-                
-                // Get the correct column based on position
-                const columnIndex = Array.from(table.querySelectorAll('th')).findIndex(
-                    th => th.dataset.column === column
-                );
-                
-                aValue = a.children[columnIndex].getAttribute('data-value');
-                bValue = b.children[columnIndex].getAttribute('data-value');
-                
-                // Check if values are numeric
-                const aNum = parseFloat(aValue);
-                const bNum = parseFloat(bValue);
-                const isNumeric = !isNaN(aNum) && !isNaN(bNum);
-                
-                let comparison;
-                if (isNumeric) {
-                    comparison = aNum - bNum;
-                } else {
-                    // String comparison (case-insensitive)
-                    comparison = aValue.toLowerCase().localeCompare(bValue.toLowerCase());
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.filterable')) {
+                headers.forEach(h => {
+                    h.querySelector('.filter-dropdown').classList.remove('show');
+                });
+            }
+        });
+        
+        function populateFilterDropdown(columnIndex, dropdown) {
+            // Get unique values from the column
+            const values = new Set();
+            allRows.forEach(row => {
+                const cell = row.children[columnIndex];
+                const value = cell.getAttribute('data-value') || cell.textContent.trim();
+                if (value) {
+                    values.add(value);
                 }
-                
-                return order === 'asc' ? comparison : -comparison;
             });
             
-            // Clear and re-append sorted rows
-            tbody.innerHTML = '';
-            rows.forEach(row => tbody.appendChild(row));
-        }
-        
-        // Prepare resident data for autocomplete
-        const residents = {{ residents | tojson | safe }};
-        
-        // Extract unique properties and units (sorted)
-        const properties = [...new Set(residents.map(r => r.property))].sort();
-        const units = [...new Set(residents.map(r => r.unit))].sort();
-        const propertyItems = [...properties, ...units].sort();
-        
-        // Get filtered names based on property/unit selection
-        function getFilteredNames(propertyFilter) {
-            if (!propertyFilter) {
-                // No filter, return all names
-                return [...new Set(residents.map(r => r.name))].sort();
-            }
-            
-            // Filter residents by property or unit
-            const filtered = residents.filter(r => 
-                r.property.toLowerCase() === propertyFilter.toLowerCase() || 
-                r.unit.toLowerCase() === propertyFilter.toLowerCase()
+            const sortedValues = Array.from(values).sort((a, b) => 
+                a.toLowerCase().localeCompare(b.toLowerCase())
             );
             
-            return [...new Set(filtered.map(r => r.name))].sort();
-        }
-        
-        // Autocomplete functionality with dynamic items
-        function setupAutocomplete(inputId, dropdownId, getItemsFunc) {
-            const input = document.getElementById(inputId);
-            const dropdown = document.getElementById(dropdownId);
-            let activeIndex = -1;
+            // Create filter UI
+            let html = '<input type="text" class="filter-search" placeholder="Search...">';
+            html += '<div class="filter-items">';
             
-            // Show dropdown on focus
-            input.addEventListener('focus', function() {
-                updateDropdown(input.value);
+            sortedValues.forEach(value => {
+                const isChecked = !activeFilters[columnIndex] || activeFilters[columnIndex].has(value);
+                html += `
+                    <div class="filter-item">
+                        <input type="checkbox" id="filter-${columnIndex}-${value}" value="${value}" ${isChecked ? 'checked' : ''}>
+                        <label for="filter-${columnIndex}-${value}">${value}</label>
+                    </div>
+                `;
             });
             
-            // Update dropdown on input
-            input.addEventListener('input', function() {
-                updateDropdown(this.value);
-                activeIndex = -1;
-            });
+            html += '</div>';
+            html += `
+                <div class="filter-actions">
+                    <button class="btn-apply">Apply</button>
+                    <button class="btn-clear">Clear All</button>
+                </div>
+            `;
             
-            // Handle keyboard navigation
-            input.addEventListener('keydown', function(e) {
-                const dropdownItems = dropdown.querySelectorAll('.autocomplete-item');
-                
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    activeIndex = Math.min(activeIndex + 1, dropdownItems.length - 1);
-                    updateActive(dropdownItems);
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    activeIndex = Math.max(activeIndex - 1, -1);
-                    updateActive(dropdownItems);
-                } else if (e.key === 'Enter' && activeIndex >= 0) {
-                    e.preventDefault();
-                    dropdownItems[activeIndex].click();
-                } else if (e.key === 'Escape') {
-                    dropdown.classList.remove('show');
-                }
-            });
+            dropdown.innerHTML = html;
             
-            // Hide dropdown when clicking outside
-            document.addEventListener('click', function(e) {
-                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-                    dropdown.classList.remove('show');
-                }
-            });
+            // Setup filter search
+            const searchInput = dropdown.querySelector('.filter-search');
+            const filterItems = dropdown.querySelectorAll('.filter-item');
             
-            function updateDropdown(query) {
-                dropdown.innerHTML = '';
-                const items = getItemsFunc();
-                const filtered = items.filter(item => 
-                    item.toLowerCase().startsWith(query.toLowerCase())
-                );
-                
-                if (filtered.length === 0) {
-                    dropdown.classList.remove('show');
-                    return;
-                }
-                
-                filtered.forEach((item, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'autocomplete-item';
-                    div.textContent = item;
-                    div.addEventListener('click', function() {
-                        input.value = item;
-                        dropdown.classList.remove('show');
-                        activeIndex = -1;
-                    });
-                    dropdown.appendChild(div);
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                filterItems.forEach(item => {
+                    const label = item.querySelector('label').textContent.toLowerCase();
+                    item.style.display = label.includes(searchTerm) ? 'flex' : 'none';
                 });
-                
-                dropdown.classList.add('show');
-            }
+            });
             
-            function updateActive(items) {
-                items.forEach((item, index) => {
-                    if (index === activeIndex) {
-                        item.classList.add('active');
-                        item.scrollIntoView({ block: 'nearest' });
-                    } else {
-                        item.classList.remove('active');
+            searchInput.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // Setup checkbox clicks
+            filterItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    if (e.target.tagName !== 'INPUT') {
+                        const checkbox = this.querySelector('input[type="checkbox"]');
+                        checkbox.checked = !checkbox.checked;
                     }
                 });
-            }
+            });
             
-            return {
-                refresh: function() {
-                    if (dropdown.classList.contains('show')) {
-                        updateDropdown(input.value);
-                    }
-                }
-            };
+            // Setup apply button
+            dropdown.querySelector('.btn-apply').addEventListener('click', function(e) {
+                e.stopPropagation();
+                applyFilters(columnIndex, dropdown);
+                dropdown.classList.remove('show');
+            });
+            
+            // Setup clear button
+            dropdown.querySelector('.btn-clear').addEventListener('click', function(e) {
+                e.stopPropagation();
+                delete activeFilters[columnIndex];
+                dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+                applyAllFilters();
+                updateHeaderIcons();
+            });
         }
         
-        // Initialize property autocomplete
-        const propertyAutocomplete = setupAutocomplete('propertySearch', 'propertyDropdown', function() {
-            return propertyItems;
-        });
+        function applyFilters(columnIndex, dropdown) {
+            const checkedBoxes = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+            const selectedValues = new Set(Array.from(checkedBoxes).map(cb => cb.value));
+            
+            if (selectedValues.size === 0) {
+                delete activeFilters[columnIndex];
+            } else {
+                activeFilters[columnIndex] = selectedValues;
+            }
+            
+            applyAllFilters();
+            updateHeaderIcons();
+        }
         
-        // Initialize name autocomplete with dynamic filtering
-        const nameAutocomplete = setupAutocomplete('nameSearch', 'nameDropdown', function() {
-            const propertyInput = document.getElementById('propertySearch');
-            return getFilteredNames(propertyInput.value.trim());
-        });
+        function applyAllFilters() {
+            allRows.forEach(row => {
+                let shouldShow = true;
+                
+                // Check each active filter
+                for (const [columnIndex, selectedValues] of Object.entries(activeFilters)) {
+                    const cell = row.children[columnIndex];
+                    const value = cell.getAttribute('data-value') || cell.textContent.trim();
+                    
+                    if (!selectedValues.has(value)) {
+                        shouldShow = false;
+                        break;
+                    }
+                }
+                
+                row.style.display = shouldShow ? '' : 'none';
+            });
+            
+            // Update resident count
+            const visibleCount = allRows.filter(row => row.style.display !== 'none').length;
+            const countHeader = document.querySelector('.card-header h5');
+            if (countHeader) {
+                countHeader.textContent = `Residents (${visibleCount})`;
+            }
+        }
         
-        // Listen for changes in property field to refresh name dropdown
-        document.getElementById('propertySearch').addEventListener('input', function() {
-            nameAutocomplete.refresh();
-        });
-        
-        // Also refresh when property is selected from dropdown
-        document.getElementById('propertySearch').addEventListener('change', function() {
-            nameAutocomplete.refresh();
-        });
+        function updateHeaderIcons() {
+            headers.forEach(header => {
+                const columnIndex = parseInt(header.dataset.column);
+                if (activeFilters[columnIndex]) {
+                    header.classList.add('active');
+                } else {
+                    header.classList.remove('active');
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

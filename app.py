@@ -1,15 +1,87 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from datetime import datetime
 import json
 import os
 from dotenv import load_dotenv
 from utils.data_loader import load_residents_from_excel
+from utils.excel_export import (create_resident_list_export, create_reporting_runs_export,
+                                create_disputes_export, create_audit_logs_export)
 
 # Load environment variables from .env file (for local development)
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'demo-secret-key-change-in-production')
+
+# Custom Jinja filter for currency formatting with commas
+@app.template_filter('currency')
+def currency_filter(value):
+    """Format number as currency with dollar sign and commas"""
+    try:
+        return "${:,.2f}".format(float(value))
+    except (ValueError, TypeError):
+        return "$0.00"
+
+# Custom Jinja filter for date formatting
+@app.template_filter('date_format')
+def date_format_filter(value):
+    """Format date as MM-DD-YY"""
+    if not value:
+        return ''
+    try:
+        # Handle different input formats
+        if isinstance(value, str):
+            # Try parsing YYYY-MM-DD format
+            if len(value) >= 10 and value[4] == '-':
+                date_obj = datetime.strptime(value[:10], '%Y-%m-%d')
+            # Try parsing other common formats
+            else:
+                date_obj = datetime.strptime(value, '%Y-%m-%d')
+        else:
+            date_obj = value
+        return date_obj.strftime('%m-%d-%y')
+    except (ValueError, TypeError, AttributeError):
+        return value
+
+# Custom Jinja filter to filter payments during enrollment
+@app.template_filter('enrolled_payments')
+def enrolled_payments_filter(payments, enrollment_history):
+    """Filter payments to only show those that occurred during enrolled periods"""
+    if not payments or not enrollment_history:
+        return []
+    
+    # Find the first enrollment date
+    enrollment_date = None
+    for event in enrollment_history:
+        if event.get('action') == 'enrolled':
+            enrollment_date = event.get('timestamp')
+            break
+    
+    if not enrollment_date:
+        return []
+    
+    # Parse enrollment date (could be datetime string or date string)
+    try:
+        if ' ' in enrollment_date:  # datetime format
+            enrollment_dt = datetime.strptime(enrollment_date, '%Y-%m-%d %H:%M:%S')
+        else:  # date only format
+            enrollment_dt = datetime.strptime(enrollment_date, '%Y-%m-%d')
+    except (ValueError, TypeError):
+        return payments  # If we can't parse, return all payments
+    
+    # Filter payments to only those on or after enrollment date
+    filtered_payments = []
+    for payment in payments:
+        payment_date_str = payment.get('payment_date')
+        if payment_date_str:
+            try:
+                payment_dt = datetime.strptime(payment_date_str, '%Y-%m-%d')
+                if payment_dt >= enrollment_dt:
+                    filtered_payments.append(payment)
+            except (ValueError, TypeError):
+                continue
+    
+    return filtered_payments
 
 # Load test data from JSON file (fallback)
 def load_test_data():
@@ -113,7 +185,20 @@ def resident_dashboard():
     # Get resident from session or default to first resident
     resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
     resident = get_resident_by_id(resident_id)
-    return render_template('resident/dashboard.html', resident=resident)
+    
+    # Calculate current reporting cycle (current month)
+    current_date = datetime.now()
+    current_cycle = current_date.strftime('%b %Y')
+    
+    # Calculate next reporting run (last day of current month)
+    from calendar import monthrange
+    last_day = monthrange(current_date.year, current_date.month)[1]
+    next_run_date = current_date.replace(day=last_day).strftime('%b %d, %Y')
+    
+    return render_template('resident/dashboard.html', 
+                          resident=resident,
+                          current_cycle=current_cycle,
+                          next_run_date=next_run_date)
 
 
 @app.route('/resident/enroll', methods=['GET', 'POST'])
@@ -250,23 +335,17 @@ def admin_dashboard():
 
 @app.route('/admin/rent-reporting')
 def admin_rent_reporting():
-    property_query = request.args.get('property', '').lower()
-    name_query = request.args.get('name', '').lower()
+    search_query = request.args.get('search', '').lower()
     
     filtered_residents = residents
     
-    # Filter by property name
-    if property_query:
+    # Filter by search query (searches name, property, and unit)
+    if search_query:
         filtered_residents = [
             r for r in filtered_residents 
-            if property_query in r.get('property', '').lower() or property_query in r.get('unit', '').lower()
-        ]
-    
-    # Filter by name
-    if name_query:
-        filtered_residents = [
-            r for r in filtered_residents 
-            if name_query in r['name'].lower()
+            if search_query in r['name'].lower() or 
+               search_query in r.get('property', '').lower() or 
+               search_query in r.get('unit', '').lower()
         ]
     
     # Add last reported month to each resident
@@ -276,10 +355,19 @@ def admin_rent_reporting():
         resident_copy['last_reported'] = get_last_reported_month(r)
         residents_with_info.append(resident_copy)
     
+    # Calculate current reporting cycle (current month)
+    current_date = datetime.now()
+    current_cycle = current_date.strftime('%b %Y')
+    
+    # Calculate next reporting run (last day of current month)
+    from calendar import monthrange
+    last_day = monthrange(current_date.year, current_date.month)[1]
+    next_run_date = current_date.replace(day=last_day).strftime('%b %d, %Y')
+    
     return render_template('admin/rent_reporting.html', 
                           residents=residents_with_info, 
-                          property_query=property_query,
-                          name_query=name_query)
+                          current_cycle=current_cycle,
+                          next_run_date=next_run_date)
 
 
 @app.route('/admin/resident/<int:resident_id>')
@@ -412,14 +500,64 @@ def admin_reporting_runs():
 
 @app.route('/admin/disputes')
 def admin_disputes():
-    disputes = [
-        {'id': 'D-001', 'date_filed': '2026-01-10', 'resident_id': 1, 'type': 'Data Mismatch', 'priority': 'High', 'status': 'Open'},
-        {'id': 'D-002', 'date_filed': '2026-01-15', 'resident_id': 2, 'type': 'Payment Error', 'priority': 'Medium', 'status': 'In Progress'},
-        {'id': 'D-003', 'date_filed': '2026-01-20', 'resident_id': 3, 'type': 'Identity Dispute', 'priority': 'Critical', 'status': 'Resolved'}
-    ]
+    import random
+    from datetime import timedelta
+    
+    # Generate realistic disputes with real residents and dynamic due dates
+    current_date = datetime.now()
+    disputes = []
+    
+    # Create 15 sample disputes (only Open and In Progress)
+    dispute_types = ['Data Mismatch', 'Payment Error', 'Identity Dispute', 'Incorrect Amount', 'Late Payment Dispute']
+    statuses = ['Open', 'Open', 'Open', 'In Progress', 'In Progress']
+    
+    for i in range(15):
+        # Random case ID
+        case_id = f"DSP-{random.randint(1000, 9999)}"
+        
+        # Assign a random resident
+        resident = random.choice(residents)
+        
+        # Random date filed (between 5 and 60 days ago)
+        days_ago = random.randint(5, 60)
+        date_filed = (current_date - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+        
+        # Random due date (between 1 and 30 days from today)
+        days_until_due = random.randint(1, 30)
+        due_date = (current_date + timedelta(days=days_until_due)).strftime('%Y-%m-%d')
+        
+        # Calculate priority based on days remaining (changed labels)
+        if days_until_due >= 20:
+            priority = 'Low'  # was Medium
+        elif days_until_due >= 10:
+            priority = 'Medium'  # was High
+        else:
+            priority = 'High'  # was Critical
+        
+        # Random status (no resolved)
+        status = random.choice(statuses)
+        
+        disputes.append({
+            'id': case_id,
+            'date_filed': date_filed,
+            'due_date': due_date,
+            'days_until_due': days_until_due,
+            'resident': f"{resident.get('name')} - Unit {resident.get('unit')}",
+            'resident_id': resident.get('id'),
+            'type': random.choice(dispute_types),
+            'priority': priority,
+            'status': status,
+            'details': f"Dispute regarding {random.choice(['rent amount', 'payment date', 'account information', 'reporting accuracy'])}"
+        })
+    
+    # Sort by priority (High first, then Medium, Low) and then by due date
+    priority_order = {'High': 0, 'Medium': 1, 'Low': 2}
+    disputes.sort(key=lambda x: (priority_order.get(x['priority'], 99), x['due_date']))
+    
     open_disputes = len([d for d in disputes if d['status'] == 'Open'])
     in_progress_disputes = len([d for d in disputes if d['status'] == 'In Progress'])
-    resolved_disputes = len([d for d in disputes if d['status'] == 'Resolved'])
+    resolved_disputes = 0  # No resolved disputes
+    
     return render_template('admin/disputes.html',
                           disputes=disputes,
                           open_disputes=open_disputes,
@@ -434,6 +572,58 @@ def admin_audit_logs():
         {'id': 3, 'timestamp': '2026-01-12 09:15:00', 'user': 'admin', 'action': 'Resolved dispute', 'details': 'D-001'}
     ]
     return render_template('admin/audit_logs.html', audit_logs=audit_logs)
+
+# Excel Export Routes
+@app.route('/admin/export/residents')
+def export_residents():
+    """Export resident list to Excel"""
+    # Filter for enrolled residents (case insensitive)
+    enrolled = [r for r in residents if r.get('enrollment_status', '').lower() == 'enrolled' or r.get('enrolled') == True]
+    excel_file = create_resident_list_export(enrolled)
+    filename = f"residents_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(excel_file, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+@app.route('/admin/export/reporting-runs')
+def export_reporting_runs():
+    """Export reporting runs to Excel"""
+    # Get the same data as the reporting runs page
+    runs = [
+        {'id': 'RUN-2026-001', 'date': '2026-02-01', 'type': 'Monthly Metro2', 'status': 'Completed', 'records': 147, 'success_rate': '99.3%', 'notes': 'Successfully processed'},
+        {'id': 'RUN-2026-002', 'date': '2026-01-15', 'type': 'Supplemental', 'status': 'Completed', 'records': 23, 'success_rate': '100%', 'notes': 'New enrollments'},
+        {'id': 'RUN-2026-003', 'date': '2026-01-01', 'type': 'Monthly Metro2', 'status': 'Completed', 'records': 145, 'success_rate': '98.6%', 'notes': '2 payment disputes pending'},
+        {'id': 'RUN-2025-012', 'date': '2025-12-01', 'type': 'Monthly Metro2', 'status': 'Completed', 'records': 142, 'success_rate': '99.3%', 'notes': 'Year-end reporting'},
+    ]
+    excel_file = create_reporting_runs_export(runs)
+    filename = f"reporting_runs_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(excel_file, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+@app.route('/admin/export/disputes')
+def export_disputes():
+    """Export disputes to Excel"""
+    disputes = [
+        {'id': 'D-001', 'date': '2026-02-03', 'resident': 'John Smith - Unit 301', 'issue': 'Incorrect rent amount', 'status': 'Open', 'priority': 'High', 'details': 'Resident claims reported amount is $50 higher than actual rent'},
+        {'id': 'D-002', 'date': '2026-01-28', 'resident': 'Sarah Johnson - Unit 205', 'issue': 'Late payment dispute', 'status': 'In Progress', 'priority': 'Medium', 'details': 'Payment was made on time but not processed until the 6th'},
+        {'id': 'D-003', 'date': '2026-01-15', 'resident': 'Mike Davis - Unit 102', 'issue': 'Payment not reported', 'status': 'Resolved', 'priority': 'High', 'details': 'December payment was not included in monthly report. Added to supplemental file.'},
+    ]
+    excel_file = create_disputes_export(disputes)
+    filename = f"disputes_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(excel_file, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+@app.route('/admin/export/audit-logs')
+def export_audit_logs():
+    """Export audit logs to Excel"""
+    audit_logs = [
+        {'id': 1, 'timestamp': '2026-01-10 10:00:00', 'user': 'admin', 'action': 'Viewed resident PII', 'details': 'Jane Doe'},
+        {'id': 2, 'timestamp': '2026-01-11 14:30:00', 'user': 'admin', 'action': 'Exported report', 'details': 'Monthly Metro2'},
+        {'id': 3, 'timestamp': '2026-01-12 09:15:00', 'user': 'admin', 'action': 'Resolved dispute', 'details': 'D-001'}
+    ]
+    excel_file = create_audit_logs_export(audit_logs)
+    filename = f"audit_logs_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(excel_file, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 if __name__ == '__main__':
     # Get configuration from environment variables

@@ -104,9 +104,9 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-table"></i> Enrolled Disputes</h5>
-                <button class="btn btn-sm btn-light" onclick="alert('Export feature coming soon')">
+                <a href="{{ url_for('export_disputes') }}" class="btn btn-sm btn-light">
                     <i class="bi bi-download"></i> Export Report
-                </button>
+                </a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -115,56 +115,72 @@
                             <tr>
                                 <th>Case ID</th>
                                 <th>Date Filed</th>
+                                <th>Due Date</th>
+                                <th>Days Left</th>
                                 <th>Resident</th>
                                 <th>Type</th>
                                 <th>Priority</th>
                                 <th>Status</th>
-                                <th>Assigned To</th>
-                                <th>Due Date</th>
-                                <th>Link to E-Oscar</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for dispute in disputes %}
                             <tr>
-                                <td><strong>{{ dispute.case_id }}</strong></td>
-                                <td>{{ dispute.date_filed }}</td>
+                                <td><strong>{{ dispute.id }}</strong></td>
+                                <td>{{ dispute.date_filed|date_format }}</td>
+                                <td>
+                                    {% if dispute.due_date != 'N/A' %}
+                                        {% if dispute.days_until_due <= 9 %}
+                                        <span class="text-danger fw-bold">{{ dispute.due_date|date_format }}</span>
+                                        {% elif dispute.days_until_due <= 19 %}
+                                        <span class="text-warning fw-bold">{{ dispute.due_date|date_format }}</span>
+                                        {% else %}
+                                        <span class="text-muted">{{ dispute.due_date|date_format }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">{{ dispute.due_date }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if dispute.days_until_due %}
+                                        {% if dispute.days_until_due <= 9 %}
+                                        <span class="badge bg-danger">{{ dispute.days_until_due }} days</span>
+                                        {% elif dispute.days_until_due <= 19 %}
+                                        <span class="badge bg-warning text-dark">{{ dispute.days_until_due }} days</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ dispute.days_until_due }} days</span>
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <a href="{{ url_for('admin_resident_detail', resident_id=dispute.resident_id) }}" class="text-decoration-none">
-                                        {{ dispute.resident_name }}
+                                        {{ dispute.resident }}
                                     </a>
                                 </td>
                                 <td>
                                     <span class="badge bg-secondary">{{ dispute.type }}</span>
                                 </td>
                                 <td>
-                                    {% if dispute.priority == 'Critical' %}
-                                    <span class="badge bg-danger"><i class="bi bi-exclamation-circle-fill"></i> Critical</span>
-                                    {% elif dispute.priority == 'High' %}
-                                    <span class="badge bg-warning"><i class="bi bi-exclamation-triangle-fill"></i> High</span>
+                                    {% if dispute.priority == 'High' %}
+                                    <span class="badge bg-danger"><i class="bi bi-exclamation-circle-fill"></i> High</span>
                                     {% elif dispute.priority == 'Medium' %}
-                                    <span class="badge bg-info">Medium</span>
-                                    {% else %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle-fill"></i> Medium</span>
+                                    {% elif dispute.priority == 'Low' %}
                                     <span class="badge bg-secondary">Low</span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if dispute.status == 'Open' %}
-                                    <span class="badge bg-danger"><i class="bi bi-circle-fill"></i> Open</span>
+                                    <span class="badge bg-secondary"><i class="bi bi-circle-fill"></i> Open</span>
                                     {% elif dispute.status == 'In Progress' %}
-                                    <span class="badge bg-warning"><i class="bi bi-hourglass-split"></i> In Progress</span>
+                                    <span class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> In Progress</span>
                                     {% elif dispute.status == 'Resolved' %}
-                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Resolved</span>
+                                    <span class="badge bg-secondary"><i class="bi bi-check-circle"></i> Resolved</span>
                                     {% elif dispute.status == 'Closed' %}
                                     <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Closed</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ dispute.assigned_to }}</td>
-                                <td>
-                                    {% if dispute.is_overdue %}
-                                    <span class="text-danger"><i class="bi bi-clock-fill"></i> {{ dispute.due_date }}</span>
-                                    {% else %}
-                                    {{ dispute.due_date }}
                                     {% endif %}
                                 </td>
                                 <td>
@@ -180,13 +196,14 @@
             </div>
         </div>
 
-        <!-- Pagination -->
+        <!-- Pagination (only show if more than 15 disputes) -->
+        {% if disputes|length > 15 %}
         <nav class="mt-4">
             <ul class="pagination justify-content-center">
                 <li class="page-item disabled">
                     <a class="page-link" href="#" tabindex="-1">Previous</a>
                 </li>
-                <li class="page-item enrolled"><a class="page-link" href="#">1</a></li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
                 <li class="page-item"><a class="page-link" href="#">2</a></li>
                 <li class="page-item"><a class="page-link" href="#">3</a></li>
                 <li class="page-item">
@@ -194,6 +211,7 @@
                 </li>
             </ul>
         </nav>
+        {% endif %}
     </div>
 </div>
 
