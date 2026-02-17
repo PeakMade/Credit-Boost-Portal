@@ -15,9 +15,9 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>Rent Reporting Management</h2>
             <div>
-                <a href="{{ url_for('export_residents') }}" class="btn btn-outline-primary me-2">
+                <button id="exportBtn" class="btn btn-outline-primary me-2">
                     <i class="bi bi-download"></i> Export List
-                </a>
+                </button>
                 <button class="btn btn-primary" onclick="alert('Reporting Runs feature coming soon')">
                     <i class="bi bi-calendar-check"></i> View Reporting Runs
                 </button>
@@ -187,12 +187,12 @@
         border-radius: 8px;
         min-width: 250px;
         max-height: 400px;
-        overflow-y: auto;
         z-index: 1000;
         box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         display: none;
-        padding: 10px;
+        padding: 10px 10px 0 10px;
         margin-top: 5px;
+        overflow-y: auto;
     }
     
     .filter-dropdown.show {
@@ -206,6 +206,10 @@
         border: 1px solid #ddd;
         border-radius: 4px;
         font-size: 0.9rem;
+        position: sticky;
+        top: -10px;
+        background: white;
+        z-index: 1;
     }
     
     .filter-item {
@@ -234,11 +238,17 @@
     }
     
     .filter-actions {
-        border-top: 1px solid #ddd;
-        padding-top: 10px;
-        margin-top: 10px;
+        position: sticky;
+        bottom: 0;
+        background: white;
+        border-top: 2px solid #ddd;
+        padding: 12px 10px;
+        margin: 10px -10px 0 -10px;
         display: flex;
         gap: 5px;
+        z-index: 2;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
     }
     
     .filter-actions button {
@@ -345,15 +355,27 @@
                 a.toLowerCase().localeCompare(b.toLowerCase())
             );
             
+            // Determine if all should be checked (no active filter or all values are selected)
+            const allChecked = !activeFilters[columnIndex] || 
+                              (activeFilters[columnIndex] && activeFilters[columnIndex].size === sortedValues.length);
+            
             // Create filter UI
             let html = '<input type="text" class="filter-search" placeholder="Search...">';
             html += '<div class="filter-items">';
+            
+            // Add "All" checkbox at the top
+            html += `
+                <div class="filter-item" style="border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 8px;">
+                    <input type="checkbox" id="filter-${columnIndex}-all" class="filter-all" ${allChecked ? 'checked' : ''}>
+                    <label for="filter-${columnIndex}-all"><strong>All</strong></label>
+                </div>
+            `;
             
             sortedValues.forEach(value => {
                 const isChecked = !activeFilters[columnIndex] || activeFilters[columnIndex].has(value);
                 html += `
                     <div class="filter-item">
-                        <input type="checkbox" id="filter-${columnIndex}-${value}" value="${value}" ${isChecked ? 'checked' : ''}>
+                        <input type="checkbox" class="filter-checkbox" id="filter-${columnIndex}-${value}" value="${value}" ${isChecked ? 'checked' : ''}>
                         <label for="filter-${columnIndex}-${value}">${value}</label>
                     </div>
                 `;
@@ -362,16 +384,22 @@
             html += '</div>';
             html += `
                 <div class="filter-actions">
-                    <button class="btn-apply">Apply</button>
-                    <button class="btn-clear">Clear All</button>
+                    <button class="btn-apply">Apply Filter</button>
                 </div>
             `;
             
             dropdown.innerHTML = html;
             
+            // Prevent dropdown from closing when clicking inside
+            dropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
             // Setup filter search
             const searchInput = dropdown.querySelector('.filter-search');
-            const filterItems = dropdown.querySelectorAll('.filter-item');
+            const filterItems = dropdown.querySelectorAll('.filter-item:not(:first-child)');
+            const allCheckbox = dropdown.querySelector('.filter-all');
+            const valueCheckboxes = dropdown.querySelectorAll('.filter-checkbox');
             
             searchInput.addEventListener('input', function(e) {
                 const searchTerm = e.target.value.toLowerCase();
@@ -381,18 +409,43 @@
                 });
             });
             
-            searchInput.addEventListener('click', function(e) {
-                e.stopPropagation();
+            // Setup "All" checkbox functionality
+            allCheckbox.addEventListener('change', function(e) {
+                const isChecked = this.checked;
+                valueCheckboxes.forEach(cb => {
+                    cb.checked = isChecked;
+                });
             });
             
-            // Setup checkbox clicks
+            // Update "All" checkbox when individual checkboxes change
+            valueCheckboxes.forEach(cb => {
+                cb.addEventListener('change', function(e) {
+                    const allChecked = Array.from(valueCheckboxes).every(checkbox => checkbox.checked);
+                    const noneChecked = Array.from(valueCheckboxes).every(checkbox => !checkbox.checked);
+                    allCheckbox.checked = allChecked;
+                    allCheckbox.indeterminate = !allChecked && !noneChecked;
+                });
+            });
+            
+            // Setup checkbox item clicks (clicking anywhere on the item toggles checkbox)
             filterItems.forEach(item => {
                 item.addEventListener('click', function(e) {
+                    // Only toggle if not clicking directly on checkbox
                     if (e.target.tagName !== 'INPUT') {
-                        const checkbox = this.querySelector('input[type="checkbox"]');
+                        const checkbox = item.querySelector('input[type="checkbox"]');
                         checkbox.checked = !checkbox.checked;
+                        checkbox.dispatchEvent(new Event('change'));
                     }
                 });
+            });
+            
+            // Same for "All" item
+            const allItem = dropdown.querySelector('.filter-item:first-child');
+            allItem.addEventListener('click', function(e) {
+                if (e.target.tagName !== 'INPUT') {
+                    allCheckbox.checked = !allCheckbox.checked;
+                    allCheckbox.dispatchEvent(new Event('change'));
+                }
             });
             
             // Setup apply button
@@ -401,24 +454,16 @@
                 applyFilters(columnIndex, dropdown);
                 dropdown.classList.remove('show');
             });
-            
-            // Setup clear button
-            dropdown.querySelector('.btn-clear').addEventListener('click', function(e) {
-                e.stopPropagation();
-                delete activeFilters[columnIndex];
-                dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
-                applyAllFilters();
-                updateHeaderIcons();
-            });
         }
         
         function applyFilters(columnIndex, dropdown) {
-            const checkedBoxes = dropdown.querySelectorAll('input[type="checkbox"]:checked');
-            const selectedValues = new Set(Array.from(checkedBoxes).map(cb => cb.value));
+            const checkedBoxes = dropdown.querySelectorAll('.filter-checkbox:checked');
             
-            if (selectedValues.size === 0) {
-                delete activeFilters[columnIndex];
+            if (checkedBoxes.length === 0) {
+                // No items selected - show nothing for this column
+                activeFilters[columnIndex] = new Set();
             } else {
+                const selectedValues = new Set(Array.from(checkedBoxes).map(cb => cb.value));
                 activeFilters[columnIndex] = selectedValues;
             }
             
@@ -435,7 +480,8 @@
                     const cell = row.children[columnIndex];
                     const value = cell.getAttribute('data-value') || cell.textContent.trim();
                     
-                    if (!selectedValues.has(value)) {
+                    // If this column has a filter and the value is not in the selected set, hide the row
+                    if (selectedValues.size === 0 || !selectedValues.has(value)) {
                         shouldShow = false;
                         break;
                     }
@@ -462,6 +508,35 @@
                 }
             });
         }
+        
+        // Export filtered residents
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            // Get IDs of visible residents
+            const visibleRows = allRows.filter(row => row.style.display !== 'none');
+            const residentIds = visibleRows.map(row => {
+                const viewLink = row.querySelector('a[href*="admin/resident"]');
+                if (viewLink) {
+                    const match = viewLink.href.match(/resident\/(\d+)/);
+                    return match ? match[1] : null;
+                }
+                return null;
+            }).filter(id => id !== null);
+            
+            // Create form and submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("export_residents") }}';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'resident_ids';
+            input.value = JSON.stringify(residentIds);
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        });
     });
 </script>
 {% endblock %}

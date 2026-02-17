@@ -574,12 +574,25 @@ def admin_audit_logs():
     return render_template('admin/audit_logs.html', audit_logs=audit_logs)
 
 # Excel Export Routes
-@app.route('/admin/export/residents')
+@app.route('/admin/export/residents', methods=['GET', 'POST'])
 def export_residents():
     """Export resident list to Excel"""
-    # Filter for enrolled residents (case insensitive)
-    enrolled = [r for r in residents if r.get('enrollment_status', '').lower() == 'enrolled' or r.get('enrolled') == True]
-    excel_file = create_resident_list_export(enrolled)
+    if request.method == 'POST':
+        # Get filtered resident IDs from POST data
+        import json
+        resident_ids_json = request.form.get('resident_ids', '[]')
+        resident_ids = json.loads(resident_ids_json)
+        
+        # Convert to integers
+        resident_ids = [int(id) for id in resident_ids]
+        
+        # Filter residents by IDs
+        filtered_residents = [r for r in residents if r.get('id') in resident_ids]
+    else:
+        # No filter - export all enrolled residents
+        filtered_residents = [r for r in residents if r.get('enrollment_status', '').lower() == 'enrolled' or r.get('enrolled') == True]
+    
+    excel_file = create_resident_list_export(filtered_residents)
     filename = f"residents_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return send_file(excel_file, as_attachment=True, download_name=filename,
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
