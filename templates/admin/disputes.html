@@ -132,9 +132,9 @@
                                 <td>
                                     {% if dispute.due_date != 'N/A' %}
                                         {% if dispute.days_until_due <= 9 %}
-                                        <span class="text-danger fw-bold">{{ dispute.due_date|date_format }}</span>
+                                        <span class="text-dark">{{ dispute.due_date|date_format }}</span>
                                         {% elif dispute.days_until_due <= 19 %}
-                                        <span class="text-warning fw-bold">{{ dispute.due_date|date_format }}</span>
+                                        <span class="text-dark">{{ dispute.due_date|date_format }}</span>
                                         {% else %}
                                         <span class="text-muted">{{ dispute.due_date|date_format }}</span>
                                         {% endif %}
@@ -149,7 +149,7 @@
                                         {% elif dispute.days_until_due <= 19 %}
                                         <span class="badge bg-warning text-dark">{{ dispute.days_until_due }} days</span>
                                         {% else %}
-                                        <span class="badge bg-secondary">{{ dispute.days_until_due }} days</span>
+                                        <span class="badge bg-success">{{ dispute.days_until_due }} days</span>
                                         {% endif %}
                                     {% else %}
                                     <span class="text-muted">-</span>
@@ -169,7 +169,7 @@
                                     {% elif dispute.priority == 'Medium' %}
                                     <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle-fill"></i> Medium</span>
                                     {% elif dispute.priority == 'Low' %}
-                                    <span class="badge bg-secondary">Low</span>
+                                    <span class="badge bg-success">Low</span>
                                     {% endif %}
                                 </td>
                                 <td>

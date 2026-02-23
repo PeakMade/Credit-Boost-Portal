@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}Resident Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="mb-1">Welcome, {{ resident.name }}!</h2>
+                {% if resident.enrollment_status != 'enrolled' %}
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-graph-up-arrow text-primary me-2"></i>
+                    <small class="text-muted me-3">Build credit with your rent payments</small>
+                    <a href="{{ url_for('resident_enroll') }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-check-circle"></i> Enroll Now
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge {% if resident.enrollment_status == 'enrolled' %}bg-success{% else %}bg-secondary{% endif %} fs-6">
+                    {{ resident.enrollment_status|title }}
+                </span>
+                <a href="{{ url_for('resident_settings') }}" class="text-secondary" style="font-size: 1.5rem;" title="Account Settings">
+                    <i class="bi bi-gear"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Next Reporting Date Banner -->
+        {% if resident.enrollment_status == 'enrolled' %}
+        <div class="alert alert-primary mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-calendar-check fs-4 me-3"></i>
+                <div>
+                    <strong>Next Reporting Date: {{ next_run_date }}</strong>
+                    <p class="mb-0 small">Your reporting history will be reported to credit bureaus on this date</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% set score = resident.credit_score|default(0) %}
+        {% if score >= 800 %}
+            {% set rating = "Exceptional" %}
+            {% set color = "#10b981" %}
+            {% set range = "800-850" %}
+        {% elif score >= 740 %}
+            {% set rating = "Very Good" %}
+            {% set color = "#34d399" %}
+            {% set range = "740-799" %}
+        {% elif score >= 670 %}
+            {% set rating = "Good" %}
+            {% set color = "#fbbf24" %}
+            {% set range = "670-739" %}
+        {% elif score >= 580 %}
+            {% set rating = "Fair" %}
+            {% set color = "#fb923c" %}
+            {% set range = "580-669" %}
+        {% else %}
+            {% set rating = "Poor" %}
+            {% set color = "#ef4444" %}
+            {% set range = "300-579" %}
+        {% endif %}
+        {% set needle_angle = ((score - 300) / 550.0 * 180)|int %}
+
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-md-6">
+                <!-- Resident Info -->
+                <div class="card mb-3">
+                    <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#personalInfoCollapse" style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-person"></i> Personal Information</h6>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div id="personalInfoCollapse" class="collapse show">
+                    <div class="card-body py-2">
+                        <!-- Credit Score Gauge -->
+                        {% if resident.enrollment_status == 'enrolled' and resident.payments and resident.payments|selectattr('reported', 'equalto', true)|list|length > 0 %}
+                        <div class="text-center mb-3 pb-2 border-bottom">
+                            <div class="credit-score-gauge mx-auto" style="max-width: 280px;">
+                                <svg viewBox="0 0 200 105" style="width: 100%; height: auto;">
+                                    <defs>
+                                        <filter id="shadow">
+                                            <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.3"/>
+                                        </filter>
+                                    </defs>
+                                    
+                                    <!-- Poor section (Red) -->
+                                    <path d="M 100 100 L 30 100 A 70 70 0 0 1 43.7 59.2 Z" fill="#ef4444" stroke="white" stroke-width="2"/>
+                                    <text x="48" y="90" font-size="9" fill="white" font-weight="bold">POOR</text>
+                                    
+                                    <!-- Fair section (Orange) -->
+                                    <path d="M 100 100 L 43.7 59.2 A 70 70 0 0 1 78.1 33.6 Z" fill="#fb923c" stroke="white" stroke-width="2"/>
+                                    <text x="60" y="58" font-size="9" fill="white" font-weight="bold">FAIR</text>
+                                    
+                                    <!-- Good section (Yellow) -->
+                                    <path d="M 100 100 L 78.1 33.6 A 70 70 0 0 1 121.9 33.6 Z" fill="#fbbf24" stroke="white" stroke-width="2"/>
+                                    <text x="88" y="48" font-size="9" fill="white" font-weight="bold">GOOD</text>
+                                    
+                                    <!-- Very Good section (Light Green) -->
+                                    <path d="M 100 100 L 121.9 33.6 A 70 70 0 0 1 156.3 59.2 Z" fill="#34d399" stroke="white" stroke-width="2"/>
+                                    <text x="120" y="58" font-size="8" fill="white" font-weight="bold">GREAT</text>
+                                    
+                                    <!-- Exceptional section (Green) -->
+                                    <path d="M 100 100 L 156.3 59.2 A 70 70 0 0 1 170 100 Z" fill="#10b981" stroke="white" stroke-width="2"/>
+                                    <text x="125" y="90" font-size="6" fill="white" font-weight="bold">EXCEPTIONAL</text>
+                                    
+                                    <!-- Center cover circle -->
+                                    <circle cx="100" cy="100" r="6" fill="#e5e7eb" filter="url(#shadow)"/>
+                                    
+                                    <!-- Needle -->
+                                    <g transform="translate(100, 100)">
+                                        <line x1="0" y1="0" x2="0" y2="-55" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" transform="rotate({{ needle_angle - 90 }})" filter="url(#shadow)"/>
+                                        <circle cx="0" cy="0" r="5" fill="#64748b" filter="url(#shadow)"/>
+                                    </g>
+                                </svg>
+                                <div class="mt-1">
+                                    <h4 class="mb-0" style="color: {{ color }}; font-weight: bold;">{{ score }}</h4>
+                                    <small class="text-muted"><strong>{{ rating }}</strong> ({{ range }})</small>
+                                    <br>
+                                    <small class="text-muted" style="font-size: 0.75rem;">As of {{ resident.credit_score_date|date_format }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center mb-3 pb-2 border-bottom">
+                            <div class="alert alert-info mb-0 py-3" style="max-width: 350px; margin: 0 auto;">
+                                <i class="bi bi-info-circle fs-4 mb-2"></i>
+                                <h6 class="mb-1">Credit Score Not Available</h6>
+                                <p class="mb-0 small">
+                                    {% if resident.enrollment_status != 'enrolled' %}
+                                    Enroll in rent reporting to start building your credit history.
+                                    {% else %}
+                                    Your credit score will be available after your first payment is reported to the credit bureaus.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <dl class="row mb-0 small">
+                            <dt class="col-sm-5">Account Number:</dt>
+                            <dd class="col-sm-7"><strong>{{ resident.account_number }}</strong></dd>
+
+                            <dt class="col-sm-5">Name:</dt>
+                            <dd class="col-sm-7">{{ resident.name }}</dd>
+
+                            <dt class="col-sm-5">Date of Birth:</dt>
+                            <dd class="col-sm-7">{{ resident.dob|date_format }}</dd>
+
+                            <dt class="col-sm-5">Address:</dt>
+                            <dd class="col-sm-7">{{ resident.address }}</dd>
+
+                            <dt class="col-sm-5">Unit:</dt>
+                            <dd class="col-sm-7">{{ resident.unit }}</dd>
+
+                            <dt class="col-sm-5">SSN:</dt>
+                            <dd class="col-sm-7">{{ resident.ssn }}</dd>
+
+                            <dt class="col-sm-5">Enrolled:</dt>
+                            <dd class="col-sm-7">
+                                {% if resident.enrollment_status == 'enrolled' %}
+                                    <span class="badge bg-success" 
+                                          data-bs-toggle="popover" 
+                                          data-bs-trigger="hover focus"
+                                          data-bs-placement="right"
+                                          data-bs-html="true"
+                                          data-bs-title="Enrollment History"
+                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp|date_format }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
+                                          style="cursor: pointer;">Yes <i class="bi bi-info-circle"></i></span>
+                                {% else %}
+                                    <span class="badge bg-secondary" 
+                                          data-bs-toggle="popover" 
+                                          data-bs-trigger="hover focus"
+                                          data-bs-placement="right"
+                                          data-bs-html="true"
+                                          data-bs-title="Enrollment History"
+                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp|date_format }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
+                                          style="cursor: pointer;">No <i class="bi bi-info-circle"></i></span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-5">Account Status:</dt>
+                            <dd class="col-sm-7">
+                                {% if resident.account_status == 'Current' %}
+                                    <span class="badge bg-success">{{ resident.account_status }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ resident.account_status }}</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-5">Account Opened:</dt>
+                            <dd class="col-sm-7">{{ resident.date_opened|date_format }}</dd>
+
+                            <dt class="col-sm-5">Monthly Payment:</dt>
+                            <dd class="col-sm-7">{{ resident.scheduled_monthly_payment|currency }}</dd>
+                        </dl>
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-md-6">
+                <!-- Reporting History -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2" data-bs-toggle="collapse" data-bs-target="#reportingHistoryCollapse" style="cursor: pointer;">
+                        <h6 class="mb-0"><i class="bi bi-credit-card"></i> Reporting History</h6>
+                        <div>
+                            <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-sm btn-light me-2" onclick="event.stopPropagation();">
+                                <i class="bi bi-file-earmark-text"></i> Reporting Info
+                            </a>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div id="reportingHistoryCollapse" class="collapse show">
+                    <div class="card-body py-2">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 small">
+                                <thead>
+                                    <tr>
+                                        <th>Month</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payment in resident.payments|enrolled_payments(resident.enrollment_history) %}
+                                    <tr>
+                                        <td>{{ payment.month }}</td>
+                                        <td>{{ payment.amount|currency }}</td>
+                                        <td>
+                                            {% if payment.status == 'Paid' %}
+                                                <span class="badge bg-success">{{ payment.status }}</span>
+                                            {% elif payment.status == 'Late' %}
+                                                <span class="badge bg-warning text-dark">{{ payment.status }}</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ payment.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- Financial Education -->
+                <div class="card mb-3">
+                    <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#financialEducationCollapse" style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-book"></i> Financial Education</h6>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div id="financialEducationCollapse" class="collapse">
+                    <div class="card-body py-2">
+                        <div class="alert alert-info mb-3 py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Enroll in Financial Education</strong>
+                                    <p class="mb-0 small">Get access to comprehensive credit and financial literacy resources.</p>
+                                </div>
+                                <button class="btn btn-success btn-sm" onclick="alert('Financial Education enrollment coming soon')">
+                                    <i class="bi bi-check-circle"></i> Enroll Now
+                                </button>
+                            </div>
+                        </div>
+                        <p class="mb-2 small text-muted">Available resources include:</p>
+                        <ul class="small mb-0">
+                            <li>Understanding Credit Scores & Reports</li>
+                            <li>Budgeting & Money Management</li>
+                            <li>Debt Management Strategies</li>
+                            <li>Savings & Investment Basics</li>
+                        </ul>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- Financial Advisement -->
+                <div class="card mb-3">
+                    <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#financialAdvisementCollapse" style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-person-badge"></i> Financial Advisement</h6>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div id="financialAdvisementCollapse" class="collapse">
+                    <div class="card-body py-2">
+                        <div class="alert alert-success mb-3 py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Enroll in Financial Advisement</strong>
+                                    <p class="mb-0 small">Connect with certified financial advisors for personalized guidance.</p>
+                                </div>
+                                <button class="btn btn-success btn-sm" onclick="alert('Financial Advisement enrollment coming soon')">
+                                    <i class="bi bi-check-circle"></i> Enroll Now
+                                </button>
+                            </div>
+                        </div>
+                        <p class="mb-2 small text-muted">Services include:</p>
+                        <ul class="small mb-0">
+                            <li>One-on-One Credit Counseling Sessions</li>
+                            <li>Personalized Financial Planning</li>
+                            <li>Budget Review & Optimization</li>
+                            <li>Goal Setting & Progress Tracking</li>
+                        </ul>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize Bootstrap popovers
+    document.addEventListener('DOMContentLoaded', function() {
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

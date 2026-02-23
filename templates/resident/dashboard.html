@@ -1,331 +1,498 @@
 {% extends "base.html" %}
 
-{% block title %}Resident Dashboard{% endblock %}
+{% block title %}Wealth Boost{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="mb-1">Welcome, {{ resident.name }}!</h2>
-                {% if resident.enrollment_status != 'enrolled' %}
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-graph-up-arrow text-primary me-2"></i>
-                    <small class="text-muted me-3">Build credit with your rent payments</small>
-                    <a href="{{ url_for('resident_enroll') }}" class="btn btn-sm btn-primary">
-                        <i class="bi bi-check-circle"></i> Enroll Now
-                    </a>
-                </div>
-                {% endif %}
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <span class="badge {% if resident.enrollment_status == 'enrolled' %}bg-success{% else %}bg-secondary{% endif %} fs-6">
-                    {{ resident.enrollment_status|title }}
-                </span>
-                <a href="{{ url_for('resident_settings') }}" class="text-secondary" style="font-size: 1.5rem;" title="Account Settings">
-                    <i class="bi bi-gear"></i>
-                </a>
-            </div>
-        </div>
+<style>
+  :root {
+    --wb-max: 600px;
+    --wb-gap: 12px;
+    --sidebar-width: 220px;
+  }
 
-        <!-- Next Reporting Date Banner -->
-        {% if resident.enrollment_status == 'enrolled' %}
-        <div class="alert alert-primary mb-4">
-            <div class="d-flex align-items-center">
-                <i class="bi bi-calendar-check fs-4 me-3"></i>
-                <div>
-                    <strong>Next Reporting Date: {{ next_run_date }}</strong>
-                    <p class="mb-0 small">Your reporting history will be reported to credit bureaus on this date</p>
-                </div>
-            </div>
-        </div>
-        {% endif %}
+  .wb {
+    background: #fff;
+    min-height: calc(100vh - 100px);
+  }
 
-        {% set score = resident.credit_score|default(0) %}
-        {% if score >= 800 %}
-            {% set rating = "Exceptional" %}
-            {% set color = "#10b981" %}
-            {% set range = "800-850" %}
-        {% elif score >= 740 %}
-            {% set rating = "Very Good" %}
-            {% set color = "#34d399" %}
-            {% set range = "740-799" %}
-        {% elif score >= 670 %}
-            {% set rating = "Good" %}
-            {% set color = "#fbbf24" %}
-            {% set range = "670-739" %}
-        {% elif score >= 580 %}
-            {% set rating = "Fair" %}
-            {% set color = "#fb923c" %}
-            {% set range = "580-669" %}
-        {% else %}
-            {% set rating = "Poor" %}
-            {% set color = "#ef4444" %}
-            {% set range = "300-579" %}
-        {% endif %}
-        {% set needle_angle = ((score - 300) / 550.0 * 180)|int %}
+  /* Home View Styles */
+  .wb__home {
+    padding: clamp(8px, 1.5vw, 16px);
+  }
 
-        <div class="row">
-            <!-- Left Column -->
-            <div class="col-md-6">
-                <!-- Resident Info -->
-                <div class="card mb-3">
-                    <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#personalInfoCollapse" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-person"></i> Personal Information</h6>
-                            <i class="bi bi-chevron-down"></i>
-                        </div>
-                    </div>
-                    <div id="personalInfoCollapse" class="collapse show">
-                    <div class="card-body py-2">
-                        <!-- Credit Score Gauge -->
-                        {% if resident.enrollment_status == 'enrolled' and resident.payments and resident.payments|selectattr('reported', 'equalto', true)|list|length > 0 %}
-                        <div class="text-center mb-3 pb-2 border-bottom">
-                            <div class="credit-score-gauge mx-auto" style="max-width: 280px;">
-                                <svg viewBox="0 0 200 105" style="width: 100%; height: auto;">
-                                    <defs>
-                                        <filter id="shadow">
-                                            <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.3"/>
-                                        </filter>
-                                    </defs>
-                                    
-                                    <!-- Poor section (Red) -->
-                                    <path d="M 100 100 L 30 100 A 70 70 0 0 1 43.7 59.2 Z" fill="#ef4444" stroke="white" stroke-width="2"/>
-                                    <text x="48" y="90" font-size="9" fill="white" font-weight="bold">POOR</text>
-                                    
-                                    <!-- Fair section (Orange) -->
-                                    <path d="M 100 100 L 43.7 59.2 A 70 70 0 0 1 78.1 33.6 Z" fill="#fb923c" stroke="white" stroke-width="2"/>
-                                    <text x="60" y="58" font-size="9" fill="white" font-weight="bold">FAIR</text>
-                                    
-                                    <!-- Good section (Yellow) -->
-                                    <path d="M 100 100 L 78.1 33.6 A 70 70 0 0 1 121.9 33.6 Z" fill="#fbbf24" stroke="white" stroke-width="2"/>
-                                    <text x="88" y="48" font-size="9" fill="white" font-weight="bold">GOOD</text>
-                                    
-                                    <!-- Very Good section (Light Green) -->
-                                    <path d="M 100 100 L 121.9 33.6 A 70 70 0 0 1 156.3 59.2 Z" fill="#34d399" stroke="white" stroke-width="2"/>
-                                    <text x="120" y="58" font-size="8" fill="white" font-weight="bold">GREAT</text>
-                                    
-                                    <!-- Exceptional section (Green) -->
-                                    <path d="M 100 100 L 156.3 59.2 A 70 70 0 0 1 170 100 Z" fill="#10b981" stroke="white" stroke-width="2"/>
-                                    <text x="125" y="90" font-size="6" fill="white" font-weight="bold">EXCEPTIONAL</text>
-                                    
-                                    <!-- Center cover circle -->
-                                    <circle cx="100" cy="100" r="6" fill="#e5e7eb" filter="url(#shadow)"/>
-                                    
-                                    <!-- Needle -->
-                                    <g transform="translate(100, 100)">
-                                        <line x1="0" y1="0" x2="0" y2="-55" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" transform="rotate({{ needle_angle - 90 }})" filter="url(#shadow)"/>
-                                        <circle cx="0" cy="0" r="5" fill="#64748b" filter="url(#shadow)"/>
-                                    </g>
-                                </svg>
-                                <div class="mt-1">
-                                    <h4 class="mb-0" style="color: {{ color }}; font-weight: bold;">{{ score }}</h4>
-                                    <small class="text-muted"><strong>{{ rating }}</strong> ({{ range }})</small>
-                                    <br>
-                                    <small class="text-muted" style="font-size: 0.75rem;">As of {{ resident.credit_score_date|date_format }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        {% else %}
-                        <div class="text-center mb-3 pb-2 border-bottom">
-                            <div class="alert alert-info mb-0 py-3" style="max-width: 350px; margin: 0 auto;">
-                                <i class="bi bi-info-circle fs-4 mb-2"></i>
-                                <h6 class="mb-1">Credit Score Not Available</h6>
-                                <p class="mb-0 small">
-                                    {% if resident.enrollment_status != 'enrolled' %}
-                                    Enroll in rent reporting to start building your credit history.
-                                    {% else %}
-                                    Your credit score will be available after your first payment is reported to the credit bureaus.
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <dl class="row mb-0 small">
-                            <dt class="col-sm-5">Account Number:</dt>
-                            <dd class="col-sm-7"><strong>{{ resident.account_number }}</strong></dd>
+  .wb__wrap {
+    margin: 0 auto;
+    max-width: var(--wb-max);
+  }
 
-                            <dt class="col-sm-5">Name:</dt>
-                            <dd class="col-sm-7">{{ resident.name }}</dd>
+  .wb__header {
+    text-align: center;
+    margin-bottom: clamp(10px, 1.5vw, 16px);
+  }
 
-                            <dt class="col-sm-5">Date of Birth:</dt>
-                            <dd class="col-sm-7">{{ resident.dob|date_format }}</dd>
+  .wb__title {
+    margin: 0 0 6px;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-size: clamp(20px, 3vw, 32px);
+    line-height: 1.05;
+    background: linear-gradient(90deg, #2d76c7, #78a98b);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 
-                            <dt class="col-sm-5">Address:</dt>
-                            <dd class="col-sm-7">{{ resident.address }}</dd>
+  .wb__gauge {
+    width: min(380px, 80%);
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
 
-                            <dt class="col-sm-5">Unit:</dt>
-                            <dd class="col-sm-7">{{ resident.unit }}</dd>
+  .wb__subtitle {
+    margin-top: 6px;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    font-weight: 600;
+    color: #4b5563;
+    font-size: 16px;
+  }
 
-                            <dt class="col-sm-5">SSN:</dt>
-                            <dd class="col-sm-7">{{ resident.ssn }}</dd>
+  .wb__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--wb-gap);
+    align-items: stretch;
+  }
 
-                            <dt class="col-sm-5">Enrolled:</dt>
-                            <dd class="col-sm-7">
-                                {% if resident.enrollment_status == 'enrolled' %}
-                                    <span class="badge bg-success" 
-                                          data-bs-toggle="popover" 
-                                          data-bs-trigger="hover focus"
-                                          data-bs-placement="right"
-                                          data-bs-html="true"
-                                          data-bs-title="Enrollment History"
-                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp|date_format }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
-                                          style="cursor: pointer;">Yes <i class="bi bi-info-circle"></i></span>
-                                {% else %}
-                                    <span class="badge bg-secondary" 
-                                          data-bs-toggle="popover" 
-                                          data-bs-trigger="hover focus"
-                                          data-bs-placement="right"
-                                          data-bs-html="true"
-                                          data-bs-title="Enrollment History"
-                                          data-bs-content="{% if resident.enrollment_history %}{% for event in resident.enrollment_history %}<div class='mb-1'><small>{% if event.action == 'enrolled' %}<i class='bi bi-check-circle text-success'></i>{% elif event.action == 'revoked consent' %}<i class='bi bi-x-circle text-danger'></i>{% endif %} {{ event.action|title }}<br>{{ event.timestamp|date_format }}</small></div>{% endfor %}{% else %}<small>No enrollment history available</small>{% endif %}"
-                                          style="cursor: pointer;">No <i class="bi bi-info-circle"></i></span>
-                                {% endif %}
-                            </dd>
+  .wb__tile {
+    display: block;
+    text-decoration: none;
+    border-radius: 14px;
+    overflow: hidden;
+    transform: translateZ(0);
+    background: #e5e7eb;
+    transition: all 0.3s ease;
+  }
 
-                            <dt class="col-sm-5">Account Status:</dt>
-                            <dd class="col-sm-7">
-                                {% if resident.account_status == 'Current' %}
-                                    <span class="badge bg-success">{{ resident.account_status }}</span>
-                                {% else %}
-                                    <span class="badge bg-danger">{{ resident.account_status }}</span>
-                                {% endif %}
-                            </dd>
+  .wb__tileImg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
 
-                            <dt class="col-sm-5">Account Opened:</dt>
-                            <dd class="col-sm-7">{{ resident.date_opened|date_format }}</dd>
+  .wb__tile:hover {
+    cursor: pointer;
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
 
-                            <dt class="col-sm-5">Monthly Payment:</dt>
-                            <dd class="col-sm-7">{{ resident.scheduled_monthly_payment|currency }}</dd>
-                        </dl>
-                    </div>
-                    </div>
-                </div>
-            </div>
+  /* Detail View Styles */
+  .wb__detail {
+    display: none;
+    min-height: calc(100vh - 100px);
+  }
 
-            <!-- Right Column -->
-            <div class="col-md-6">
-                <!-- Reporting History -->
-                <div class="card mb-3">
-                    <div class="card-header d-flex justify-content-between align-items-center py-2" data-bs-toggle="collapse" data-bs-target="#reportingHistoryCollapse" style="cursor: pointer;">
-                        <h6 class="mb-0"><i class="bi bi-credit-card"></i> Reporting History</h6>
-                        <div>
-                            <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-sm btn-light me-2" onclick="event.stopPropagation();">
-                                <i class="bi bi-file-earmark-text"></i> Reporting Info
-                            </a>
-                            <i class="bi bi-chevron-down"></i>
-                        </div>
-                    </div>
-                    <div id="reportingHistoryCollapse" class="collapse show">
-                    <div class="card-body py-2">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover mb-0 small">
-                                <thead>
-                                    <tr>
-                                        <th>Month</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for payment in resident.payments|enrolled_payments(resident.enrollment_history) %}
-                                    <tr>
-                                        <td>{{ payment.month }}</td>
-                                        <td>{{ payment.amount|currency }}</td>
-                                        <td>
-                                            {% if payment.status == 'Paid' %}
-                                                <span class="badge bg-success">{{ payment.status }}</span>
-                                            {% elif payment.status == 'Late' %}
-                                                <span class="badge bg-warning text-dark">{{ payment.status }}</span>
-                                            {% else %}
-                                                <span class="badge bg-danger">{{ payment.status }}</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    </div>
-                </div>
+  .wb__detail.active {
+    display: flex;
+  }
 
-                <!-- Financial Education -->
-                <div class="card mb-3">
-                    <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#financialEducationCollapse" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-book"></i> Financial Education</h6>
-                            <i class="bi bi-chevron-down"></i>
-                        </div>
-                    </div>
-                    <div id="financialEducationCollapse" class="collapse">
-                    <div class="card-body py-2">
-                        <div class="alert alert-info mb-3 py-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>Enroll in Financial Education</strong>
-                                    <p class="mb-0 small">Get access to comprehensive credit and financial literacy resources.</p>
-                                </div>
-                                <button class="btn btn-success btn-sm" onclick="alert('Financial Education enrollment coming soon')">
-                                    <i class="bi bi-check-circle"></i> Enroll Now
-                                </button>
-                            </div>
-                        </div>
-                        <p class="mb-2 small text-muted">Available resources include:</p>
-                        <ul class="small mb-0">
-                            <li>Understanding Credit Scores & Reports</li>
-                            <li>Budgeting & Money Management</li>
-                            <li>Debt Management Strategies</li>
-                            <li>Savings & Investment Basics</li>
-                        </ul>
-                    </div>
-                    </div>
-                </div>
+  .wb__sidebar {
+    width: var(--sidebar-width);
+    background: #f8f9fa;
+    border-right: 1px solid #e0e0e0;
+    padding: 1rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 
-                <!-- Financial Advisement -->
-                <div class="card mb-3">
-                    <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#financialAdvisementCollapse" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-person-badge"></i> Financial Advisement</h6>
-                            <i class="bi bi-chevron-down"></i>
-                        </div>
-                    </div>
-                    <div id="financialAdvisementCollapse" class="collapse">
-                    <div class="card-body py-2">
-                        <div class="alert alert-success mb-3 py-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>Enroll in Financial Advisement</strong>
-                                    <p class="mb-0 small">Connect with certified financial advisors for personalized guidance.</p>
-                                </div>
-                                <button class="btn btn-success btn-sm" onclick="alert('Financial Advisement enrollment coming soon')">
-                                    <i class="bi bi-check-circle"></i> Enroll Now
-                                </button>
-                            </div>
-                        </div>
-                        <p class="mb-2 small text-muted">Services include:</p>
-                        <ul class="small mb-0">
-                            <li>One-on-One Credit Counseling Sessions</li>
-                            <li>Personalized Financial Planning</li>
-                            <li>Budget Review & Optimization</li>
-                            <li>Goal Setting & Progress Tracking</li>
-                        </ul>
-                    </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  .wb__sidebar-tile {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 8px;
+    background: #fff;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: #333;
+  }
+
+  .wb__sidebar-tile:hover {
+    border-color: #2d76c7;
+    background: #f0f7ff;
+  }
+
+  .wb__sidebar-tile.active {
+    border-color: #2d76c7;
+    background: #e6f2ff;
+  }
+
+  .wb__sidebar-tile img {
+    width: 50px;
+    height: auto;
+    border-radius: 6px;
+    margin-right: 0.75rem;
+  }
+
+  .wb__sidebar-tile span {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .wb__detail-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+  }
+
+  .wb__detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #2d76c7;
+  }
+
+  .wb__detail-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(90deg, #2d76c7, #78a98b);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .wb__back-btn {
+    background: #2d76c7;
+    color: white;
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .wb__back-btn:hover {
+    background: #1e5fa3;
+    transform: translateY(-1px);
+  }
+
+  .section-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #2d76c7;
+  }
+
+  .coming-soon-content {
+    text-align: center;
+    padding: 3rem 2rem;
+  }
+
+  .coming-soon-content i {
+    font-size: 4rem;
+    color: #2d76c7;
+    margin-bottom: 1rem;
+  }
+
+  .coming-soon-content h3 {
+    color: #333;
+    margin-bottom: 0.5rem;
+  }
+
+  .coming-soon-content p {
+    color: #666;
+    font-size: 1.1rem;
+  }
+
+  @media (max-width: 768px) {
+    .wb__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .wb__sidebar {
+      width: 180px;
+    }
+
+    .wb__sidebar-tile span {
+      font-size: 0.8rem;
+    }
+
+    .wb__detail-content {
+      padding: 1rem;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .wb__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .wb__detail {
+      flex-direction: column;
+    }
+
+    .wb__sidebar {
+      width: 100%;
+      flex-direction: row;
+      overflow-x: auto;
+      border-right: none;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .wb__sidebar-tile {
+      flex-direction: column;
+      text-align: center;
+      min-width: 80px;
+    }
+
+    .wb__sidebar-tile img {
+      margin-right: 0;
+      margin-bottom: 0.25rem;
+      width: 40px;
+    }
+
+    .wb__sidebar-tile span {
+      font-size: 0.7rem;
+    }
+  }
+</style>
+
+<!-- Home View -->
+<section class="wb wb__home" id="homeView" aria-label="Wealth Boost">
+  <div class="wb__wrap">
+    <header class="wb__header">
+      <h2 class="wb__title">Wealth Boost</h2>
+      <img
+        class="wb__gauge"
+        src="{{ url_for('static', filename='images/Wealt Boost v3_credit_score_gauge.png') }}"
+        alt="Credit Score"
+        loading="lazy"
+        decoding="async"
+      />
+      <div class="wb__subtitle">Credit Score</div>
+    </header>
+
+    <div class="wb__grid">
+      <a class="wb__tile" href="#" onclick="showDetail('creditBuilder'); return false;" data-section="creditBuilder">
+        <img class="wb__tileImg" src="{{ url_for('static', filename='images/Wealt Boost v3_credit_builder_tile.png') }}" alt="Credit Builder" loading="lazy" decoding="async" />
+      </a>
+
+      <a class="wb__tile" href="#" onclick="showDetail('creditAlert'); return false;" data-section="creditAlert">
+        <img class="wb__tileImg" src="{{ url_for('static', filename='images/Wealt Boost v3_credit_alert_tile.png') }}" alt="Credit Alert" loading="lazy" decoding="async" />
+      </a>
+
+      <a class="wb__tile" href="#" onclick="showDetail('moneyCoach'); return false;" data-section="moneyCoach">
+        <img class="wb__tileImg" src="{{ url_for('static', filename='images/Wealt Boost v3_money_coach_tile.png') }}" alt="Money Coach" loading="lazy" decoding="async" />
+      </a>
+
+      <a class="wb__tile" href="#" onclick="showDetail('moneySkills'); return false;" data-section="moneySkills">
+        <img class="wb__tileImg" src="{{ url_for('static', filename='images/Wealt Boost v3_money_skills_tile.png') }}" alt="Money Skills" loading="lazy" decoding="async" />
+      </a>
+
+      <a class="wb__tile" href="#" onclick="showDetail('idProtect'); return false;" data-section="idProtect">
+        <img class="wb__tileImg" src="{{ url_for('static', filename='images/Wealt Boost v3_ID_Protect_tile.png') }}" alt="IDProtect" loading="lazy" decoding="async" />
+      </a>
+
+      <a class="wb__tile" href="#" onclick="showDetail('idAlert'); return false;" data-section="idAlert">
+        <img class="wb__tileImg" src="{{ url_for('static', filename='images/Wealt Boost v3_ID_Alert_tile.png') }}" alt="IDAlert" loading="lazy" decoding="async" />
+      </a>
     </div>
+  </div>
+</section>
+
+<!-- Detail View -->
+<section class="wb wb__detail" id="detailView">
+  <aside class="wb__sidebar">
+    <a href="#" class="wb__sidebar-tile" onclick="showDetail('creditBuilder'); return false;" data-nav="creditBuilder">
+      <img src="{{ url_for('static', filename='images/Wealt Boost v3_credit_builder_tile.png') }}" alt="Credit Builder">
+      <span>Credit Builder</span>
+    </a>
+    <a href="#" class="wb__sidebar-tile" onclick="showDetail('creditAlert'); return false;" data-nav="creditAlert">
+      <img src="{{ url_for('static', filename='images/Wealt Boost v3_credit_alert_tile.png') }}" alt="Credit Alert">
+      <span>Credit Alert</span>
+    </a>
+    <a href="#" class="wb__sidebar-tile" onclick="showDetail('moneyCoach'); return false;" data-nav="moneyCoach">
+      <img src="{{ url_for('static', filename='images/Wealt Boost v3_money_coach_tile.png') }}" alt="Money Coach">
+      <span>Money Coach</span>
+    </a>
+    <a href="#" class="wb__sidebar-tile" onclick="showDetail('moneySkills'); return false;" data-nav="moneySkills">
+      <img src="{{ url_for('static', filename='images/Wealt Boost v3_money_skills_tile.png') }}" alt="Money Skills">
+      <span>Money Skills</span>
+    </a>
+    <a href="#" class="wb__sidebar-tile" onclick="showDetail('idProtect'); return false;" data-nav="idProtect">
+      <img src="{{ url_for('static', filename='images/Wealt Boost v3_ID_Protect_tile.png') }}" alt="IDProtect">
+      <span>IDProtect</span>
+    </a>
+    <a href="#" class="wb__sidebar-tile" onclick="showDetail('idAlert'); return false;" data-nav="idAlert">
+      <img src="{{ url_for('static', filename='images/Wealt Boost v3_ID_Alert_tile.png') }}" alt="IDAlert">
+      <span>IDAlert</span>
+    </a>
+  </aside>
+
+  <div class="wb__detail-content">
+    <div class="wb__detail-header">
+      <h2 class="wb__detail-title" id="detailTitle">Credit Builder</h2>
+      <button class="wb__back-btn" onclick="showHome()">
+        <i class="bi bi-house-door"></i> Back to Dashboard
+      </button>
+    </div>
+
+    <div id="detailContentArea">
+      <!-- Content will be inserted here -->
+    </div>
+  </div>
+</section>
+
+<!-- Hidden content templates -->
+<div id="creditBuilderContent" style="display: none;">
+  <div class="row">
+    <div class="col-md-6">
+      <div class="section-card">
+        <h5 class="section-title"><i class="bi bi-person-circle"></i> Personal Information</h5>
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Name:</dt>
+          <dd class="col-sm-7">{{ resident.name }}</dd>
+          <dt class="col-sm-5">Email:</dt>
+          <dd class="col-sm-7">{{ resident.email }}</dd>
+          <dt class="col-sm-5">Phone:</dt>
+          <dd class="col-sm-7">{{ resident.phone }}</dd>
+          <dt class="col-sm-5">Date of Birth:</dt>
+          <dd class="col-sm-7">{{ resident.dob|date_format }}</dd>
+          <dt class="col-sm-5">SSN:</dt>
+          <dd class="col-sm-7">***-**-{{ resident.ssn[-4:] }}</dd>
+          <dt class="col-sm-5">Property:</dt>
+          <dd class="col-sm-7">{{ resident.property_name }}</dd>
+          <dt class="col-sm-5">Unit:</dt>
+          <dd class="col-sm-7">{{ resident.unit_number }}</dd>
+          <dt class="col-sm-5">Move-in Date:</dt>
+          <dd class="col-sm-7">{{ resident.move_in_date|date_format }}</dd>
+          <dt class="col-sm-5">Lease End Date:</dt>
+          <dd class="col-sm-7">{{ resident.lease_end_date|date_format }}</dd>
+          <dt class="col-sm-5">Rent Amount:</dt>
+          <dd class="col-sm-7">{{ resident.scheduled_monthly_payment|currency }}</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="section-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="section-title mb-0"><i class="bi bi-credit-card"></i> Reporting History</h5>
+          <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-file-earmark-text"></i> More Info
+          </a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for payment in resident.payments|enrolled_payments(resident.enrollment_history) %}
+              <tr>
+                <td>{{ payment.month }}</td>
+                <td>{{ payment.amount|currency }}</td>
+                <td>
+                  {% if payment.status == 'Paid' %}
+                    <span class="badge bg-success">{{ payment.status }}</span>
+                  {% elif payment.status == 'Late' %}
+                    <span class="badge bg-warning text-dark">{{ payment.status }}</span>
+                  {% else %}
+                    <span class="badge bg-danger">{{ payment.status }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% if resident.rent_reporting_status != 'Enrolled' %}
+      <div class="alert alert-warning mt-3">
+        <strong><i class="bi bi-exclamation-triangle"></i> Not Enrolled</strong><br>
+        <a href="{{ url_for('resident_enroll') }}" class="btn btn-success btn-sm mt-2">
+          <i class="bi bi-check-circle"></i> Enroll Now
+        </a>
+      </div>
+      {% else %}
+      <div class="alert alert-success mt-3">
+        <strong><i class="bi bi-check-circle"></i> Credit Builder Active!</strong><br>
+        Your rent payments are being reported to credit bureaus.
+      </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
 
 <script>
-    // Initialize Bootstrap popovers
-    document.addEventListener('DOMContentLoaded', function() {
-        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
-            return new bootstrap.Popover(popoverTriggerEl);
-        });
+  const sectionTitles = {
+    creditBuilder: 'Credit Builder',
+    creditAlert: 'Credit Alert',
+    moneyCoach: 'Money Coach',
+    moneySkills: 'Money Skills',
+    idProtect: 'IDProtect',
+    idAlert: 'IDAlert'
+  };
+
+  const comingSoonHTML = `
+    <div class="coming-soon-content">
+      <i class="bi bi-hourglass-split"></i>
+      <h3>Coming Soon</h3>
+      <p>This function will be added soon!</p>
+    </div>
+  `;
+
+  function showDetail(section) {
+    // Hide home view, show detail view
+    document.getElementById('homeView').style.display = 'none';
+    document.getElementById('detailView').classList.add('active');
+
+    // Update title
+    document.getElementById('detailTitle').textContent = sectionTitles[section];
+
+    // Update active state in sidebar
+    document.querySelectorAll('.wb__sidebar-tile').forEach(tile => {
+      tile.classList.remove('active');
     });
+    document.querySelector(`[data-nav="${section}"]`).classList.add('active');
+
+    // Load content
+    const contentArea = document.getElementById('detailContentArea');
+    const template = document.getElementById(section + 'Content');
+    
+    if (template) {
+      contentArea.innerHTML = template.innerHTML;
+    } else {
+      contentArea.innerHTML = comingSoonHTML;
+    }
+
+    // Scroll to top
+    document.querySelector('.wb__detail-content').scrollTop = 0;
+  }
+
+  function showHome() {
+    document.getElementById('detailView').classList.remove('active');
+    document.getElementById('homeView').style.display = 'block';
+  }
 </script>
 {% endblock %}

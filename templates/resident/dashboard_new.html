@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}Wealth Boost Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .wealth-boost-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .wealth-boost-title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .credit-score-section {
+        text-align: center;
+        padding: 1.5rem 0;
+    }
+    
+    .tiles-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .service-tile {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 2px solid transparent;
+    }
+    
+    .service-tile:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        border-color: #667eea;
+    }
+    
+    .service-tile-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+    
+    .service-tile-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+    
+    .service-tile-subtitle {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .tile-credit-builder { border-left: 4px solid #28a745; }
+    .tile-credit-alert { border-left: 4px solid #dc3545; }
+    .tile-money-coach { border-left: 4px solid #ffc107; }
+    .tile-money-skills { border-left: 4px solid #17a2b8; }
+    .tile-id-protect { border-left: 4px solid #6f42c1; }
+    .tile-id-alert { border-left: 4px solid #fd7e14; }
+    
+    .expanded-content {
+        margin-top: 2rem;
+        display: none;
+    }
+    
+    .expanded-content.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .section-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #667eea;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- Wealth Boost Header -->
+    <div class="wealth-boost-header">
+        <h1 class="wealth-boost-title">Wealth Boost</h1>
+        <p class="mb-0">Welcome, {{ resident.name }}</p>
+    </div>
+    
+    <!-- Credit Score Display -->
+    <div class="credit-score-section">
+        {% if resident.rent_reporting_status == 'Enrolled' and resident.payments|enrolled_payments(resident.enrollment_history)|length > 0 %}
+        <!-- SVG Gauge -->
+        <svg width="300" height="200" viewBox="0 0 250 170" class="mx-auto">
+            <!-- Background arc -->
+            <path d="M 30 140 A 95 95 0 0 1 220 140" 
+                  fill="none" 
+                  stroke="#e0e0e0" 
+                  stroke-width="20"/>
+            
+            <!-- Colored segments -->
+            <!-- Poor (300-579) - Red -->
+            <path d="M 30 140 A 95 95 0 0 1 85 50" 
+                  fill="none" 
+                  stroke="#dc3545" 
+                  stroke-width="20"/>
+            
+            <!-- Fair (580-669) - Orange -->
+            <path d="M 85 50 A 95 95 0 0 1 125 25" 
+                  fill="none" 
+                  stroke="#fd7e14" 
+                  stroke-width="20"/>
+            
+            <!-- Good (670-739) - Yellow -->
+            <path d="M 125 25 A 95 95 0 0 1 165 25" 
+                  fill="none" 
+                  stroke="#ffc107" 
+                  stroke-width="20"/>
+            
+            <!-- Very Good (740-799) - Light Green -->
+            <path d="M 165 25 A 95 95 0 0 1 205 50" 
+                  fill="none" 
+                  stroke="#8bc34a" 
+                  stroke-width="20"/>
+            
+            <!-- Excellent (800-850) - Dark Green -->
+            <path d="M 205 50 A 95 95 0 0 1 220 140" 
+                  fill="none" 
+                  stroke="#28a745" 
+                  stroke-width="20"/>
+            
+            <!-- Pointer -->
+            {% set score = resident.credit_score %}
+            {% set angle = ((score - 300) / 550) * 180 %}
+            {% set rad = (angle - 90) * 3.14159 / 180 %}
+            {% set pointer_x = 125 + 70 * (rad|cos) %}
+            {% set pointer_y = 140 + 70 * (rad|sin) %}
+            
+            <line x1="125" y1="140" 
+                  x2="{{ pointer_x }}" 
+                  y2="{{ pointer_y }}" 
+                  stroke="#333" 
+                  stroke-width="3"/>
+            <circle cx="125" cy="140" r="8" fill="#333"/>
+            
+            <!-- Score text -->
+            <text x="125" y="120" 
+                  text-anchor="middle" 
+                  font-size="32" 
+                  font-weight="bold" 
+                  fill="#333">{{ score }}</text>
+        </svg>
+        
+        <!-- Score category -->
+        <div class="mt-2">
+            {% if score >= 800 %}
+                <span class="badge bg-success fs-5">Excellent</span>
+            {% elif score >= 740 %}
+                <span class="badge fs-5" style="background-color: #8bc34a;">Very Good</span>
+            {% elif score >= 670 %}
+                <span class="badge bg-warning text-dark fs-5">Good</span>
+            {% elif score >= 580 %}
+                <span class="badge fs-5" style="background-color: #fd7e14;">Fair</span>
+            {% else %}
+                <span class="badge bg-danger fs-5">Poor</span>
+            {% endif %}
+        </div>
+        
+        <p class="text-muted mt-2 mb-0">
+            As of {{ resident|attr('last_quarter_date') }}
+        </p>
+        {% else %}
+        <div class="py-4">
+            <i class="bi bi-lock text-muted" style="font-size: 4rem;"></i>
+            <p class="text-muted mt-3 mb-0 fs-5">Credit score will be available after enrollment and first payment report</p>
+            <a href="{{ url_for('resident_enroll') }}" class="btn btn-primary btn-lg mt-3">
+                <i class="bi bi-check-circle"></i> Enroll Now
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Service Tiles -->
+    <div class="tiles-grid">
+        <!-- Credit Builder Tile -->
+        <div class="service-tile tile-credit-builder" onclick="toggleCreditBuilder()">
+            <i class="bi bi-graph-up-arrow service-tile-icon" style="color: #28a745;"></i>
+            <div class="service-tile-title">Credit Builder</div>
+            <div class="service-tile-subtitle">Build credit with rent payments</div>
+        </div>
+        
+        <!-- Credit Alert Tile -->
+        <div class="service-tile tile-credit-alert" onclick="showComingSoon('Credit Alert')">
+            <i class="bi bi-bell service-tile-icon" style="color: #dc3545;"></i>
+            <div class="service-tile-title">Credit Alert</div>
+            <div class="service-tile-subtitle">Monitor credit changes</div>
+        </div>
+        
+        <!-- Money Coach Tile -->
+        <div class="service-tile tile-money-coach" onclick="showComingSoon('Money Coach')">
+            <i class="bi bi-person-badge service-tile-icon" style="color: #ffc107;"></i>
+            <div class="service-tile-title">Money Coach</div>
+            <div class="service-tile-subtitle">Financial guidance & support</div>
+        </div>
+        
+        <!-- Money Skills Tile -->
+        <div class="service-tile tile-money-skills" onclick="showComingSoon('Money Skills')">
+            <i class="bi bi-book service-tile-icon" style="color: #17a2b8;"></i>
+            <div class="service-tile-title">Money Skills</div>
+            <div class="service-tile-subtitle">Financial education resources</div>
+        </div>
+        
+        <!-- IDProtect Tile -->
+        <div class="service-tile tile-id-protect" onclick="showComingSoon('IDProtect')">
+            <i class="bi bi-shield-check service-tile-icon" style="color: #6f42c1;"></i>
+            <div class="service-tile-title">IDProtect</div>
+            <div class="service-tile-subtitle">Identity theft protection</div>
+        </div>
+        
+        <!-- IDAlert Tile -->
+        <div class="service-tile tile-id-alert" onclick="showComingSoon('IDAlert')">
+            <i class="bi bi-exclamation-triangle service-tile-icon" style="color: #fd7e14;"></i>
+            <div class="service-tile-title">IDAlert</div>
+            <div class="service-tile-subtitle">Identity monitoring alerts</div>
+        </div>
+    </div>
+    
+    <!-- Credit Builder Expanded Content -->
+    <div id="creditBuilderContent" class="expanded-content">
+        <div class="row">
+            <div class="col-md-6">
+                <!-- Personal Information -->
+                <div class="section-card">
+                    <h5 class="section-title"><i class="bi bi-person-circle"></i> Personal Information</h5>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Name:</dt>
+                        <dd class="col-sm-7">{{ resident.name }}</dd>
+                        
+                        <dt class="col-sm-5">Email:</dt>
+                        <dd class="col-sm-7">{{ resident.email }}</dd>
+                        
+                        <dt class="col-sm-5">Phone:</dt>
+                        <dd class="col-sm-7">{{ resident.phone }}</dd>
+                        
+                        <dt class="col-sm-5">Date of Birth:</dt>
+                        <dd class="col-sm-7">{{ resident.dob|date_format }}</dd>
+                        
+                        <dt class="col-sm-5">SSN:</dt>
+                        <dd class="col-sm-7">***-**-{{ resident.ssn[-4:] }}</dd>
+                        
+                        <dt class="col-sm-5">Property:</dt>
+                        <dd class="col-sm-7">{{ resident.property_name }}</dd>
+                        
+                        <dt class="col-sm-5">Unit:</dt>
+                        <dd class="col-sm-7">{{ resident.unit_number }}</dd>
+                        
+                        <dt class="col-sm-5">Move-in Date:</dt>
+                        <dd class="col-sm-7">{{ resident.move_in_date|date_format }}</dd>
+                        
+                        <dt class="col-sm-5">Lease End Date:</dt>
+                        <dd class="col-sm-7">{{ resident.lease_end_date|date_format }}</dd>
+                        
+                        <dt class="col-sm-5">Rent Amount:</dt>
+                        <dd class="col-sm-7">{{ resident.scheduled_monthly_payment|currency }}</dd>
+                    </dl>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <!-- Reporting History -->
+                <div class="section-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="section-title mb-0"><i class="bi bi-credit-card"></i> Reporting History</h5>
+                        <a href="{{ url_for('resident_rent_reporting') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-file-earmark-text"></i> More Info
+                        </a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in resident.payments|enrolled_payments(resident.enrollment_history) %}
+                                <tr>
+                                    <td>{{ payment.month }}</td>
+                                    <td>{{ payment.amount|currency }}</td>
+                                    <td>
+                                        {% if payment.status == 'Paid' %}
+                                            <span class="badge bg-success">{{ payment.status }}</span>
+                                        {% elif payment.status == 'Late' %}
+                                            <span class="badge bg-warning text-dark">{{ payment.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ payment.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Enrollment Status -->
+                {% if resident.rent_reporting_status != 'Enrolled' %}
+                <div class="alert alert-warning mt-3">
+                    <strong><i class="bi bi-exclamation-triangle"></i> Not Enrolled</strong><br>
+                    <a href="{{ url_for('resident_enroll') }}" class="btn btn-success btn-sm mt-2">
+                        <i class="bi bi-check-circle"></i> Enroll Now
+                    </a>
+                </div>
+                {% else %}
+                <div class="alert alert-success mt-3">
+                    <strong><i class="bi bi-check-circle"></i> Credit Builder Active!</strong><br>
+                    Your rent payments are being reported to credit bureaus.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Coming Soon Modal -->
+<div class="modal fade" id="comingSoonModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="comingSoonModalLabel">Service Coming Soon</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-hourglass-split" style="font-size: 4rem; color: #667eea;"></i>
+                <h4 class="mt-3" id="serviceName"></h4>
+                <p class="text-muted">More information coming soon!</p>
+                <p class="mb-4">This service will be available soon. Click below to enroll and be notified when it launches.</p>
+                <button class="btn btn-primary btn-lg" onclick="enrollService()">
+                    <i class="bi bi-check-circle"></i> Enroll Now
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle Credit Builder expanded content
+    function toggleCreditBuilder() {
+        const content = document.getElementById('creditBuilderContent');
+        content.classList.toggle('show');
+        
+        // Scroll to content if expanding
+        if (content.classList.contains('show')) {
+            setTimeout(() => {
+                content.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+    }
+    
+    // Show coming soon modal
+    function showComingSoon(serviceName) {
+        document.getElementById('serviceName').textContent = serviceName;
+        const modal = new bootstrap.Modal(document.getElementById('comingSoonModal'));
+        modal.show();
+    }
+    
+    // Enroll in service
+    function enrollService() {
+        alert('Service enrollment coming soon! You will be notified when this service is available.');
+        bootstrap.Modal.getInstance(document.getElementById('comingSoonModal')).hide();
+    }
+</script>
+{% endblock %}
