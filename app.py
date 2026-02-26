@@ -4,6 +4,7 @@ import json
 import os
 from dotenv import load_dotenv
 from utils.data_loader import load_residents_from_excel
+from utils.sharepoint_data_loader import load_residents_from_sharepoint_list
 from utils.excel_export import (create_resident_list_export, create_reporting_runs_export,
                                 create_disputes_export, create_audit_logs_export)
 
@@ -336,8 +337,20 @@ def admin_dashboard():
 @app.route('/admin/rent-reporting')
 def admin_rent_reporting():
     search_query = request.args.get('search', '').lower()
+    data_source = request.args.get('data_source', 'test')  # 'test' or 'sharepoint'
     
-    filtered_residents = residents
+    # Load data based on selected source
+    if data_source == 'sharepoint':
+        # Load from SharePoint List
+        source_residents = load_residents_from_sharepoint_list()
+        if not source_residents:
+            flash('Failed to load SharePoint data. Falling back to test data.', 'warning')
+            source_residents = residents
+    else:
+        # Use test data
+        source_residents = residents
+    
+    filtered_residents = source_residents
     
     # Filter by search query (searches name, property, and unit)
     if search_query:
@@ -367,17 +380,37 @@ def admin_rent_reporting():
     return render_template('admin/rent_reporting.html', 
                           residents=residents_with_info, 
                           current_cycle=current_cycle,
-                          next_run_date=next_run_date)
+                          next_run_date=next_run_date,
+                          data_source=data_source)
 
 
 @app.route('/admin/resident/<int:resident_id>')
 def admin_resident_detail(resident_id):
-    resident = get_resident_by_id(resident_id)
+    data_source = request.args.get('data_source', 'test')  # 'test' or 'sharepoint'
+    
+    # Load data based on selected source
+    if data_source == 'sharepoint':
+        # Load from SharePoint List
+        source_residents = load_residents_from_sharepoint_list()
+        if not source_residents:
+            flash('Failed to load SharePoint data. Falling back to test data.', 'warning')
+            source_residents = residents
+    else:
+        # Use test data
+        source_residents = residents
+    
+    # Find the specific resident
+    resident = None
+    for r in source_residents:
+        if r['id'] == resident_id:
+            resident = r
+            break
+    
     if not resident:
         flash('Resident not found', 'danger')
-        return redirect(url_for('admin_rent_reporting'))
+        return redirect(url_for('admin_rent_reporting', data_source=data_source))
     
-    return render_template('admin/resident_detail.html', resident=resident)
+    return render_template('admin/resident_detail.html', resident=resident, data_source=data_source)
 
 
 @app.route('/admin/resident/<int:resident_id>/data-mismatch', methods=['GET', 'POST'])

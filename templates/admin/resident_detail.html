@@ -8,7 +8,7 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('admin_rent_reporting') }}">Rent Reporting</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_rent_reporting', data_source=data_source) }}">Rent Reporting</a></li>
                 <li class="breadcrumb-item active">{{ resident.name }}</li>
             </ol>
         </nav>
@@ -26,7 +26,7 @@
         </div>
 
         <!-- Alerts Section -->
-        {% if resident.days_late > 0 %}
+        {% if resident.get('days_late', 0) > 0 %}
         <div class="alert alert-danger mb-4">
             <div class="d-flex align-items-center">
                 <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
@@ -49,38 +49,38 @@
                     <div class="card-body">
                         <dl class="row mb-0">
                             <dt class="col-sm-5">Account Number:</dt>
-                            <dd class="col-sm-7"><strong>{{ resident.account_number }}</strong></dd>
+                            <dd class="col-sm-7"><strong>{{ resident.account_number if resident.account_number else 'N/A' }}</strong></dd>
 
                             <dt class="col-sm-5">Name:</dt>
                             <dd class="col-sm-7">{{ resident.first_name }} {{ resident.last_name }}</dd>
 
                             <dt class="col-sm-5">Date of Birth:</dt>
-                            <dd class="col-sm-7">{{ resident.dob|date_format }}</dd>
+                            <dd class="col-sm-7">{{ resident.dob|date_format if resident.dob else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Address:</dt>
-                            <dd class="col-sm-7">{{ resident.address }}</dd>
+                            <dd class="col-sm-7">{{ resident.address if resident.address else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Unit:</dt>
-                            <dd class="col-sm-7">{{ resident.unit }}</dd>
+                            <dd class="col-sm-7">{{ resident.unit if resident.unit else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">SSN:</dt>
-                            <dd class="col-sm-7">{{ resident.ssn }}</dd>
+                            <dd class="col-sm-7">{{ resident.ssn if resident.ssn else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Enrolled:</dt>
                             <dd class="col-sm-7">
-                                {% if resident.enrolled %}
+                                {% if resident.get('enrolled') %}
                                     <span class="badge bg-success">Yes</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">No</span>
+                                    <span class="badge bg-secondary">{{ 'No' if resident.get('enrolled') == False else 'N/A' }}</span>
                                 {% endif %}
                             </dd>
 
                             <dt class="col-sm-5">Tradeline Created:</dt>
                             <dd class="col-sm-7">
-                                {% if resident.tradeline_created %}
+                                {% if resident.get('tradeline_created') %}
                                     <i class="bi bi-check-circle-fill text-success"></i> Yes
                                 {% else %}
-                                    <i class="bi bi-x-circle text-muted"></i> No
+                                    <i class="bi bi-x-circle text-muted"></i> {{ 'No' if resident.get('tradeline_created') == False else 'N/A' }}
                                 {% endif %}
                             </dd>
                         </dl>
@@ -96,57 +96,67 @@
                         <dl class="row mb-0">
                             <dt class="col-sm-5">Account Status:</dt>
                             <dd class="col-sm-7">
-                                {% if resident.account_status == 'Current' %}
+                                {% if resident.get('account_status') == 'Current' %}
                                     <span class="badge bg-success">{{ resident.account_status }}</span>
-                                {% else %}
+                                {% elif resident.get('account_status') %}
                                     <span class="badge bg-danger">{{ resident.account_status }}</span>
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
                                 {% endif %}
                             </dd>
 
                             <dt class="col-sm-5">Date Opened:</dt>
-                            <dd class="col-sm-7">{{ resident.date_opened|date_format }}</dd>
+                            <dd class="col-sm-7">{{ resident.date_opened|date_format if resident.get('date_opened') else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Payment Schedule:</dt>
-                            <dd class="col-sm-7">{{ resident.payment_schedule }}</dd>
+                            <dd class="col-sm-7">{{ resident.payment_schedule if resident.get('payment_schedule') else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Scheduled Payment:</dt>
-                            <dd class="col-sm-7">{{ resident.scheduled_monthly_payment|currency }}</dd>
+                            <dd class="col-sm-7">{{ resident.scheduled_monthly_payment|currency if resident.get('scheduled_monthly_payment') else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Last Payment Date:</dt>
-                            <dd class="col-sm-7">{{ resident.date_last_payment|date_format }}</dd>
+                            <dd class="col-sm-7">{{ resident.date_last_payment|date_format if resident.get('date_last_payment') else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Days Late:</dt>
                             <dd class="col-sm-7">
-                                {% if resident.days_late > 0 %}
-                                    <span class="badge bg-danger">{{ resident.days_late }} days</span>
+                                {% if resident.get('days_late') is not none %}
+                                    {% if resident.days_late > 0 %}
+                                        <span class="badge bg-danger">{{ resident.days_late }} days</span>
+                                    {% else %}
+                                        <span class="text-success">0 days</span>
+                                    {% endif %}
                                 {% else %}
-                                    <span class="text-success">0 days</span>
+                                    <span class="text-muted">N/A</span>
                                 {% endif %}
                             </dd>
 
                             <dt class="col-sm-5">First Delinquency:</dt>
                             <dd class="col-sm-7">
-                                {% if resident.date_first_delinquency %}
+                                {% if resident.get('date_first_delinquency') %}
                                     <span class="text-danger">{{ resident.date_first_delinquency|date_format }}</span>
                                 {% else %}
-                                    <span class="text-success">None</span>
+                                    <span class="text-muted">{{ 'None' if resident.get('date_first_delinquency') == None else 'N/A' }}</span>
                                 {% endif %}
                             </dd>
 
                             <dt class="col-sm-5">Amount Past Due:</dt>
                             <dd class="col-sm-7">
-                                {% if resident.amount_past_due > 0 %}
-                                    <span class="text-danger"><strong>{{ resident.amount_past_due|currency }}</strong></span>
+                                {% if resident.get('amount_past_due') is not none %}
+                                    {% if resident.amount_past_due > 0 %}
+                                        <span class="text-danger"><strong>{{ resident.amount_past_due|currency }}</strong></span>
+                                    {% else %}
+                                        <span class="text-success">{{ resident.amount_past_due|currency }}</span>
+                                    {% endif %}
                                 {% else %}
-                                    <span class="text-success">{{ resident.amount_past_due|currency }}</span>
+                                    <span class="text-muted">N/A</span>
                                 {% endif %}
                             </dd>
 
                             <dt class="col-sm-5">Current Balance:</dt>
-                            <dd class="col-sm-7">{{ resident.current_balance|currency }}</dd>
+                            <dd class="col-sm-7">{{ resident.current_balance|currency if resident.get('current_balance') is not none else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Highest Credit:</dt>
-                            <dd class="col-sm-7">{{ resident.highest_credit_amount|currency }}</dd>
+                            <dd class="col-sm-7">{{ resident.highest_credit_amount|currency if resident.get('highest_credit_amount') else 'N/A' }}</dd>
                         </dl>
                     </div>
                 </div>
@@ -161,6 +171,7 @@
                         <h5 class="mb-0"><i class="bi bi-credit-card"></i> Reporting History</h5>
                     </div>
                     <div class="card-body">
+                        {% if resident.get('payments') and resident.payments %}
                         <div class="table-responsive">
                             <table class="table table-sm table-hover">
                                 <thead>
@@ -173,7 +184,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for payment in resident.payments|enrolled_payments(resident.enrollment_history) %}
+                                    {% for payment in resident.payments|enrolled_payments(resident.get('enrollment_history', [])) %}
                                     <tr>
                                         <td>{{ payment.month }}</td>
                                         <td>{{ payment.amount|currency }}</td>
@@ -209,6 +220,9 @@
                                 </tbody>
                             </table>
                         </div>
+                        {% else %}
+                        <p class="text-muted mb-0">No payment history available for this data source.</p>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -233,7 +247,7 @@
                         <h5 class="mb-0"><i class="bi bi-clock-history"></i> Enrollment History</h5>
                     </div>
                     <div class="card-body">
-                        {% if resident.enrollment_history %}
+                        {% if resident.get('enrollment_history') and resident.enrollment_history %}
                         <div class="table-responsive">
                             <table class="table table-sm mb-0">
                                 <thead>
@@ -260,7 +274,7 @@
                             </table>
                         </div>
                         {% else %}
-                        <p class="text-muted mb-0">No enrollment history available.</p>
+                        <p class="text-muted mb-0">No enrollment history available for this data source.</p>
                         {% endif %}
                     </div>
                 </div>
@@ -269,7 +283,7 @@
 
         <!-- Back Button -->
         <div class="mt-4">
-            <a href="{{ url_for('admin_rent_reporting') }}" class="btn btn-outline-secondary">
+            <a href="{{ url_for('admin_rent_reporting', data_source=data_source) }}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Back to Residents
             </a>
         </div>

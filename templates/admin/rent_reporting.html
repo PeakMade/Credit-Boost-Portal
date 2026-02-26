@@ -24,6 +24,32 @@
             </div>
         </div>
 
+        <!-- Data Source Selector -->
+        <div class="card mb-3 border-primary">
+            <div class="card-body py-2">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <strong><i class="bi bi-database"></i> Data Source:</strong>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-select form-select-sm" id="dataSourceSelector" onchange="changeDataSource()">
+                            <option value="test" {% if data_source == 'test' %}selected{% endif %}>Test Data (Excel)</option>
+                            <option value="sharepoint" {% if data_source == 'sharepoint' %}selected{% endif %}>Real Data (SharePoint List)</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <small class="text-muted">
+                            {% if data_source == 'sharepoint' %}
+                            <i class="bi bi-check-circle-fill text-success"></i> Connected to SharePoint List: Credit Boost - Tenants
+                            {% else %}
+                            <i class="bi bi-info-circle-fill text-info"></i> Using local test data from Excel file
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Current Reporting Cycle Info -->
         <div class="alert alert-info mb-4">
             <div class="d-flex align-items-center">
@@ -106,7 +132,7 @@
                             {% for resident in residents %}
                             <tr>
                                 <td data-value="{{ resident.name }}">
-                                    <a href="{{ url_for('admin_resident_detail', resident_id=resident.id) }}" class="text-decoration-none">
+                                    <a href="{{ url_for('admin_resident_detail', resident_id=resident.id, data_source=data_source) }}" class="text-decoration-none">
                                         {{ resident.name }}
                                     </a>
                                 </td>
@@ -119,8 +145,8 @@
                                         <span class="badge bg-secondary">Not Enrolled</span>
                                     {% endif %}
                                 </td>
-                                <td data-value="{{ resident.payments[0].month if resident.payments else 'zzz' }}">
-                                    {% if resident.payments %}
+                                <td data-value="{{ resident.payments[0].month if resident.get('payments') and resident.payments else 'zzz' }}">
+                                    {% if resident.get('payments') and resident.payments %}
                                     {% set latest_payment = resident.payments[0] %}
                                     <span class="badge {% if latest_payment.status == 'Paid' %}bg-success{% elif latest_payment.status == 'Late' %}bg-warning text-dark{% else %}bg-danger{% endif %}" 
                                           data-bs-toggle="popover" 
@@ -137,7 +163,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{{ url_for('admin_resident_detail', resident_id=resident.id) }}" 
+                                    <a href="{{ url_for('admin_resident_detail', resident_id=resident.id, data_source=data_source) }}" 
                                        class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-eye"></i> View
                                     </a>
@@ -538,5 +564,14 @@
             document.body.removeChild(form);
         });
     });
+    
+    // Change data source
+    function changeDataSource() {
+        const selector = document.getElementById('dataSourceSelector');
+        const dataSource = selector.value;
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('data_source', dataSource);
+        window.location.href = currentUrl.toString();
+    }
 </script>
 {% endblock %}
