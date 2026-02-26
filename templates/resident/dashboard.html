@@ -30,19 +30,6 @@
     margin-bottom: clamp(10px, 1.5vw, 16px);
   }
 
-  .wb__title {
-    margin: 0 0 6px;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    font-size: clamp(20px, 3vw, 32px);
-    line-height: 1.05;
-    background: linear-gradient(90deg, #2d76c7, #78a98b);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
   .wb__gauge {
     width: min(380px, 80%);
     height: auto;
@@ -50,17 +37,19 @@
     margin: 0 auto;
   }
 
-  .wb__subtitle {
-    margin-top: 6px;
+  .wb__welcome {
+    margin: 0 0 clamp(12px, 2vw, 20px);
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     font-weight: 600;
-    color: #4b5563;
-    font-size: 16px;
+    font-size: clamp(16px, 2vw, 20px);
+    color: #333;
+    text-align: left;
   }
 
+  /* Force 2 columns on desktop for 3-row x 2-column layout */
   .wb__grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: var(--wb-gap);
     align-items: stretch;
   }
@@ -144,7 +133,7 @@
 
   .wb__detail-content {
     flex: 1;
-    padding: 2rem;
+    padding: 1rem 2rem;
     overflow-y: auto;
   }
 
@@ -152,8 +141,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
     border-bottom: 2px solid #2d76c7;
   }
 
@@ -167,21 +156,7 @@
     color: transparent;
   }
 
-  .wb__back-btn {
-    background: #2d76c7;
-    color: white;
-    border: none;
-    padding: 0.5rem 1.25rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
-  }
-
-  .wb__back-btn:hover {
-    background: #1e5fa3;
-    transform: translateY(-1px);
-  }
+  /* Back button removed - residents land directly on Credit Builder */
 
   .section-card {
     background: white;
@@ -274,11 +249,29 @@
   }
 </style>
 
-<!-- Home View -->
-<section class="wb wb__home" id="homeView" aria-label="Wealth Boost">
+<!-- User Dropdown Below Header -->
+{% if resident is defined %}
+<div style="position: absolute; top: 85px; right: 40px; z-index: 1000;">
+  <div class="dropdown">
+    <button class="btn btn-light dropdown-toggle" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; padding: 8px 16px; font-weight: 500;">
+      <i class="bi bi-person-circle"></i>
+      {{ resident.first_name }}
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu" style="box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+      <li><a class="dropdown-item" href="{{ url_for('resident_profile') }}"><i class="bi bi-person"></i> Profile</a></li>
+      <li><a class="dropdown-item" href="{{ url_for('resident_settings') }}"><i class="bi bi-gear"></i> Settings</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" href="{{ url_for('landing') }}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<!-- Home View (hidden by default) -->
+<section class="wb wb__home" id="homeView" aria-label="Wealth Boost" style="display: none;">
   <div class="wb__wrap">
+    <div class="wb__welcome">Welcome, {{ resident.first_name }}!</div>
     <header class="wb__header">
-      <h2 class="wb__title">Wealth Boost</h2>
       <img
         class="wb__gauge"
         src="{{ url_for('static', filename='images/Wealt Boost v3_credit_score_gauge.png') }}"
@@ -286,7 +279,6 @@
         loading="lazy"
         decoding="async"
       />
-      <div class="wb__subtitle">Credit Score</div>
     </header>
 
     <div class="wb__grid">
@@ -317,8 +309,8 @@
   </div>
 </section>
 
-<!-- Detail View -->
-<section class="wb wb__detail" id="detailView">
+<!-- Detail View (shown by default) -->
+<section class="wb wb__detail active" id="detailView">
   <aside class="wb__sidebar">
     <a href="#" class="wb__sidebar-tile" onclick="showDetail('creditBuilder'); return false;" data-nav="creditBuilder">
       <img src="{{ url_for('static', filename='images/Wealt Boost v3_credit_builder_tile.png') }}" alt="Credit Builder">
@@ -348,10 +340,22 @@
 
   <div class="wb__detail-content">
     <div class="wb__detail-header">
-      <h2 class="wb__detail-title" id="detailTitle">Credit Builder</h2>
-      <button class="wb__back-btn" onclick="showHome()">
-        <i class="bi bi-house-door"></i> Back to Dashboard
-      </button>
+      <!-- Title on left -->
+      <div style="flex: 1;">
+        <h2 class="wb__detail-title" id="detailTitle" style="margin: 0;">Credit Builder</h2>
+      </div>
+      <!-- Credit Score Gauge in center -->
+      <div style="flex: 1; text-align: center;">
+        <img
+          src="{{ url_for('static', filename='images/Wealt Boost v3_credit_score_gauge.png') }}"
+          alt="Credit Score"
+          style="max-width: 200px; width: 100%; height: auto;"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+      <!-- Empty spacer on right for balance -->
+      <div style="flex: 1;"></div>
     </div>
 
     <div id="detailContentArea">
@@ -490,9 +494,9 @@
     document.querySelector('.wb__detail-content').scrollTop = 0;
   }
 
-  function showHome() {
-    document.getElementById('detailView').classList.remove('active');
-    document.getElementById('homeView').style.display = 'block';
-  }
+  // Initialize - load Credit Builder content on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    showDetail('creditBuilder');
+  });
 </script>
 {% endblock %}
