@@ -16,6 +16,182 @@ import random
 load_dotenv()
 
 
+def load_statements_from_sharepoint_list(access_token, site_id):
+    """
+    Load payment statements from SharePoint List: Credit Boost - Statements
+    List ID: 15cdc70e-ba08-4f9b-9ba2-79d66e8c6552
+    Returns dictionary mapping Resident_ID to list of payment statements
+    """
+    
+    list_id = '15cdc70e-ba08-4f9b-9ba2-79d66e8c6552'
+    
+    try:
+        # Get list items using Microsoft Graph API
+        list_items_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{list_id}/items?expand=fields"
+        
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+        
+        print(f"Loading items from SharePoint List: Credit Boost - Statements")
+        items_response = requests.get(list_items_url, headers=headers)
+        items_response.raise_for_status()
+        items_data = items_response.json()
+        
+        items = items_data.get("value", [])
+        print(f"✓ Loaded {len(items)} statement records from SharePoint List")
+        
+        # Debug: Show first item's fields
+        if items:
+            print(f"DEBUG - First statement item fields: {list(items[0].get('fields', {}).keys())}")
+            print(f"DEBUG - First statement item field values: {items[0].get('fields', {})}")
+        
+        # Parse dates helper function
+        def parse_sp_date(date_val):
+            if not date_val:
+                return ''
+            if isinstance(date_val, datetime):
+                return date_val.strftime('%Y-%m-%d')
+            if isinstance(date_val, str):
+                try:
+                    parsed = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                    return parsed.strftime('%Y-%m-%d')
+                except:
+                    try:
+                        if 'T' in date_val:
+                            return date_val.split('T')[0]
+                        return date_val
+                    except:
+                        return date_val
+            return ''
+        
+        # Group statements by Resident_ID
+        statements_by_resident = {}
+        
+        for idx, item in enumerate(items):
+            fields = item.get("fields", {})
+            
+            # Get Resident ID - try different field variations and normalize to string
+            resident_id_raw = fields.get('ResidentID', fields.get('Resident_x0020_ID', fields.get('ID', '')))
+            resident_id = str(resident_id_raw).strip() if resident_id_raw else ''
+            
+            if not resident_id or resident_id == '0':
+                if idx < 3:
+                    print(f"DEBUG - Statement {idx}: No valid Resident ID found, skipping. Fields: {list(fields.keys())}")
+                continue
+            
+            if idx < 3:
+                print(f"DEBUG - Statement {idx}: Resident ID = '{resident_id}' (type: {type(resident_id_raw)})")
+            
+            # Debug: Show all available fields for first statement
+            if idx == 0:
+                print(f"DEBUG - First statement all field names and values:")
+                for field_name, field_value in fields.items():
+                    print(f"  {field_name}: {field_value}")
+            
+            # Parse payment data using actual SharePoint field names
+            # Payment Date
+            payment_date = parse_sp_date(
+                fields.get('LastPaymentDate') or 
+                fields.get('Payment_x0020_Date') or 
+                fields.get('PaymentDate') or
+                ''
+            )
+            
+            # Amount Paid
+            amount_paid = (
+                fields.get('ActualMonthlyPayment') or 
+                fields.get('Amount_x0020_Paid') or 
+                fields.get('AmountPaid') or
+                0
+            )
+            
+            # Payment Status - derive from days delinquent if not explicitly set
+            days_delinquent = fields.get('DaysDelinquent', 0)
+            payment_status = (
+                fields.get('Payment_x0020_Status') or 
+                fields.get('PaymentStatus') or 
+                fields.get('Status') or
+                ('Late' if days_delinquent > 0 else 'Paid')
+            )
+            
+            # Days Late
+            days_late = int(days_delinquent) if days_delinquent else 0
+            
+            # Reported
+            reported = fields.get('Reported', True)
+            
+            # Scheduled Monthly Payment (for this statement)
+            scheduled_payment = fields.get('ScheduledMonthlyPayment', 0)
+            
+            # Amount Past Due (from SharePoint)
+            amount_past_due = fields.get('AmountPastDue', 0)
+            
+            # Current Balance (from SharePoint)
+            current_balance = fields.get('CurrentBalance', 0)
+            
+            if idx < 3:
+                print(f"DEBUG - Statement {idx}: Date={payment_date}, Amount={amount_paid}, Status={payment_status}, Days Late={days_late}, Scheduled={scheduled_payment}, Past Due={amount_past_due}")
+            
+            # Always derive month from payment_date for consistency
+            payment_month = ''
+            if payment_date:
+                try:
+                    date_obj = datetime.strptime(payment_date, '%Y-%m-%d')
+                    payment_month = date_obj.strftime('%b %Y')  # Abbreviated month (Jan, Feb, etc.)
+                except Exception as e:
+                    print(f"Warning: Could not parse payment date '{payment_date}': {e}")
+            
+            # Create payment record
+            payment = {
+                'month': payment_month,
+                'amount': float(amount_paid) if amount_paid else 0.0,
+                'date_paid': payment_date,
+                'status': payment_status,
+                'days_late': int(days_late) if days_late else 0,
+                'reported': bool(reported),
+                'report_date': payment_date if reported else None,
+                'scheduled_payment': float(scheduled_payment) if scheduled_payment else 0.0,
+                'amount_past_due': float(amount_past_due) if amount_past_due else 0.0,
+                'current_balance': float(current_balance) if current_balance else 0.0
+            }
+            
+            # Add to resident's statements (use string key for consistency)
+            resident_id_key = str(resident_id)
+            if resident_id_key not in statements_by_resident:
+                statements_by_resident[resident_id_key] = []
+            statements_by_resident[resident_id_key].append(payment)
+        
+        # Sort each resident's payments by date (most recent first)
+        for resident_id in statements_by_resident:
+            statements_by_resident[resident_id].sort(
+                key=lambda p: p['date_paid'] if p['date_paid'] else '0000-00-00',
+                reverse=True
+            )
+        
+        print(f"✓ Organized statements for {len(statements_by_resident)} residents")
+        
+        # Debug: Show sample payment data
+        if statements_by_resident:
+            sample_resident_id = list(statements_by_resident.keys())[0]
+            sample_payments = statements_by_resident[sample_resident_id]
+            print(f"DEBUG - Sample payment for Resident ID {sample_resident_id}:")
+            if sample_payments:
+                print(f"  Month: {sample_payments[0].get('month')}")
+                print(f"  Amount: {sample_payments[0].get('amount')}")
+                print(f"  Date: {sample_payments[0].get('date_paid')}")
+                print(f"  Status: {sample_payments[0].get('status')}")
+        
+        return statements_by_resident
+        
+    except Exception as e:
+        print(f"Error loading statements from SharePoint List: {e}")
+        import traceback
+        traceback.print_exc()
+        return {}
+
+
 def load_residents_from_sharepoint_list():
     """
     Load resident data from SharePoint List: Credit Boost - Tenants
@@ -77,6 +253,9 @@ def load_residents_from_sharepoint_list():
         
         print(f"✓ Site ID: {site_id}")
         
+        # Load payment statements from second SharePoint list
+        statements_by_resident = load_statements_from_sharepoint_list(access_token, site_id)
+        
         # Get list items using Microsoft Graph API
         list_items_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{list_id}/items?expand=fields"
         
@@ -88,6 +267,10 @@ def load_residents_from_sharepoint_list():
         items = items_data.get("value", [])
         print(f"✓ Loaded {len(items)} residents from SharePoint List")
         
+        # Debug: Show first item's fields
+        if items:
+            print(f"DEBUG - First tenant item fields: {list(items[0].get('fields', {}).keys())}")
+        
         # Transform to resident dictionaries
         residents = []
         for idx, item in enumerate(items):
@@ -97,21 +280,21 @@ def load_residents_from_sharepoint_list():
             fields = item.get("fields", {})
             
             # Map SharePoint fields to resident data
-            first_name = fields.get('First_x0020_Name', fields.get('FirstName', ''))
-            last_name = fields.get('Last_x0020_Name', fields.get('LastName', ''))
+            first_name = fields.get('FirstName', fields.get('First_x0020_Name', ''))
+            last_name = fields.get('LastName', fields.get('Last_x0020_Name', ''))
             full_name = f"{first_name} {last_name}".strip() or f"Resident {resident_id}"
             
             # SSN - we only have last 4 digits from SharePoint
-            ssn_last4 = str(fields.get('SSN_x0020_Last_x0020_4', fields.get('SSNLast4', '')))
+            ssn_last4 = str(fields.get('SSNLast4', fields.get('SSN_x0020_Last_x0020_4', '')))
             masked_ssn = f"***-**-{ssn_last4}" if ssn_last4 else "***-**-****"
             encrypted_ssn = f"ENC{resident_id:04d}{ssn_last4}"  # Create a pseudo-encrypted value
             
             # Address fields
-            address_line1 = fields.get('Address_x0020_Line_x0020_1', fields.get('AddressLine1', ''))
-            address_line2 = fields.get('Address_x0020_Line_x0020_2', fields.get('AddressLine2', ''))
+            address_line1 = fields.get('AddressLine1', fields.get('Address_x0020_Line_x0020_1', ''))
+            address_line2 = fields.get('AddressLine2', fields.get('Address_x0020_Line_x0020_2', ''))
             city = fields.get('City', '')
-            state_code = fields.get('State_x0020_Code', fields.get('StateCode', ''))
-            zip_code = fields.get('Zip_x0020_Code', fields.get('ZipCode', ''))
+            state_code = fields.get('StateCode', fields.get('State_x0020_Code', ''))
+            zip_code = fields.get('ZipCode', fields.get('Zip_x0020_Code', ''))
             
             # Construct full address
             address_parts = [p for p in [address_line1, address_line2] if p]
@@ -142,11 +325,10 @@ def load_residents_from_sharepoint_list():
                 return ''
             
             # Try multiple field name variations for DOB
-            dob_value = (fields.get('Date_x0020_of_x0020_Birth') or 
+            dob_value = (fields.get('DateofBirth') or 
+                        fields.get('Date_x0020_of_x0020_Birth') or 
                         fields.get('DateOfBirth') or 
-                        fields.get('DOB') or 
-                        fields.get('Date of Birth') or 
-                        fields.get('Date_of_Birth') or '')
+                        fields.get('DOB') or '')
             
             # Debug: Print DOB value if first resident
             if idx == 0:
@@ -155,13 +337,57 @@ def load_residents_from_sharepoint_list():
             
             dob = parse_sp_date(dob_value)
             
-            # Get Resident ID from SharePoint or use sequential
-            sp_resident_id = fields.get('Resident_x0020_ID', fields.get('ResidentID', resident_id))
+            # Get Resident ID from SharePoint - try different field variations and normalize to string
+            sp_resident_id_raw = fields.get('ResidentID', fields.get('Resident_x0020_ID', fields.get('ID', resident_id)))
+            sp_resident_id = str(sp_resident_id_raw).strip() if sp_resident_id_raw else str(resident_id)
             
-            # Default values for fields not in SharePoint
-            default_monthly_rent = 1200.00
-            default_property = 'Property TBD'
-            default_unit = 'Unit TBD'
+            # Debug: Print resident ID matching for first few residents
+            if idx < 3:
+                print(f"DEBUG - Resident {idx}: ID='{sp_resident_id}' (raw: {sp_resident_id_raw}, type: {type(sp_resident_id_raw)})")
+                print(f"DEBUG - Available Resident IDs in statements: {list(statements_by_resident.keys())[:10]}")
+            
+            # Get payment statements for this resident
+            resident_payments = statements_by_resident.get(sp_resident_id, [])
+            
+            # Get scheduled payment from latest payment record if available
+            # ScheduledMonthlyPayment is in the Statements list, not Tenants list
+            monthly_rent = 1200.00  # default
+            if resident_payments and resident_payments[0].get('scheduled_payment'):
+                monthly_rent = resident_payments[0]['scheduled_payment']
+            
+            if idx < 3:
+                print(f"DEBUG - Resident {idx}: Scheduled Payment={monthly_rent}")
+                print(f"DEBUG - Found {len(resident_payments)} payments for Resident ID {sp_resident_id}")
+                if resident_payments:
+                    print(f"DEBUG - Latest payment: {resident_payments[0]}")
+            
+            # Calculate payment-related fields from real data
+            if resident_payments:
+                latest_payment = resident_payments[0]
+                date_last_payment = latest_payment.get('date_paid', datetime.now().strftime('%Y-%m-%d'))
+                
+                # Get values from SharePoint statement
+                days_late = latest_payment.get('days_late', 0)
+                account_status = 'Delinquent' if days_late > 30 else 'Late' if days_late > 0 else 'Current'
+                amount_past_due = latest_payment.get('amount_past_due', 0.0)
+                current_balance = latest_payment.get('current_balance', 0.0)
+                
+                # Last reported month
+                last_reported = latest_payment.get('month', 'Jan 2026')
+            else:
+                # No payment data, use defaults
+                date_last_payment = datetime.now().strftime('%Y-%m-%d')
+                days_late = 0
+                account_status = 'Current'
+                amount_past_due = 0.0
+                current_balance = 0.0
+                last_reported = 'Jan 2026'
+                # Generate sample payments if no real data
+                resident_payments = generate_sample_payments(resident_id, monthly_rent)
+            
+            # Property and Unit from SharePoint 
+            property_name = fields.get('Property', fields.get('Property_x0020_Name', 'Property TBD'))
+            unit_number = fields.get('Unit', fields.get('Unit_x0020_Number', 'Unit TBD'))
             
             # Create resident record
             resident = {
@@ -172,10 +398,10 @@ def load_residents_from_sharepoint_list():
                 'last_name': last_name,
                 'email': f"{first_name.lower()}.{last_name.lower()}@example.com" if first_name and last_name else '',
                 'phone': '',  # Not in SharePoint list
-                'unit': default_unit,
-                'unit_number': default_unit,
-                'property': default_property,
-                'property_name': default_property,
+                'unit': unit_number,
+                'unit_number': unit_number,
+                'property': property_name,
+                'property_name': property_name,
                 'dob': dob,
                 'move_in_date': '',  # Not in SharePoint list
                 'address': full_address,
@@ -188,27 +414,27 @@ def load_residents_from_sharepoint_list():
                 'credit_score': 650,  # Default score
                 'lease_start_date': '',
                 'lease_end_date': '',
-                'monthly_rent': default_monthly_rent,
+                'monthly_rent': monthly_rent,
                 
                 # Account status fields
                 'enrolled': True,
                 'enrollment_status': 'enrolled',
                 'tradeline_created': True,
                 'rent_reporting_status': 'Enrolled',
-                'account_status': 'Current',
+                'account_status': account_status,
                 'date_opened': datetime.now().strftime('%Y-%m-%d'),
                 'payment_schedule': 'Monthly',
-                'scheduled_monthly_payment': default_monthly_rent,
-                'date_last_payment': datetime.now().strftime('%Y-%m-%d'),
+                'scheduled_monthly_payment': monthly_rent,
+                'date_last_payment': date_last_payment,
                 'date_first_delinquency': None,
-                'days_late': 0,
-                'highest_credit_amount': default_monthly_rent,
-                'amount_past_due': 0.0,
-                'current_balance': 0.0,
-                'last_reported': 'January 2026',
+                'days_late': days_late,
+                'highest_credit_amount': monthly_rent,
+                'amount_past_due': amount_past_due,
+                'current_balance': current_balance,
+                'last_reported': last_reported,
                 
-                # Payment history
-                'payments': generate_sample_payments(resident_id, default_monthly_rent),
+                # Payment history - from SharePoint Statements list
+                'payments': resident_payments,
                 
                 # Enrollment history
                 'enrollment_history': [
@@ -256,7 +482,7 @@ def generate_sample_payments(resident_id, monthly_rent):
     # Generate last 6 months of payments
     for i in range(6):
         payment_date = current_date - timedelta(days=30 * i)
-        month = payment_date.strftime('%B %Y')
+        month = payment_date.strftime('%b %Y')  # Abbreviated month (Jan, Feb, etc.)
         
         # Occasionally make a payment late (10% chance)
         is_late = random.random() < 0.1 and i > 0
