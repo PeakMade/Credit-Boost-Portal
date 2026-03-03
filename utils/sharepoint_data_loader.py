@@ -118,6 +118,7 @@ def load_residents_and_payments_from_sharepoint_list(access_token, site_id):
                     'ZipCode': fields.get('ZipCode', fields.get('Zip_x0020_Code', '')),
                     'Property': fields.get('Property', fields.get('Property_x0020_Name', '')),
                     'Unit': fields.get('Unit', fields.get('Unit_x0020_Number', '')),
+                    'MoveInDate': fields.get('MoveInDate', fields.get('Move_x0020_In_x0020_Date', '')),
                     'SSNLast4': fields.get('SSNLast4', fields.get('SSN_x0020_Last_x0020_4', ''))
                 }
             
@@ -356,6 +357,17 @@ def load_residents_from_sharepoint_list():
             
             dob = parse_sp_date(dob_value)
             
+            # Get MoveInDate for enrollment history
+            move_in_date_value = resident_data.get('MoveInDate', '')
+            move_in_date = parse_sp_date(move_in_date_value)
+            
+            # Set enrollment date - use move-in date if available, otherwise use a date before all payments
+            # Default to 2025-01-01 to ensure all payment history shows
+            if move_in_date:
+                enrollment_date = move_in_date
+            else:
+                enrollment_date = '2025-01-01'
+            
             # Get Resident ID from resident data
             sp_resident_id = str(resident_id_key).strip()
             
@@ -454,11 +466,11 @@ def load_residents_from_sharepoint_list():
                 # Payment history - from SharePoint Statements list
                 'payments': resident_payments,
                 
-                # Enrollment history
+                # Enrollment history - use move-in date or default to early date
                 'enrollment_history': [
                     {
                         'action': 'enrolled',
-                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        'timestamp': enrollment_date + ' 00:00:00'  # Add time component for consistency
                     }
                 ],
                 
