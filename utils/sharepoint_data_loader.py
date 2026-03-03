@@ -18,12 +18,23 @@ load_dotenv()
 
 def load_statements_from_sharepoint_list(access_token, site_id):
     """
-    Load payment statements from SharePoint List: Credit Boost - Statements
-    List ID: 15cdc70e-ba08-4f9b-9ba2-79d66e8c6552
-    Returns dictionary mapping Resident_ID to list of payment statements
+    DEPRECATED: This function is no longer used.
+    Payment data is now loaded from the unified Credit Boost - Residents list.
+    Kept for backward compatibility.
+    """
+    return {}
+
+
+def load_residents_and_payments_from_sharepoint_list(access_token, site_id):
+    """
+    Load resident and payment data from unified SharePoint List: Credit Boost - Residents
+    List ID: dca29e9a-1c69-46cb-86b5-8111b5034c1b
+    Returns tuple: (residents_dict, statements_dict)
+    - residents_dict: mapping Resident_ID to resident info
+    - statements_dict: mapping Resident_ID to list of payment statements
     """
     
-    list_id = '15cdc70e-ba08-4f9b-9ba2-79d66e8c6552'
+    list_id = 'dca29e9a-1c69-46cb-86b5-8111b5034c1b'
     
     try:
         # Get list items using Microsoft Graph API
@@ -34,18 +45,18 @@ def load_statements_from_sharepoint_list(access_token, site_id):
             "Accept": "application/json"
         }
         
-        print(f"Loading items from SharePoint List: Credit Boost - Statements")
+        print(f"Loading items from SharePoint List: Credit Boost - Residents")
         items_response = requests.get(list_items_url, headers=headers)
         items_response.raise_for_status()
         items_data = items_response.json()
         
         items = items_data.get("value", [])
-        print(f"✓ Loaded {len(items)} statement records from SharePoint List")
+        print(f"✓ Loaded {len(items)} records from SharePoint List")
         
         # Debug: Show first item's fields
         if items:
-            print(f"DEBUG - First statement item fields: {list(items[0].get('fields', {}).keys())}")
-            print(f"DEBUG - First statement item field values: {items[0].get('fields', {})}")
+            print(f"DEBUG - First item fields: {list(items[0].get('fields', {}).keys())}")
+            print(f"DEBUG - First item field values: {items[0].get('fields', {})}")
         
         # Parse dates helper function
         def parse_sp_date(date_val):
@@ -66,7 +77,9 @@ def load_statements_from_sharepoint_list(access_token, site_id):
                         return date_val
             return ''
         
-        # Group statements by Resident_ID
+        # Group data by Resident_ID
+        # Store both resident info and payment statements
+        residents_dict = {}
         statements_by_resident = {}
         
         for idx, item in enumerate(items):
@@ -78,17 +91,35 @@ def load_statements_from_sharepoint_list(access_token, site_id):
             
             if not resident_id or resident_id == '0':
                 if idx < 3:
-                    print(f"DEBUG - Statement {idx}: No valid Resident ID found, skipping. Fields: {list(fields.keys())}")
+                    print(f"DEBUG - Record {idx}: No valid Resident ID found, skipping. Fields: {list(fields.keys())}")
                 continue
             
             if idx < 3:
-                print(f"DEBUG - Statement {idx}: Resident ID = '{resident_id}' (type: {type(resident_id_raw)})")
+                print(f"DEBUG - Record {idx}: Resident ID = '{resident_id}' (type: {type(resident_id_raw)})")
             
-            # Debug: Show all available fields for first statement
+            # Debug: Show all available fields for first record
             if idx == 0:
-                print(f"DEBUG - First statement all field names and values:")
+                print(f"DEBUG - First record all field names and values:")
                 for field_name, field_value in fields.items():
                     print(f"  {field_name}: {field_value}")
+            
+            # Store resident info if not already stored (use first occurrence)
+            resident_id_key = str(resident_id)
+            if resident_id_key not in residents_dict:
+                residents_dict[resident_id_key] = {
+                    'ResidentID': resident_id,
+                    'FirstName': fields.get('FirstName', fields.get('First_x0020_Name', '')),
+                    'LastName': fields.get('LastName', fields.get('Last_x0020_Name', '')),
+                    'DateofBirth': fields.get('DateofBirth', fields.get('Date_x0020_of_x0020_Birth', fields.get('DateOfBirth', fields.get('DOB', '')))),
+                    'AddressLine1': fields.get('AddressLine1', fields.get('Address_x0020_Line_x0020_1', '')),
+                    'AddressLine2': fields.get('AddressLine2', fields.get('Address_x0020_Line_x0020_2', '')),
+                    'City': fields.get('City', ''),
+                    'StateCode': fields.get('StateCode', fields.get('State_x0020_Code', '')),
+                    'ZipCode': fields.get('ZipCode', fields.get('Zip_x0020_Code', '')),
+                    'Property': fields.get('Property', fields.get('Property_x0020_Name', '')),
+                    'Unit': fields.get('Unit', fields.get('Unit_x0020_Number', '')),
+                    'SSNLast4': fields.get('SSNLast4', fields.get('SSN_x0020_Last_x0020_4', ''))
+                }
             
             # Parse payment data using actual SharePoint field names
             # Payment Date
@@ -132,7 +163,7 @@ def load_statements_from_sharepoint_list(access_token, site_id):
             current_balance = fields.get('CurrentBalance', 0)
             
             if idx < 3:
-                print(f"DEBUG - Statement {idx}: Date={payment_date}, Amount={amount_paid}, Status={payment_status}, Days Late={days_late}, Scheduled={scheduled_payment}, Past Due={amount_past_due}")
+                print(f"DEBUG - Record {idx}: Date={payment_date}, Amount={amount_paid}, Status={payment_status}, Days Late={days_late}, Scheduled={scheduled_payment}, Past Due={amount_past_due}")
             
             # Always derive month from payment_date for consistency
             payment_month = ''
@@ -170,9 +201,16 @@ def load_statements_from_sharepoint_list(access_token, site_id):
                 reverse=True
             )
         
-        print(f"✓ Organized statements for {len(statements_by_resident)} residents")
+        print(f"✓ Organized data for {len(residents_dict)} residents with {len(statements_by_resident)} having payment records")
         
-        # Debug: Show sample payment data
+        # Debug: Show sample data
+        if residents_dict:
+            sample_resident_id = list(residents_dict.keys())[0]
+            print(f"DEBUG - Sample resident info for ID {sample_resident_id}:")
+            print(f"  Name: {residents_dict[sample_resident_id].get('FirstName')} {residents_dict[sample_resident_id].get('LastName')}")
+            print(f"  Property: {residents_dict[sample_resident_id].get('Property')}")
+            print(f"  Unit: {residents_dict[sample_resident_id].get('Unit')}")
+            
         if statements_by_resident:
             sample_resident_id = list(statements_by_resident.keys())[0]
             sample_payments = statements_by_resident[sample_resident_id]
@@ -183,19 +221,19 @@ def load_statements_from_sharepoint_list(access_token, site_id):
                 print(f"  Date: {sample_payments[0].get('date_paid')}")
                 print(f"  Status: {sample_payments[0].get('status')}")
         
-        return statements_by_resident
+        return residents_dict, statements_by_resident
         
     except Exception as e:
-        print(f"Error loading statements from SharePoint List: {e}")
+        print(f"Error loading from SharePoint List: {e}")
         import traceback
         traceback.print_exc()
-        return {}
+        return {}, {}
 
 
 def load_residents_from_sharepoint_list():
     """
-    Load resident data from SharePoint List: Credit Boost - Tenants
-    List ID: 7569dfb7-5d2f-452d-a384-0af63b38b559
+    Load resident data from SharePoint List: Credit Boost - Residents
+    List ID: dca29e9a-1c69-46cb-86b5-8111b5034c1b
     Uses Microsoft Graph API for authentication and data access
     Returns list of resident dictionaries compatible with existing app structure
     """
@@ -203,7 +241,6 @@ def load_residents_from_sharepoint_list():
     client_id = os.environ.get('AZURE_CLIENT_ID')
     client_secret = os.environ.get('AZURE_CLIENT_SECRET')
     tenant_id = os.environ.get('AZURE_TENANT_ID')
-    list_id = '7569dfb7-5d2f-452d-a384-0af63b38b559'
     
     if not all([client_id, client_secret, tenant_id]):
         print("Warning: Azure credentials not found in .env file")
@@ -253,48 +290,32 @@ def load_residents_from_sharepoint_list():
         
         print(f"✓ Site ID: {site_id}")
         
-        # Load payment statements from second SharePoint list
-        statements_by_resident = load_statements_from_sharepoint_list(access_token, site_id)
+        # Load resident and payment data from unified SharePoint list
+        residents_data, statements_by_resident = load_residents_and_payments_from_sharepoint_list(access_token, site_id)
         
-        # Get list items using Microsoft Graph API
-        list_items_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{list_id}/items?expand=fields"
-        
-        print(f"Loading items from SharePoint List: Credit Boost - Tenants")
-        items_response = requests.get(list_items_url, headers=headers)
-        items_response.raise_for_status()
-        items_data = items_response.json()
-        
-        items = items_data.get("value", [])
-        print(f"✓ Loaded {len(items)} residents from SharePoint List")
-        
-        # Debug: Show first item's fields
-        if items:
-            print(f"DEBUG - First tenant item fields: {list(items[0].get('fields', {}).keys())}")
+        print(f"✓ Loaded data for {len(residents_data)} residents from unified SharePoint List")
         
         # Transform to resident dictionaries
         residents = []
-        for idx, item in enumerate(items):
+        for idx, (resident_id_key, resident_data) in enumerate(residents_data.items()):
             resident_id = idx + 1
             
-            # Get field values from SharePoint list
-            fields = item.get("fields", {})
-            
-            # Map SharePoint fields to resident data
-            first_name = fields.get('FirstName', fields.get('First_x0020_Name', ''))
-            last_name = fields.get('LastName', fields.get('Last_x0020_Name', ''))
+            # Get field values from resident data dictionary
+            first_name = resident_data.get('FirstName', '')
+            last_name = resident_data.get('LastName', '')
             full_name = f"{first_name} {last_name}".strip() or f"Resident {resident_id}"
             
             # SSN - we only have last 4 digits from SharePoint
-            ssn_last4 = str(fields.get('SSNLast4', fields.get('SSN_x0020_Last_x0020_4', '')))
+            ssn_last4 = str(resident_data.get('SSNLast4', ''))
             masked_ssn = f"***-**-{ssn_last4}" if ssn_last4 else "***-**-****"
             encrypted_ssn = f"ENC{resident_id:04d}{ssn_last4}"  # Create a pseudo-encrypted value
             
             # Address fields
-            address_line1 = fields.get('AddressLine1', fields.get('Address_x0020_Line_x0020_1', ''))
-            address_line2 = fields.get('AddressLine2', fields.get('Address_x0020_Line_x0020_2', ''))
-            city = fields.get('City', '')
-            state_code = fields.get('StateCode', fields.get('State_x0020_Code', ''))
-            zip_code = fields.get('ZipCode', fields.get('Zip_x0020_Code', ''))
+            address_line1 = resident_data.get('AddressLine1', '')
+            address_line2 = resident_data.get('AddressLine2', '')
+            city = resident_data.get('City', '')
+            state_code = resident_data.get('StateCode', '')
+            zip_code = resident_data.get('ZipCode', '')
             
             # Construct full address
             address_parts = [p for p in [address_line1, address_line2] if p]
@@ -324,26 +345,22 @@ def load_residents_from_sharepoint_list():
                             return date_val
                 return ''
             
-            # Try multiple field name variations for DOB
-            dob_value = (fields.get('DateofBirth') or 
-                        fields.get('Date_x0020_of_x0020_Birth') or 
-                        fields.get('DateOfBirth') or 
-                        fields.get('DOB') or '')
+            # Get DOB from resident data
+            dob_value = resident_data.get('DateofBirth', '')
             
             # Debug: Print DOB value if first resident
             if idx == 0:
                 print(f"DEBUG - First resident DOB field value: {dob_value}")
-                print(f"DEBUG - First resident all fields: {list(fields.keys())}")
+                print(f"DEBUG - First resident all fields: {list(resident_data.keys())}")
             
             dob = parse_sp_date(dob_value)
             
-            # Get Resident ID from SharePoint - try different field variations and normalize to string
-            sp_resident_id_raw = fields.get('ResidentID', fields.get('Resident_x0020_ID', fields.get('ID', resident_id)))
-            sp_resident_id = str(sp_resident_id_raw).strip() if sp_resident_id_raw else str(resident_id)
+            # Get Resident ID from resident data
+            sp_resident_id = str(resident_id_key).strip()
             
             # Debug: Print resident ID matching for first few residents
             if idx < 3:
-                print(f"DEBUG - Resident {idx}: ID='{sp_resident_id}' (raw: {sp_resident_id_raw}, type: {type(sp_resident_id_raw)})")
+                print(f"DEBUG - Resident {idx}: ID='{sp_resident_id}'")
                 print(f"DEBUG - Available Resident IDs in statements: {list(statements_by_resident.keys())[:10]}")
             
             # Get payment statements for this resident
@@ -386,8 +403,8 @@ def load_residents_from_sharepoint_list():
                 resident_payments = generate_sample_payments(resident_id, monthly_rent)
             
             # Property and Unit from SharePoint 
-            property_name = fields.get('Property', fields.get('Property_x0020_Name', 'Property TBD'))
-            unit_number = fields.get('Unit', fields.get('Unit_x0020_Number', 'Unit TBD'))
+            property_name = resident_data.get('Property', 'Property TBD')
+            unit_number = resident_data.get('Unit', 'Unit TBD')
             
             # Create resident record
             resident = {
