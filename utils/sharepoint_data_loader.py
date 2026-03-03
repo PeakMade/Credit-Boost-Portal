@@ -179,6 +179,7 @@ def load_residents_and_payments_from_sharepoint_list(access_token, site_id):
                 'month': payment_month,
                 'amount': float(amount_paid) if amount_paid else 0.0,
                 'date_paid': payment_date,
+                'payment_date': payment_date,  # Alias for compatibility with enrolled_payments filter
                 'status': payment_status,
                 'days_late': int(days_late) if days_late else 0,
                 'reported': bool(reported),
@@ -513,6 +514,7 @@ def generate_sample_payments(resident_id, monthly_rent):
             'month': month,
             'amount': monthly_rent,
             'date_paid': (payment_date + timedelta(days=days_late)).strftime('%Y-%m-%d'),
+            'payment_date': (payment_date + timedelta(days=days_late)).strftime('%Y-%m-%d'),  # Alias for compatibility
             'status': status,
             'days_late': days_late,
             'reported': reported,
