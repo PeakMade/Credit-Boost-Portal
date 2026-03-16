@@ -157,9 +157,6 @@
 
                             <dt class="col-sm-5">Current Balance:</dt>
                             <dd class="col-sm-7">{{ resident.current_balance|currency if resident.get('current_balance') is not none else 'N/A' }}</dd>
-
-                            <dt class="col-sm-5">Highest Credit:</dt>
-                            <dd class="col-sm-7">{{ resident.highest_credit_amount|currency if resident.get('highest_credit_amount') else 'N/A' }}</dd>
                         </dl>
                     </div>
                 </div>

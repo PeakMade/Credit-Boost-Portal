@@ -4,7 +4,7 @@ import json
 import os
 from dotenv import load_dotenv
 from utils.data_loader import load_residents_from_excel
-from utils.sharepoint_data_loader import load_residents_from_sharepoint_list
+from utils.sharepoint_data_loader import load_residents_from_sharepoint_list, load_residents_from_credhub_lists
 from utils.excel_export import (create_resident_list_export, create_reporting_runs_export,
                                 create_disputes_export, create_audit_logs_export)
 
@@ -337,14 +337,20 @@ def admin_dashboard():
 @app.route('/admin/rent-reporting')
 def admin_rent_reporting():
     search_query = request.args.get('search', '').lower()
-    data_source = request.args.get('data_source', 'test')  # 'test' or 'sharepoint'
+    data_source = request.args.get('data_source', 'test')  # 'test', 'sharepoint', or 'credhub'
     
     # Load data based on selected source
     if data_source == 'sharepoint':
-        # Load from SharePoint List
+        # Load from SharePoint List (Credit Boost - Tenants)
         source_residents = load_residents_from_sharepoint_list()
         if not source_residents:
             flash('Failed to load SharePoint data. Falling back to test data.', 'warning')
+            source_residents = residents
+    elif data_source == 'credhub':
+        # Load from CredHub SharePoint Lists
+        source_residents = load_residents_from_credhub_lists()
+        if not source_residents:
+            flash('Failed to load CredHub data. Falling back to test data.', 'warning')
             source_residents = residents
     else:
         # Use test data
@@ -386,14 +392,20 @@ def admin_rent_reporting():
 
 @app.route('/admin/resident/<int:resident_id>')
 def admin_resident_detail(resident_id):
-    data_source = request.args.get('data_source', 'test')  # 'test' or 'sharepoint'
+    data_source = request.args.get('data_source', 'test')  # 'test', 'sharepoint', or 'credhub'
     
     # Load data based on selected source
     if data_source == 'sharepoint':
-        # Load from SharePoint List
+        # Load from SharePoint List (Credit Boost - Tenants)
         source_residents = load_residents_from_sharepoint_list()
         if not source_residents:
             flash('Failed to load SharePoint data. Falling back to test data.', 'warning')
+            source_residents = residents
+    elif data_source == 'credhub':
+        # Load from CredHub SharePoint Lists
+        source_residents = load_residents_from_credhub_lists()
+        if not source_residents:
+            flash('Failed to load CredHub data. Falling back to test data.', 'warning')
             source_residents = residents
     else:
         # Use test data
