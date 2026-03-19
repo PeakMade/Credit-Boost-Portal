@@ -1031,6 +1031,8 @@ def load_residents_from_credhub_lists():
             resident = {
                 'id': resident_counter,
                 'name': full_name,
+                'first_name': first_name,
+                'last_name': last_name,
                 'email': participant.get('Email', f"{first_name.lower()}.{last_name.lower()}@example.com"),
                 'phone': participant.get('PhoneNumber', ''),
                 'address': address,
@@ -1045,6 +1047,7 @@ def load_residents_from_credhub_lists():
                 'enrollment_status': 'enrolled' if (is_enrolled and report_to_bureaus) else 'not enrolled',
                 'tradeline_created': is_enrolled and report_to_bureaus,
                 'account_status': account_status,
+                'current_balance': total_balance,
                 'amount_past_due': total_balance if total_balance > 0 else 0,
                 'scheduled_monthly_payment': monthly_rent,
                 'lease_start_date': parse_date(lease.get('CurrentLeaseStartDate', '')),
