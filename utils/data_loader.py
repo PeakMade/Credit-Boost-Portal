@@ -99,7 +99,7 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
                 'enrolled': True,
                 'enrollment_status': 'enrolled',
                 'tradeline_created': True,
-                'rent_reporting_status': 'active',
+                'rent_reporting_status': 'Enrolled',  # Match template check
                 'account_status': 'Current',
                 'date_opened': str(row.get('Lease Start', '')),
                 'payment_schedule': 'Monthly',
@@ -112,7 +112,7 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
                 'last_reported': 'Jan 2026',
                 
                 # Payment history (generate sample data)
-                'payments': generate_sample_payments(resident_id, monthly_rent),
+                'payments': generate_sample_payments(resident_id, monthly_rent, str(row.get('Name', ''))),
                 
                 # Enrollment history (enrolled 6 months ago so all payment history shows)
                 'enrollment_history': [
@@ -138,7 +138,7 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
         return []
 
 
-def generate_sample_payments(resident_id, monthly_rent):
+def generate_sample_payments(resident_id, monthly_rent, resident_name=''):
     """Generate sample payment history for a resident"""
     from datetime import datetime, timedelta
     import random
@@ -146,28 +146,45 @@ def generate_sample_payments(resident_id, monthly_rent):
     payments = []
     current_date = datetime.now()
     
-    # Generate last 6 months of payments
-    for i in range(6):
-        payment_date = current_date - timedelta(days=30 * i)
-        month = payment_date.strftime('%b %Y')
-        
-        # Occasionally make a payment late (10% chance)
-        is_late = random.random() < 0.1 and i > 0  # Never make current month late
-        days_late = random.randint(5, 25) if is_late else 0
-        status = 'Late' if is_late and days_late > 0 else 'Paid'
-        
-        # Late payments might not be reported
-        reported = not is_late or days_late < 30
-        
-        payments.append({
-            'month': month,
-            'amount': monthly_rent,
-            'date_paid': (payment_date + timedelta(days=days_late)).strftime('%Y-%m-%d'),
-            'payment_date': payment_date.strftime('%Y-%m-%d'),  # Track when payment occurred
-            'status': status,
-            'days_late': days_late,
-            'reported': reported,
-            'report_date': payment_date.strftime('%Y-%m-%d') if reported else None
-        })
+    # For Alexander Kelly, generate consistent perfect payment history for demo purposes
+    if resident_name == 'Alexander Kelly':
+        for i in range(6):
+            payment_date = current_date - timedelta(days=30 * i)
+            month = payment_date.strftime('%b %Y')
+            
+            payments.append({
+                'month': month,
+                'amount': monthly_rent,
+                'date_paid': payment_date.strftime('%Y-%m-%d'),
+                'payment_date': payment_date.strftime('%Y-%m-%d'),
+                'status': 'Paid',
+                'days_late': 0,
+                'reported': True,
+                'report_date': payment_date.strftime('%Y-%m-%d')
+            })
+    else:
+        # Generate last 6 months of payments with some randomness for other residents
+        for i in range(6):
+            payment_date = current_date - timedelta(days=30 * i)
+            month = payment_date.strftime('%b %Y')
+            
+            # Occasionally make a payment late (10% chance)
+            is_late = random.random() < 0.1 and i > 0  # Never make current month late
+            days_late = random.randint(5, 25) if is_late else 0
+            status = 'Late' if is_late and days_late > 0 else 'Paid'
+            
+            # Late payments might not be reported
+            reported = not is_late or days_late < 30
+            
+            payments.append({
+                'month': month,
+                'amount': monthly_rent,
+                'date_paid': (payment_date + timedelta(days=days_late)).strftime('%Y-%m-%d'),
+                'payment_date': payment_date.strftime('%Y-%m-%d'),  # Track when payment occurred
+                'status': status,
+                'days_late': days_late,
+                'reported': reported,
+                'report_date': payment_date.strftime('%Y-%m-%d') if reported else None
+            })
     
     return payments
