@@ -107,7 +107,6 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
                 'date_last_payment': datetime.now().strftime('%Y-%m-%d'),
                 'date_first_delinquency': None,
                 'days_late': 0,
-                'highest_credit_amount': monthly_rent,
                 'amount_past_due': 0.0,
                 'current_balance': 0.0,
                 'last_reported': 'Jan 2026',

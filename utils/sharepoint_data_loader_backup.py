@@ -108,7 +108,6 @@ def load_residents_from_sharepoint():
                 'date_last_payment': datetime.now().strftime('%Y-%m-%d'),
                 'date_first_delinquency': None,
                 'days_late': int(row.get('days_late', 0)),
-                'highest_credit_amount': monthly_rent,
                 'amount_past_due': float(row.get('amount_past_due', 0.0)),
                 'current_balance': float(row.get('current_balance', 0.0)),
                 'last_reported': 'January 2026',

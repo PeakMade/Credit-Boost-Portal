@@ -50,6 +50,35 @@
             </div>
         </div>
 
+        <!-- Data Source Selector -->
+        <div class="card mt-4 border-primary">
+            <div class="card-body py-2">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <strong><i class="bi bi-database"></i> Data Source:</strong>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-select form-select-sm" id="dataSourceSelector" onchange="changeDataSource()">
+                            <option value="test" {% if data_source == 'test' %}selected{% endif %}>Test Data (Excel)</option>
+                            <option value="sharepoint" {% if data_source == 'sharepoint' %}selected{% endif %}>Real Data (SharePoint List)</option>
+                            <option value="credhub" {% if data_source == 'credhub' %}selected{% endif %}>CredHub Data (Reporting System)</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <small class="text-muted">
+                            {% if data_source == 'sharepoint' %}
+                            <i class="bi bi-check-circle-fill text-success"></i> Connected to SharePoint List: Credit Boost - Tenants
+                            {% elif data_source == 'credhub' %}
+                            <i class="bi bi-check-circle-fill text-success"></i> Connected to CredHub Lists: Program Participants, Leases, Financial Snapshots
+                            {% else %}
+                            <i class="bi bi-info-circle-fill text-info"></i> Using local test data from Excel file
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Quick Stats -->
         <div class="card mt-4">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -59,6 +88,7 @@
                 </a>
             </div>
             <div class="card-body">
+                <!-- Row 1: Overview Metrics -->
                 <div class="row text-center mb-4">
                     <div class="col-md-3">
                         <h3 class="text-primary">{{ stats.total_residents }}</h3>
@@ -69,35 +99,110 @@
                         <p class="text-muted mb-0">Enrolled</p>
                     </div>
                     <div class="col-md-3">
-                        <h3 class="text-warning">{{ stats.not_enrolled_count }}</h3>
-                        <p class="text-muted mb-0">Not Enrolled</p>
+                        <h3 class="text-info">{{ stats.active_leases }}</h3>
+                        <p class="text-muted mb-0">Active Leases</p>
                     </div>
                     <div class="col-md-3">
-                        <h3 class="text-info">{{ stats.reported_payments }}/{{ stats.total_payments }}</h3>
-                        <p class="text-muted mb-0">Payments Reported</p>
+                        <h3 class="text-purple">{{ stats.reporting_this_cycle }}</h3>
+                        <p class="text-muted mb-0">Reporting This Cycle</p>
                     </div>
                 </div>
                 <hr>
-                <div class="row text-center">
+                <!-- Row 2: Financial Health Metrics -->
+                <div class="row text-center mb-3">
                     <div class="col-md-3">
                         <h4 class="text-success">{{ stats.current_accounts }}</h4>
                         <p class="text-muted mb-0"><small>Current Accounts</small></p>
                     </div>
                     <div class="col-md-3">
-                        <h4 class="text-danger">{{ stats.delinquent_accounts }}</h4>
-                        <p class="text-muted mb-0"><small>Delinquent Accounts</small></p>
+                        <h4 class="text-warning">{{ stats.delinquent_30_89 }}</h4>
+                        <p class="text-muted mb-0"><small>Delinquent (30-89 days)</small></p>
                     </div>
                     <div class="col-md-3">
-                        <h4 class="{% if stats.total_past_due > 0 %}text-danger{% else %}text-success{% endif %}">{{ stats.total_past_due|currency }}</h4>
-                        <p class="text-muted mb-0"><small>Total Past Due</small></p>
+                        <h4 class="text-danger">{{ stats.delinquent_90_plus }}</h4>
+                        <p class="text-muted mb-0"><small>Severely Delinquent (90+ days)</small></p>
                     </div>
                     <div class="col-md-3">
-                        <h4 class="text-primary">{{ stats.total_monthly_revenue|currency }}</h4>
-                        <p class="text-muted mb-0"><small>Monthly Revenue</small></p>
+                        <h4 class="{% if stats.total_outstanding > 0 %}text-danger{% else %}text-success{% endif %}">{{ stats.total_outstanding|currency }}</h4>
+                        <p class="text-muted mb-0"><small>Total Outstanding Balance</small></p>
+                    </div>
+                </div>
+                <hr>
+                <!-- Row 3: Additional Metrics -->
+                <div class="row text-center mb-3">
+                    <div class="col-md-3">
+                        <h5 class="{% if stats.avg_days_late > 0 %}text-warning{% else %}text-success{% endif %}">{{ stats.avg_days_late }}</h5>
+                        <p class="text-muted mb-0"><small>Avg Days Late</small></p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="text-primary">{{ stats.total_monthly_revenue|currency }}</h5>
+                        <p class="text-muted mb-0"><small>Monthly Revenue Potential</small></p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="text-info">{{ stats.total_last_payments|currency }}</h5>
+                        <p class="text-muted mb-0"><small>Last Payment Total</small></p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="{% if stats.collection_rate >= 90 %}text-success{% elif stats.collection_rate >= 75 %}text-warning{% else %}text-danger{% endif %}">{{ stats.collection_rate }}%</h5>
+                        <p class="text-muted mb-0"><small>Collection Rate</small></p>
+                    </div>
+                </div>
+                
+                <!-- Collapsible Aging Details Section -->
+                <div class="mt-3">
+                    <a class="btn btn-sm btn-outline-secondary w-100" data-bs-toggle="collapse" href="#agingDetails" role="button" aria-expanded="false" aria-controls="agingDetails">
+                        <i class="bi bi-chevron-down"></i> View Aging Breakdown Details
+                    </a>
+                    <div class="collapse mt-3" id="agingDetails">
+                        <div class="card card-body bg-light">
+                            <h6 class="text-center mb-3"><i class="bi bi-calendar-x"></i> Detailed Aging Analysis</h6>
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div class="card border-warning">
+                                        <div class="card-body py-3">
+                                            <h5 class="text-warning mb-2">30-59 Days</h5>
+                                            <p class="mb-1"><strong>{{ stats.aged_30_59_count }}</strong> accounts</p>
+                                            <p class="mb-0 text-muted">{{ stats.aged_30_59_amount|currency }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card border-warning">
+                                        <div class="card-body py-3">
+                                            <h5 class="text-warning mb-2">60-89 Days</h5>
+                                            <p class="mb-1"><strong>{{ stats.aged_60_89_count }}</strong> accounts</p>
+                                            <p class="mb-0 text-muted">{{ stats.aged_60_89_amount|currency }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card border-danger">
+                                        <div class="card-body py-3">
+                                            <h5 class="text-danger mb-2">90+ Days</h5>
+                                            <p class="mb-1"><strong>{{ stats.aged_90_plus_count }}</strong> accounts</p>
+                                            <p class="mb-0 text-muted">{{ stats.aged_90_plus_amount|currency }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-center mt-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle"></i> Aging buckets show how long balances have been outstanding
+                                </small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function changeDataSource() {
+    const dataSource = document.getElementById('dataSourceSelector').value;
+    window.location.href = '{{ url_for("admin_dashboard") }}?data_source=' + dataSource;
+}
+</script>
+
 {% endblock %}

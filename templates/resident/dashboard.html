@@ -137,17 +137,18 @@
 
   .wb__detail-content {
     flex: 1;
-    padding: 1rem 2rem;
+    padding: 0 2rem 1rem 2rem;
     overflow-y: auto;
   }
 
   .wb__detail-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
+    align-items: flex-end;
+    margin-bottom: 0;
+    padding-bottom: 0;
     border-bottom: 2px solid #2d76c7;
+    line-height: 1;
   }
 
   .wb__detail-title {
@@ -344,9 +345,9 @@
 
   <div class="wb__detail-content">
     <div class="wb__detail-header">
-      <!-- Title on left -->
+      <!-- Title on left (hidden since images have titles) -->
       <div style="flex: 1;">
-        <h2 class="wb__detail-title" id="detailTitle" style="margin: 0;">Credit Builder</h2>
+        <h2 class="wb__detail-title" id="detailTitle" style="margin: 0; display: none;">Credit Builder</h2>
       </div>
       <!-- Credit Score Gauge in center -->
       <div style="flex: 1; text-align: center;">
@@ -362,7 +363,7 @@
       <div style="flex: 1;"></div>
     </div>
 
-    <div id="detailContentArea">
+    <div id="detailContentArea" style="margin: 0; padding: 0;">
       <!-- Content will be inserted here -->
     </div>
   </div>
@@ -450,6 +451,76 @@
       {% endif %}
     </div>
   </div>
+</div>
+
+<div id="creditAlertContent" style="display: none;">
+  {% if resident.name == "Alexander Kelly" %}
+  <img src="{{ url_for('static', filename='images/Credit Alert Page.png') }}" 
+       alt="Credit Alert Page" 
+       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
+  {% else %}
+  <div class="coming-soon-content">
+    <i class="bi bi-hourglass-split"></i>
+    <h3>Coming Soon</h3>
+    <p>This function will be added soon!</p>
+  </div>
+  {% endif %}
+</div>
+
+<div id="moneyCoachContent" style="display: none;">
+  {% if resident.name == "Alexander Kelly" %}
+  <img src="{{ url_for('static', filename='images/Money Coach v2.png') }}" 
+       alt="Money Coach Page" 
+       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
+  {% else %}
+  <div class="coming-soon-content">
+    <i class="bi bi-hourglass-split"></i>
+    <h3>Coming Soon</h3>
+    <p>This function will be added soon!</p>
+  </div>
+  {% endif %}
+</div>
+
+<div id="moneySkillsContent" style="display: none;">
+  {% if resident.name == "Alexander Kelly" %}
+  <img src="{{ url_for('static', filename='images/Money Skills Page.png') }}" 
+       alt="Money Skills Page" 
+       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
+  {% else %}
+  <div class="coming-soon-content">
+    <i class="bi bi-hourglass-split"></i>
+    <h3>Coming Soon</h3>
+    <p>This function will be added soon!</p>
+  </div>
+  {% endif %}
+</div>
+
+<div id="idProtectContent" style="display: none;">
+  {% if resident.name == "Alexander Kelly" %}
+  <img src="{{ url_for('static', filename='images/ID Protect Page.png') }}" 
+       alt="ID Protect Page" 
+       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
+  {% else %}
+  <div class="coming-soon-content">
+    <i class="bi bi-hourglass-split"></i>
+    <h3>Coming Soon</h3>
+    <p>This function will be added soon!</p>
+  </div>
+  {% endif %}
+</div>
+
+<div id="idAlertContent" style="display: none;">
+  {% if resident.name == "Alexander Kelly" %}
+  <img src="{{ url_for('static', filename='images/ID Alert Page.png') }}" 
+       alt="ID Alert Page" 
+       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
+  {% else %}
+  <div class="coming-soon-content">
+    <i class="bi bi-hourglass-split"></i>
+    <h3>Coming Soon</h3>
+    <p>This function will be added soon!</p>
+  </div>
+  {% endif %}
 </div>
 
 <script>

@@ -122,14 +122,11 @@
 
                             <dt class="col-sm-5">Days Late:</dt>
                             <dd class="col-sm-7">
-                                {% if resident.get('days_late') is not none %}
-                                    {% if resident.days_late > 0 %}
-                                        <span class="badge bg-danger">{{ resident.days_late }} days</span>
-                                    {% else %}
-                                        <span class="text-success">0 days</span>
-                                    {% endif %}
+                                {% set days_late_value = resident.get('days_late', 0) %}
+                                {% if days_late_value > 0 %}
+                                    <span class="badge bg-danger">{{ days_late_value }} days</span>
                                 {% else %}
-                                    <span class="text-muted">N/A</span>
+                                    <span class="text-success">0 days</span>
                                 {% endif %}
                             </dd>
 

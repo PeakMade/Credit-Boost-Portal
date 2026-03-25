@@ -996,9 +996,27 @@ def load_residents_from_credhub_lists():
             else:
                 account_status = 'Current'
             
+            # Calculate days_late from aging buckets
+            days_late = 0
+            if total_balance > 0:
+                if aged_180_plus > 0:
+                    days_late = 195  # 180+ days, use 195 as representative
+                elif aged_150_179 > 0:
+                    days_late = 165  # Midpoint of 150-179
+                elif aged_120_149 > 0:
+                    days_late = 135  # Midpoint of 120-149
+                elif aged_90_119 > 0:
+                    days_late = 105  # Midpoint of 90-119
+                elif aged_60_89 > 0:
+                    days_late = 75   # Midpoint of 60-89
+                elif aged_30_59 > 0:
+                    days_late = 45   # Midpoint of 30-59
+                else:
+                    days_late = 15   # 1-29 days, use 15 as representative
+            
             # Get monthly rent and payment info
             monthly_rent = float(snapshot.get('MonthlyRentAmount', 0) or 0)
-            last_payment_date = parse_date(snapshot.get('LastPaymentDate', ''))
+            date_last_payment = parse_date(snapshot.get('LastPaymentDate', ''))
             last_payment_amount = float(snapshot.get('LastPaymentAmount', 0) or 0)
             
             # Build resident name
@@ -1062,7 +1080,8 @@ def load_residents_from_credhub_lists():
                 'lease_relationship': lr.get('LeaseRelationship', ''),
                 'resident_status': lr.get('ResidentStatus', ''),
                 'program_status': program_status,
-                'last_payment_date': last_payment_date,
+                'date_last_payment': date_last_payment,
+                'days_late': days_late,
                 'last_payment_amount': last_payment_amount,
                 'total_balance': total_balance,
                 'aged_30_59': aged_30_59,

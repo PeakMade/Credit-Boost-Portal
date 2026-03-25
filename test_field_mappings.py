@@ -126,7 +126,7 @@ def main():
         print(f"  Status: {resident.get('account_status')}")
         print(f"  Enrolled: {resident.get('enrolled')}")
         print(f"  Amount Past Due: ${resident.get('amount_past_due', 0)}")
-        print(f"  Last Payment Date: {resident.get('last_payment_date')}")
+        print(f"  Last Payment Date: {resident.get('date_last_payment')}")
         print(f"  Last Payment Amount: ${resident.get('last_payment_amount', 0)}")
         print(f"  Scheduled Monthly: ${resident.get('scheduled_monthly_payment', 0)}")
         print(f"  Total Balance: ${resident.get('total_balance', 0)}")

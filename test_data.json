@@ -32,7 +32,6 @@
       "date_last_payment": "2025-01-05",
       "date_first_delinquency": null,
       "days_late": 0,
-      "highest_credit_amount": 1200.0,
       "amount_past_due": 0.0,
       "current_balance": 0.0,
       "payments": [
@@ -97,7 +96,6 @@
       "date_last_payment": "2025-01-01",
       "date_first_delinquency": null,
       "days_late": 0,
-      "highest_credit_amount": 1500.0,
       "amount_past_due": 0.0,
       "current_balance": 0.0,
       "payments": [
@@ -146,7 +144,6 @@
       "date_last_payment": "2024-12-15",
       "date_first_delinquency": "2025-02-01",
       "days_late": 30,
-      "highest_credit_amount": 1350.0,
       "amount_past_due": 1350.0,
       "current_balance": 1350.0,
       "payments": [

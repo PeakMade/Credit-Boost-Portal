@@ -307,31 +307,93 @@ def resident_opt_out():
 
 @app.route('/admin/dashboard')
 def admin_dashboard():
+    data_source = request.args.get('data_source', 'credhub')  # Default to 'credhub', also supports 'test', 'sharepoint'
+    
+    # Load data based on selected source
+    if data_source == 'sharepoint':
+        # Load from SharePoint List (Credit Boost - Tenants)
+        source_residents = load_residents_from_sharepoint_list()
+        if not source_residents:
+            flash('Failed to load SharePoint data. Falling back to test data.', 'warning')
+            source_residents = residents
+    elif data_source == 'credhub':
+        # Load from CredHub SharePoint Lists
+        source_residents = load_residents_from_credhub_lists()
+        if not source_residents:
+            flash('Failed to load CredHub data. Falling back to test data.', 'warning')
+            source_residents = residents
+    else:
+        # Use test data
+        source_residents = residents
+    
     # Calculate statistics from resident data
-    total_residents = len(residents)
-    enrolled_residents = [r for r in residents if r.get('enrolled', False)]
-    not_enrolled_residents = [r for r in residents if not r.get('enrolled', False)]
-    # Calculate payment statistics
-    current_accounts = [r for r in residents if r.get('account_status', '') == 'Current']
-    delinquent_accounts = [r for r in residents if 'Delinquent' in r.get('account_status', '')]
-    # Calculate total amounts
-    total_past_due = sum(r.get('amount_past_due', 0) for r in residents)
-    total_monthly_revenue = sum(r.get('scheduled_monthly_payment', 0) for r in residents)
-    # Calculate reporting statistics
-    total_payments = sum(len(r.get('payments', [])) for r in residents)
-    reported_payments = sum(1 for r in residents for p in r.get('payments', []) if p.get('reported', False))
+    total_residents = len(source_residents)
+    enrolled_residents = [r for r in source_residents if r.get('enrolled', False)]
+    
+    # Active leases - residents with active status
+    active_leases = [r for r in source_residents if r.get('resident_status', '').lower() in ['active', 'current', ''] or r.get('enrollment_status') == 'enrolled']
+    
+    # Reporting this cycle - enrolled residents who are set to report
+    reporting_this_cycle = [r for r in source_residents if r.get('enrolled', False) and r.get('tradeline_created', False)]
+    
+    # Account status breakdowns
+    current_accounts = [r for r in source_residents if r.get('account_status', '') == 'Current']
+    
+    # Delinquent 30-89 days (early stage)
+    delinquent_30_89 = [r for r in source_residents if r.get('days_late', 0) >= 30 and r.get('days_late', 0) < 90]
+    
+    # Severely delinquent 90+ days
+    delinquent_90_plus = [r for r in source_residents if r.get('days_late', 0) >= 90]
+    
+    # Calculate total outstanding balance
+    total_outstanding = sum(r.get('total_balance', 0) if r.get('total_balance', 0) > 0 else r.get('amount_past_due', 0) for r in source_residents)
+    
+    # Calculate average days late (only for delinquent accounts)
+    delinquent_with_days = [r.get('days_late', 0) for r in source_residents if r.get('days_late', 0) > 0]
+    avg_days_late = sum(delinquent_with_days) / len(delinquent_with_days) if delinquent_with_days else 0
+    
+    # Monthly revenue potential
+    total_monthly_revenue = sum(r.get('scheduled_monthly_payment', 0) for r in source_residents)
+    
+    # Total last payment amounts
+    total_last_payments = sum(r.get('last_payment_amount', 0) for r in source_residents)
+    
+    # Collection rate - calculate based on expected vs collected
+    expected_revenue = total_monthly_revenue
+    collection_rate = (total_last_payments / expected_revenue * 100) if expected_revenue > 0 else 0
+    
+    # Aging bucket details
+    aged_30_59_residents = [r for r in source_residents if r.get('aged_30_59', 0) > 0 or (r.get('days_late', 0) >= 30 and r.get('days_late', 0) < 60)]
+    aged_30_59_amount = sum(r.get('aged_30_59', 0) if r.get('aged_30_59', 0) > 0 else r.get('amount_past_due', 0) for r in aged_30_59_residents)
+    
+    aged_60_89_residents = [r for r in source_residents if r.get('aged_60_89', 0) > 0 or (r.get('days_late', 0) >= 60 and r.get('days_late', 0) < 90)]
+    aged_60_89_amount = sum(r.get('aged_60_89', 0) if r.get('aged_60_89', 0) > 0 else r.get('amount_past_due', 0) for r in aged_60_89_residents)
+    
+    aged_90_plus_residents = [r for r in source_residents if r.get('aged_90_plus', 0) > 0 or r.get('days_late', 0) >= 90]
+    aged_90_plus_amount = sum(r.get('aged_90_plus', 0) if r.get('aged_90_plus', 0) > 0 else r.get('amount_past_due', 0) for r in aged_90_plus_residents)
+    
     stats = {
         'total_residents': total_residents,
         'enrolled_count': len(enrolled_residents),
-        'not_enrolled_count': len(not_enrolled_residents),
+        'active_leases': len(active_leases),
+        'reporting_this_cycle': len(reporting_this_cycle),
         'current_accounts': len(current_accounts),
-        'delinquent_accounts': len(delinquent_accounts),
-        'total_past_due': total_past_due,
+        'delinquent_30_89': len(delinquent_30_89),
+        'delinquent_90_plus': len(delinquent_90_plus),
+        'total_outstanding': total_outstanding,
+        'avg_days_late': round(avg_days_late, 1),
         'total_monthly_revenue': total_monthly_revenue,
-        'total_payments': total_payments,
-        'reported_payments': reported_payments
+        'total_last_payments': total_last_payments,
+        'collection_rate': round(collection_rate, 1),
+        # Aging details
+        'aged_30_59_count': len(aged_30_59_residents),
+        'aged_30_59_amount': aged_30_59_amount,
+        'aged_60_89_count': len(aged_60_89_residents),
+        'aged_60_89_amount': aged_60_89_amount,
+        'aged_90_plus_count': len(aged_90_plus_residents),
+        'aged_90_plus_amount': aged_90_plus_amount,
     }
-    return render_template('admin/dashboard.html', residents=residents, stats=stats)
+    return render_template('admin/dashboard.html', residents=source_residents, stats=stats, data_source=data_source)
 
 
 @app.route('/admin/rent-reporting')

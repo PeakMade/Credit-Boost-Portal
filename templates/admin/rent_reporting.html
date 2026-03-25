@@ -157,7 +157,7 @@
                                           data-bs-placement="left"
                                           data-bs-html="true"
                                           data-bs-title="Latest Payment Details"
-                                          data-bs-content="<div class='text-start'><strong>Month:</strong> {{ latest_payment.month }}<br><strong>Amount:</strong> {{ latest_payment.amount|currency }}<br><strong>Status:</strong> {{ latest_payment.status }}<br><strong>Days Late:</strong> {{ latest_payment.days_late }}<br><strong>Date Paid:</strong> {{ latest_payment.date_paid|date_format if latest_payment.date_paid else 'Not paid' }}<br><strong>Reported:</strong> {{ 'Yes' if latest_payment.reported else 'No' }}</div>"
+                                          data-bs-content="<div class='text-start'><strong>Month:</strong> {{ latest_payment.month }}<br><strong>Amount:</strong> {{ latest_payment.amount|currency }}<br><strong>Status:</strong> {{ latest_payment.status }}<br><strong>Days Late:</strong> {{ latest_payment.get('days_late', 0) }}<br><strong>Date Paid:</strong> {{ latest_payment.date_paid|date_format if latest_payment.date_paid else 'Not paid' }}<br><strong>Reported:</strong> {{ 'Yes' if latest_payment.reported else 'No' }}</div>"
                                           style="cursor: pointer;">
                                         {{ latest_payment.month }} <i class="bi bi-info-circle"></i>
                                     </span>
