@@ -207,48 +207,58 @@ def setup_session_from_easy_auth():
     Middleware to populate Flask session from Easy Auth on every request.
     This runs before every route handler.
     """
-    # Skip for static files
-    if request.path.startswith('/static/'):
-        return
-    
-    # Skip if session is already set (performance optimization)
-    if 'user_email' in session and 'role' in session:
-        return
-    
-    # Get Easy Auth claims
-    claims = get_easy_auth_claims()
-    
-    if not claims:
-        # No authentication - Easy Auth should have caught this
-        # This might happen in local dev without Easy Auth
-        if app.debug:
-            logger.warning("⚠️ No Easy Auth claims found - using fallback for local dev")
-        return
-    
-    user_email = claims['email']
-    
-    # Set session data
-    session['user_email'] = user_email
-    session['easy_auth_claims'] = claims
-    
-    # Determine role based on email/resident lookup
-    # Check if admin
-    if user_email.lower() == 'pbatson@peakmade.com':
-        session['role'] = 'admin'
-        logger.info(f"✅ Easy Auth: Admin user {user_email}")
-        return
-    
-    # Check if resident
-    for resident in residents:
-        if resident.get('email', '').lower() == user_email.lower():
-            session['role'] = 'resident'
-            session['resident_id'] = resident['id']
-            logger.info(f"✅ Easy Auth: Resident user {user_email} (ID: {resident['id']})")
+    try:
+        # Skip for static files
+        if request.path.startswith('/static/'):
             return
+        
+        # Skip if session is already set (performance optimization)
+        if 'user_email' in session and 'role' in session:
+            return
+        
+        # Get Easy Auth claims
+        claims = get_easy_auth_claims()
+        
+        if not claims:
+            # No authentication - Easy Auth should have caught this
+            # This might happen in local dev without Easy Auth
+            if app.debug:
+                logger.warning("⚠️ No Easy Auth claims found - using fallback for local dev")
+            return
+        
+        user_email = claims.get('email')
+        if not user_email:
+            logger.error("❌ Easy Auth claims present but no email found")
+            return
+        
+        # Set session data (store only serializable data)
+        session['user_email'] = user_email
+        session['user_name'] = claims.get('name', user_email)
+        session['identity_provider'] = claims.get('identity_provider', 'unknown')
+        
+        # Determine role based on email/resident lookup
+        # Check if admin
+        if user_email.lower() == 'pbatson@peakmade.com':
+            session['role'] = 'admin'
+            logger.info(f"✅ Easy Auth: Admin user {user_email}")
+            return
+        
+        # Check if resident
+        for resident in residents:
+            if resident.get('email', '').lower() == user_email.lower():
+                session['role'] = 'resident'
+                session['resident_id'] = resident['id']
+                logger.info(f"✅ Easy Auth: Resident user {user_email} (ID: {resident['id']})")
+                return
+        
+        # User authenticated but not in our system
+        session['role'] = 'unknown'
+        logger.warning(f"⚠️ Easy Auth: Authenticated user {user_email} not found in resident/admin data")
     
-    # User authenticated but not in our system
-    session['role'] = 'unknown'
-    logger.warning(f"⚠️ Easy Auth: Authenticated user {user_email} not found in resident/admin data")
+    except Exception as e:
+        logger.error(f"❌ Error in Easy Auth middleware: {str(e)}", exc_info=True)
+        # Don't block the request, just log the error
+        return
 
 
 # Log startup
@@ -282,24 +292,31 @@ def debug_auth():
     Diagnostic endpoint to inspect Easy Auth state.
     Remove or secure this in production!
     """
-    claims = get_easy_auth_claims()
-    
-    return {
-        'easy_auth_claims': claims,
-        'session_data': {
-            'role': session.get('role'),
-            'user_email': session.get('user_email'),
-            'resident_id': session.get('resident_id')
-        },
-        'easy_auth_headers': {
-            'X-MS-CLIENT-PRINCIPAL': request.headers.get('X-MS-CLIENT-PRINCIPAL', 'Not present')[:100] if request.headers.get('X-MS-CLIENT-PRINCIPAL') else 'Not present',
-            'X-MS-CLIENT-PRINCIPAL-NAME': request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME', 'Not present'),
-            'X-MS-CLIENT-PRINCIPAL-ID': request.headers.get('X-MS-CLIENT-PRINCIPAL-ID', 'Not present'),
-            'X-MS-CLIENT-PRINCIPAL-IDP': request.headers.get('X-MS-CLIENT-PRINCIPAL-IDP', 'Not present')
-        },
-        'request_path': request.path,
-        'debug_mode': app.debug
-    }, 200
+    try:
+        claims = get_easy_auth_claims()
+        
+        return {
+            'easy_auth_claims': claims,
+            'session_data': {
+                'role': session.get('role'),
+                'user_email': session.get('user_email'),
+                'resident_id': session.get('resident_id')
+            },
+            'easy_auth_headers': {
+                'X-MS-CLIENT-PRINCIPAL': request.headers.get('X-MS-CLIENT-PRINCIPAL', 'Not present')[:100] if request.headers.get('X-MS-CLIENT-PRINCIPAL') else 'Not present',
+                'X-MS-CLIENT-PRINCIPAL-NAME': request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME', 'Not present'),
+                'X-MS-CLIENT-PRINCIPAL-ID': request.headers.get('X-MS-CLIENT-PRINCIPAL-ID', 'Not present'),
+                'X-MS-CLIENT-PRINCIPAL-IDP': request.headers.get('X-MS-CLIENT-PRINCIPAL-IDP', 'Not present')
+            },
+            'request_path': request.path,
+            'debug_mode': app.debug
+        }, 200
+    except Exception as e:
+        logger.error(f"❌ Error in debug-auth route: {str(e)}", exc_info=True)
+        return {
+            'error': str(e),
+            'status': 'error'
+        }, 500
 
 
 # Landing / Role selection
@@ -310,30 +327,36 @@ def landing():
     Root route - redirects to appropriate dashboard if authenticated,
     otherwise shows error (since Easy Auth should handle login)
     """
-    # Check if user is authenticated via Easy Auth
-    claims = get_easy_auth_claims()
-    
-    if claims and 'role' in session:
-        # User is authenticated, redirect to appropriate dashboard
-        role = session.get('role')
-        if role == 'admin':
-            return redirect(url_for('admin_dashboard'))
-        elif role == 'resident':
-            return redirect(url_for('resident_dashboard'))
-        elif role == 'unknown':
-            return render_template('error.html', 
-                                 message='Your account is authenticated but not authorized to access this application.',
-                                 details=f'Email: {claims["email"]}')
-    
-    # If we reach here with Easy Auth enabled, something is wrong
-    # In production, Easy Auth should prevent unauthenticated access
-    # This path is mainly for local development
-    if app.debug:
-        return render_template('landing.html')
-    else:
+    try:
+        # Check if user is authenticated via Easy Auth
+        claims = get_easy_auth_claims()
+        
+        if claims and 'role' in session:
+            # User is authenticated, redirect to appropriate dashboard
+            role = session.get('role')
+            if role == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            elif role == 'resident':
+                return redirect(url_for('resident_dashboard'))
+            elif role == 'unknown':
+                return render_template('error.html', 
+                                     message='Your account is authenticated but not authorized to access this application.',
+                                     details=f'Email: {claims.get("email", "Unknown")}')
+        
+        # If we reach here with Easy Auth enabled, something is wrong
+        # In production, Easy Auth should prevent unauthenticated access
+        # This path is mainly for local development
+        if app.debug:
+            return render_template('landing.html')
+        else:
+            return render_template('error.html',
+                                 message='Authentication required',
+                                 details='Please ensure Azure Easy Auth is configured correctly.')
+    except Exception as e:
+        logger.error(f"❌ Error in landing route: {str(e)}", exc_info=True)
         return render_template('error.html',
-                             message='Authentication required',
-                             details='Please ensure Azure Easy Auth is configured correctly.')
+                             message='Application Error',
+                             details=f'An error occurred: {str(e)}'), 500
 
 
 @app.route('/login', methods=['POST'])
