@@ -255,7 +255,9 @@ def setup_session_from_easy_auth():
 logger.info("=" * 60)
 logger.info("Flask app starting...")
 logger.info(f"Environment: {'Development' if app.debug else 'Production'}")
-logger.info(f\"Residents loaded: {len(residents)}\")`nlogger.info(f\"Debug mode: {app.debug}\")`nlogger.info(f\"Secret key: {\"Set\" if app.secret_key else \"NOT SET\"}\")
+logger.info(f"Residents loaded: {len(residents)}")
+logger.info(f"Debug mode: {app.debug}")
+logger.info(f"Secret key: {'Set' if app.secret_key else 'NOT SET'}")
 logger.info("=" * 60)
 
 
