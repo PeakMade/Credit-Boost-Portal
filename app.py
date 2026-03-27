@@ -17,6 +17,13 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'demo-secret-key-change-in-production')
 
+# Configure session for production stability
+app.config['SESSION_COOKIE_SECURE'] = not app.debug  # Use secure cookies in production
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+app.config['SESSION_COOKIE_NAME'] = 'credit_boost_session'
+
 # Configure logging for Azure
 logging.basicConfig(
     level=logging.INFO,
@@ -208,6 +215,10 @@ def setup_session_from_easy_auth():
     This runs before every route handler.
     """
     try:
+        # Skip for health check and debug endpoints (must work without auth)
+        if request.path in ['/health', '/debug-auth']:
+            return
+        
         # Skip for static files
         if request.path.startswith('/static/'):
             return
@@ -278,12 +289,20 @@ def health_check():
     """
     Simple health check endpoint for Azure monitoring.
     Returns 200 OK if the app is running.
+    Must work even if Easy Auth or sessions fail.
     """
-    return {
-        'status': 'healthy',
-        'timestamp': datetime.utcnow().isoformat(),
-        'residents_loaded': len(residents)
-    }, 200
+    try:
+        return {
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'residents_loaded': len(residents)
+        }, 200
+    except Exception as e:
+        # Even if something breaks, return 200 so Azure knows app is running
+        return {
+            'status': 'degraded',
+            'error': str(e)
+        }, 200
 
 
 @app.route('/debug-auth')
