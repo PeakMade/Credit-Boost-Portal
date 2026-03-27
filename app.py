@@ -314,10 +314,18 @@ def setup_session_from_easy_auth_middleware():
         return
 
 
-# Log startup - moved to after_first_request to not block worker boot
-@app.before_first_request
+# Flask 3.x compatible: Use before_request with one-time guard instead of before_first_request
+_first_request_handled = False
+
 def log_application_startup():
     """Log startup info after first request, not at import time"""
+    global _first_request_handled
+    
+    if _first_request_handled:
+        return
+    
+    _first_request_handled = True
+    
     logger.info("=" * 60)
     logger.info("Flask app received first request")
     logger.info(f"Environment: {'Development' if app.debug else 'Production'}")
@@ -407,6 +415,8 @@ def handle_unexpected_error(error):
 @app.before_request
 def log_request_info():
     """Log all incoming requests for debugging"""
+    # Flask 3.x compatible: Call first-request handler here instead of @before_first_request
+    log_application_startup()
     logger.info(f"REQUEST: {request.method} {request.path} from {request.remote_addr}")
 
 
