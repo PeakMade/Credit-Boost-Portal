@@ -128,15 +128,57 @@ def load_test_data():
 # In-memory data structures (loaded from Excel with encrypted SSNs)
 CURRENT_RESIDENT_ID = 1
 
-# Try to load from Excel first, fallback to JSON if it fails
-try:
-    residents = load_residents_from_excel('Resident PII Test.xlsx')
-    if not residents:
-        print("Excel file empty or not found, falling back to JSON")
-        residents = load_test_data()
-except Exception as e:
-    print(f"Error loading Excel file: {e}, falling back to JSON")
-    residents = load_test_data()
+# Lazy-load residents on first access to avoid blocking worker startup
+_residents_cache = None
+_residents_loading = False
+
+def get_residents():
+    """Lazy-load residents on first access to avoid blocking Gunicorn worker startup"""
+    global _residents_cache, _residents_loading
+    
+    if _residents_cache is not None:
+        return _residents_cache
+    
+    if _residents_loading:
+        # Prevent re-entrant loading
+        return []
+    
+    _residents_loading = True
+    try:
+        logger.info("Loading residents from Excel file...")
+        _residents_cache = load_residents_from_excel('Resident PII Test.xlsx')
+        if not _residents_cache:
+            logger.warning("Excel file empty or not found, falling back to JSON")
+            _residents_cache = load_test_data()
+        logger.info(f"Loaded {len(_residents_cache)} residents from data source")
+    except Exception as e:
+        logger.error(f"Error loading Excel file: {e}, falling back to JSON", exc_info=True)
+        _residents_cache = load_test_data()
+    finally:
+        _residents_loading = False
+    
+    return _residents_cache
+
+# Compatibility wrapper - use get_residents() for lazy loading
+@property
+def residents_property():
+    return get_residents()
+
+# For backwards compatibility, create a class that acts like a list
+class LazyResidentsList:
+    def __getitem__(self, key):
+        return get_residents()[key]
+    
+    def __iter__(self):
+        return iter(get_residents())
+    
+    def __len__(self):
+        return len(get_residents())
+    
+    def __bool__(self):
+        return True
+
+residents = LazyResidentsList()
 
 
 def get_resident_by_id(resident_id):
@@ -209,7 +251,7 @@ def get_easy_auth_claims():
 
 
 @app.before_request
-def setup_session_from_easy_auth():
+def setup_session_from_easy_auth_middleware():
     """
     Middleware to populate Flask session from Easy Auth on every request.
     This runs before every route handler.
@@ -272,14 +314,19 @@ def setup_session_from_easy_auth():
         return
 
 
-# Log startup
-logger.info("=" * 60)
-logger.info("Flask app starting...")
-logger.info(f"Environment: {'Development' if app.debug else 'Production'}")
-logger.info(f"Residents loaded: {len(residents)}")
-logger.info(f"Debug mode: {app.debug}")
-logger.info(f"Secret key: {'Set' if app.secret_key else 'NOT SET'}")
-logger.info("=" * 60)
+# Log startup - moved to after_first_request to not block worker boot
+@app.before_first_request
+def log_application_startup():
+    """Log startup info after first request, not at import time"""
+    logger.info("=" * 60)
+    logger.info("Flask app received first request")
+    logger.info(f"Environment: {'Development' if app.debug else 'Production'}")
+    logger.info(f"Debug mode: {app.debug}")
+    logger.info(f"Secret key: {'Set' if app.secret_key else 'NOT SET'}")
+    # Trigger lazy load of residents
+    resident_count = len(get_residents())
+    logger.info(f"Residents loaded: {resident_count}")
+    logger.info("=" * 60)
 
 
 # ============= DIAGNOSTIC ROUTES =============
@@ -289,16 +336,19 @@ def health_check():
     """
     Simple health check endpoint for Azure monitoring.
     Returns 200 OK if the app is running.
-    Must work even if Easy Auth or sessions fail.
+    Must work even if Easy Auth, sessions, or data loading fails.
     """
     try:
+        resident_count = len(get_residents()) if _residents_cache is not None else 0
         return {
             'status': 'healthy',
             'timestamp': datetime.utcnow().isoformat(),
-            'residents_loaded': len(residents)
+            'residents_loaded': resident_count,
+            'residents_cache_initialized': _residents_cache is not None
         }, 200
     except Exception as e:
         # Even if something breaks, return 200 so Azure knows app is running
+        logger.error(f"Health check error: {str(e)}", exc_info=True)
         return {
             'status': 'degraded',
             'error': str(e)
@@ -328,14 +378,43 @@ def debug_auth():
                 'X-MS-CLIENT-PRINCIPAL-IDP': request.headers.get('X-MS-CLIENT-PRINCIPAL-IDP', 'Not present')
             },
             'request_path': request.path,
-            'debug_mode': app.debug
+            'debug_mode': app.debug,
+            'residents_loaded': len(get_residents()) if _residents_cache is not None else 0,
+            'residents_cache_initialized': _residents_cache is not None
         }, 200
     except Exception as e:
         logger.error(f"❌ Error in debug-auth route: {str(e)}", exc_info=True)
         return {
             'error': str(e),
-            'status': 'error'
+            'status': 'error',
+            'traceback': str(e)
         }, 500
+
+
+# ============= GLOBAL ERROR HANDLERS =============
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    """Catch-all error handler to prevent silent failures"""
+    logger.error(f"Unexpected error: {str(error)}", exc_info=True)
+    return {
+        'error': 'Internal server error',
+        'message': str(error),
+        'type': type(error).__name__
+    }, 500
+
+
+@app.before_request
+def log_request_info():
+    """Log all incoming requests for debugging"""
+    logger.info(f"REQUEST: {request.method} {request.path} from {request.remote_addr}")
+
+
+@app.after_request
+def log_response_info(response):
+    """Log all outgoing responses for debugging"""
+    logger.info(f"RESPONSE: {request.method} {request.path} -> {response.status_code}")
+    return response
 
 
 # Landing / Role selection
