@@ -345,9 +345,9 @@
 
   <div class="wb__detail-content">
     <div class="wb__detail-header">
-      <!-- Title on left (hidden since images have titles) -->
+      <!-- Title on left -->
       <div style="flex: 1;">
-        <h2 class="wb__detail-title" id="detailTitle" style="margin: 0; display: none;">Credit Builder</h2>
+        <h2 class="wb__detail-title" id="detailTitle" style="margin: 0;">Credit Builder</h2>
       </div>
       <!-- Credit Score Gauge in center -->
       <div style="flex: 1; text-align: center;">
@@ -383,9 +383,7 @@
           <dt class="col-sm-5">Phone:</dt>
           <dd class="col-sm-7">{{ resident.phone }}</dd>
           <dt class="col-sm-5">Date of Birth:</dt>
-          <dd class="col-sm-7">{{ resident.dob|date_format }}</dd>
-          <dt class="col-sm-5">SSN:</dt>
-          <dd class="col-sm-7">***-**-{{ resident.ssn[-4:] }}</dd>
+          <dd class="col-sm-7">{{ resident.dob|mask_dob }}</dd>
           <dt class="col-sm-5">Property:</dt>
           <dd class="col-sm-7">{{ resident.property_name }}</dd>
           <dt class="col-sm-5">Unit:</dt>
@@ -455,9 +453,177 @@
 
 <div id="creditAlertContent" style="display: none;">
   {% if resident.name == "Alexander Kelly" %}
-  <img src="{{ url_for('static', filename='images/Credit Alert Page.png') }}" 
-       alt="Credit Alert Page" 
-       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
+  <style>
+    .credit-alert-page {
+      background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%);
+      border-radius: 20px;
+      padding: 1.5rem;
+      margin-top: 0.75rem;
+    }
+    @media (max-width: 1400px) {
+      .credit-alert-page {
+        padding: 1rem;
+      }
+    }
+
+    .credit-alert-card {
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 26px;
+      box-shadow: 0 12px 40px rgba(70, 92, 190, 0.15);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+    .alert-section-header {
+      background: linear-gradient(to right, #1d4ed8, #2563eb, #38bdf8);
+      color: white;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid rgba(226, 232, 240, 0.8);
+    }
+    .alert-section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+    .alert-status-badge {
+      background: white;
+      border: 1px solid rgba(226, 232, 240, 1);
+      border-radius: 9999px;
+      padding: 0.75rem 1.25rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #16a34a;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    .alert-table-row {
+      display: grid;
+      grid-template-columns: minmax(140px, 180px) minmax(180px, 240px) 1fr minmax(120px, 160px);
+      gap: 0.75rem;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+      font-size: 1.125rem;
+    }
+    .alert-table-row:last-child {
+      border-bottom: none;
+    }
+    .alert-date {
+      font-weight: 800;
+      color: #1e3a8a;
+    }
+    .alert-type {
+      font-weight: 600;
+      color: #1e40af;
+    }
+    .alert-desc {
+      color: #1d4ed8;
+    }
+    .alert-status-good {
+      font-weight: 800;
+      color: #16a34a;
+    }
+    .alert-status-warn {
+      font-weight: 800;
+      color: #ea580c;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .wealth-tip-box {
+      margin: 1.25rem;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      border-radius: 24px;
+      padding: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    .wealth-tip-icon {
+      background: #fef3c7;
+      border-radius: 9999px;
+      padding: 0.75rem;
+      flex-shrink: 0;
+    }
+    .wealth-tip-text {
+      font-size: 1.25rem;
+      color: #1e40af;
+    }
+    @media (max-width: 768px) {
+      .alert-table-row {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+      .credit-alert-header {
+        padding: 1.5rem 1rem;
+      }
+    }
+    @media (max-width: 1400px) {
+      .alert-table-row {
+        font-size: 1rem;
+        padding: 0.875rem 1rem;
+      }
+    }
+  </style>
+  
+  <div class="credit-alert-page">
+    <div class="credit-alert-card">
+      <div class="alert-section-header">
+        <div class="alert-section-title">
+          <i class="bi bi-info-circle" style="font-size: 2.5rem;"></i>
+          Recent Credit Alerts
+        </div>
+        <div class="alert-status-badge">
+          <i class="bi bi-check-circle-fill"></i>
+          Monitoring Active
+        </div>
+      </div>
+      
+      <div>
+        <div class="alert-table-row">
+          <div class="alert-date">Mar 22, 2026</div>
+          <div class="alert-type">Payment Reported</div>
+          <div class="alert-desc">Rent payment on time</div>
+          <div class="alert-status-good">+6 pts</div>
+        </div>
+        
+        <div class="alert-table-row">
+          <div class="alert-date">Feb 18, 2026</div>
+          <div class="alert-type">Balance Change</div>
+          <div class="alert-desc">Credit card balance increased</div>
+          <div class="alert-status-warn">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Medium
+          </div>
+        </div>
+        
+        <div class="alert-table-row">
+          <div class="alert-date">Jan 03, 2026</div>
+          <div class="alert-type">Inquiry Removed</div>
+          <div class="alert-desc">Hard inquiry removed</div>
+          <div class="alert-status-good">+4 pts</div>
+        </div>
+      </div>
+      
+      <div class="wealth-tip-box">
+        <div class="wealth-tip-icon">
+          <i class="bi bi-lightbulb-fill" style="font-size: 2.5rem; color: #eab308;"></i>
+        </div>
+        <p class="wealth-tip-text">
+          <strong>Wealth Tip:</strong> Catching issues early can prevent long term credit damage. You're doing it right.
+        </p>
+      </div>
+    </div>
+  </div>
   {% else %}
   <div class="coming-soon-content">
     <i class="bi bi-hourglass-split"></i>
@@ -469,57 +635,325 @@
 
 <div id="moneyCoachContent" style="display: none;">
   {% if resident.name == "Alexander Kelly" %}
-  <img src="{{ url_for('static', filename='images/Money Coach v2.png') }}" 
-       alt="Money Coach Page" 
-       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
-  {% else %}
-  <div class="coming-soon-content">
-    <i class="bi bi-hourglass-split"></i>
-    <h3>Coming Soon</h3>
-    <p>This function will be added soon!</p>
+  <style>
+    .coach-page { background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%); border-radius: 20px; padding: 1.5rem; margin-top: 0.75rem; }
+    @media (max-width: 1400px) {
+      .coach-page {
+        padding: 1rem;
+      }
+    }
+
+    .coach-card { background: rgba(255, 255, 255, 0.55); border: none; border-radius: 30px; overflow: hidden; box-shadow: 0 16px 40px rgba(84, 102, 187, 0.16); }
+    .coach-grid { display: grid; grid-template-columns: 1fr 1.2fr 0.95fr; gap: 1.5rem; padding: 1.5rem; border-bottom: 1px solid rgba(226, 232, 240, 0.8); }
+    .coach-profile { background: linear-gradient(135deg, #cbd5e1 0%, #7dd3fc 30%, #cbd5e1 100%); border-radius: 26px; min-height: 300px; position: relative; overflow: hidden; box-shadow: inset 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .coach-details { display: flex; flex-direction: column; justify-content: center; padding: 0 1rem; }
+    .coach-details h2 { font-family: Georgia, serif; font-size: 1.5rem; font-weight: 700; color: #18317f; margin: 0; }
+    .coach-details h3 { font-size: 1.25rem; font-weight: 800; color: #1f3f95; margin: 1.5rem 0 0; padding-bottom: 0.75rem; border-bottom: 2px solid #dbeafe; }
+    .coach-details p { font-size: 1.125rem; color: rgba(30, 64, 175, 0.85); margin-top: 1rem; }
+    .coach-btn { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 1rem 1.25rem; border-radius: 16px; font-size: 1.25rem; font-weight: 600; color: white; border: none; cursor: pointer; box-shadow: 0 8px 20px rgba(57, 84, 204, 0.25); transition: transform 0.2s; text-decoration: none; }
+    .coach-btn:hover { transform: scale(1.02); }
+    .coach-btn-orange { background: linear-gradient(to right, #f97316, #fbbf24); }
+    .coach-btn-blue { background: linear-gradient(to right, #1d4ed8, #3b82f6); }
+    .progress-card { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 26px; overflow: hidden; align-self: center; box-shadow: 0 12px 40px rgba(70, 92, 190, 0.15); }
+    .progress-header { background: linear-gradient(to right, #1d4ed8, #2563eb, #38bdf8); color: white; padding: 0.75rem 1.25rem; font-size: 1rem; font-weight: 800; }
+    .progress-body { display: flex; align-items: center; justify-content: center; gap: 1.5rem; padding: 1.25rem; }
+    .progress-ring { width: 170px; height: 170px; position: relative; flex-shrink: 0; }
+    .progress-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.6); border-radius: 50%; }
+    .progress-percentage { font-size: 3rem; font-weight: 800; color: #1d4ed8; line-height: 1; }
+    .progress-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.2em; color: #3b82f6; margin-top: 0.25rem; }
+    .progress-stats { text-align: left; min-width: 0; }
+    .progress-stats h4 { font-size: 1.125rem; font-weight: 800; color: #1e3a8a; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .progress-stats p { font-size: 1rem; color: #1d4ed8; margin-top: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .icon-tiles { display: grid; grid-template-columns: repeat(5, 1fr); }
+    .icon-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1.25rem 0.75rem; border-right: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.4); text-align: center; }
+    .icon-tile:last-child { border-right: none; }
+    .icon-tile-icon { background: linear-gradient(135deg, #2563eb, #38bdf8); color: white; padding: 0.625rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+    .icon-tile-label { font-size: 1rem; font-weight: 500; color: #1e40af; line-height: 1.3; }
+    @media (max-width: 1024px) { .coach-grid { grid-template-columns: 1fr; } .icon-tiles { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 1400px) { .coach-grid { grid-template-columns: 0.9fr 1fr 1.1fr; gap: 1rem; padding: 1rem; } .icon-tile { padding: 0.875rem 0.5rem; gap: 0.375rem; } .icon-tile-icon { padding: 0.5rem; } .icon-tile-label { font-size: 0.875rem; } .coach-btn { font-size: 0.9rem; padding: 0.625rem 0.875rem; } .coach-details h3 { margin: 1rem 0 0; } .progress-body { gap: 0.75rem; padding: 0.875rem; } .progress-ring { width: 130px; height: 130px; } .progress-percentage { font-size: 2.25rem; } .progress-label { font-size: 0.55rem; } .progress-stats h4 { font-size: 0.95rem; } .progress-stats p { font-size: 0.85rem; } .coach-profile { min-height: 220px; padding: 0.5rem; } }
+  </style>
+  <div class="coach-page">
+
+    <div class="coach-card">
+      <div class="coach-grid">
+        <div class="coach-profile">
+          <img src="{{ url_for('static', filename='images/Money Coach Advisor.png') }}" 
+               alt="Money Coach Kevin Sweny" 
+               style="max-width: 100%; height: auto; max-height: 100%; object-fit: contain;">
+        </div>
+        <div class="coach-details">
+          <h2>EdwardJones</h2>
+          <h3>Kevin Sweny</h3>
+          <p>Certified Financial Advisor</p>
+          <div style="display: grid; gap: 0.75rem; margin-top: 1.25rem;">
+            <a href="#" class="coach-btn coach-btn-orange"><i class="bi bi-calendar3"></i> Schedule a Session</a>
+            <a href="#" class="coach-btn coach-btn-blue"><i class="bi bi-chat-dots-fill"></i> Message Your Coach</a>
+          </div>
+        </div>
+        <div class="progress-card">
+          <div class="progress-header">Learning Progress</div>
+          <div class="progress-body">
+            <div class="progress-ring">
+              <svg width="100%" height="100%" viewBox="0 0 170 170" style="transform: rotate(-90deg);">
+                <circle cx="85" cy="85" r="67" fill="transparent" stroke="rgba(96,122,214,0.16)" stroke-width="22"/>
+                <circle cx="85" cy="85" r="67" fill="transparent" stroke="url(#ringGrad)" stroke-width="22" stroke-linecap="round" stroke-dasharray="421" stroke-dashoffset="231"/>
+                <defs><linearGradient id="ringGrad" x1="0%" x2="100%" y1="0%" y2="100%"><stop offset="0%" stop-color="#f97316"/><stop offset="50%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
+              </svg>
+              <div class="progress-ring-center"><div class="progress-percentage">45%</div><div class="progress-label">COMPLETE</div></div>
+            </div>
+            <div class="progress-stats"><h4>45% Complete</h4><p><i class="bi bi-fire" style="color: #f97316;"></i> 7 Day Streak!</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="icon-tiles">
+        <div class="icon-tile"><div class="icon-tile-icon"><i class="bi bi-briefcase-fill" style="font-size: 2rem;"></i></div><div class="icon-tile-label">Student Loan Advice</div></div>
+        <div class="icon-tile"><div class="icon-tile-icon"><i class="bi bi-mortarboard-fill" style="font-size: 2rem;"></i></div><div class="icon-tile-label">Graduate Planning</div></div>
+        <div class="icon-tile"><div class="icon-tile-icon"><i class="bi bi-credit-card-fill" style="font-size: 2rem;"></i></div><div class="icon-tile-label">Credit Improvement</div></div>
+        <div class="icon-tile"><div class="icon-tile-icon"><i class="bi bi-piggy-bank-fill" style="font-size: 2rem;"></i></div><div class="icon-tile-label">Savings Goals</div></div>
+        <div class="icon-tile"><div class="icon-tile-icon"><i class="bi bi-house-fill" style="font-size: 2rem;"></i></div><div class="icon-tile-label">Future Planning</div></div>
+      </div>
+    </div>
   </div>
+  {% else %}
+  <div class="coming-soon-content"><i class="bi bi-hourglass-split"></i><h3>Coming Soon</h3><p>This function will be added soon!</p></div>
   {% endif %}
 </div>
 
 <div id="moneySkillsContent" style="display: none;">
   {% if resident.name == "Alexander Kelly" %}
-  <img src="{{ url_for('static', filename='images/Money Skills Page.png') }}" 
-       alt="Money Skills Page" 
-       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
-  {% else %}
-  <div class="coming-soon-content">
-    <i class="bi bi-hourglass-split"></i>
-    <h3>Coming Soon</h3>
-    <p>This function will be added soon!</p>
+  <style>
+    .skills-page { background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%); border-radius: 20px; padding: 0.75rem; margin-top: 0.5rem; }
+
+    .skills-layout { display: grid; grid-template-columns: 240px 1fr; gap: 0.75rem; }
+    .skills-sidebar { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 26px; padding: 1rem; display: flex; flex-direction: column; align-items: center; box-shadow: 0 12px 40px rgba(70, 92, 190, 0.15); }
+    .skills-ring-container { width: 170px; height: 170px; position: relative; }
+    .skills-ring-percentage { font-size: 2.25rem; font-weight: 800; color: #1d4ed8; }
+    .skills-ring-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.2em; color: #3b82f6; }
+    .skills-sidebar h3 { font-size: 1.125rem; font-weight: 800; color: #1e40af; margin-top: 0.75rem; text-align: center; }
+    .skills-sidebar p { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; color: #1d4ed8; margin-top: 0.375rem; }
+    .skills-continue-btn { width: 100%; margin-top: 1rem; padding: 0.625rem 0.875rem; background: linear-gradient(to right, #5b21b6, #4f46e5); color: white; border: none; border-radius: 16px; font-size: 0.95rem; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3); }
+    .lesson-list { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 26px; overflow: hidden; box-shadow: 0 12px 40px rgba(70, 92, 190, 0.15); }
+    .lesson-header { background: linear-gradient(to right, #1d4ed8, #2563eb, #38bdf8); color: white; padding: 0.5rem 1rem; display: flex; align-items: center; justify-content: space-between; }
+    .lesson-title { display: flex; align-items: center; gap: 0.625rem; font-size: 0.925rem; font-weight: 800; }
+    .lesson-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 1rem; font-size: 0.95rem; font-weight: 500; color: #1e40af; border-bottom: 1px solid rgba(226, 232, 240, 0.8); }
+    .lesson-item:last-child { border-bottom: none; }
+    .skills-grid { display: grid; gap: 0.75rem; }
+    .skills-grid-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .feature-bar { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 26px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 0.75rem; margin-top: 0.75rem; box-shadow: 0 12px 40px rgba(70, 92, 190, 0.15); }
+    .feature-item { display: flex; align-items: center; gap: 0.875rem; padding-right: 0.75rem; border-right: 1px solid rgba(226, 232, 240, 0.8); }
+    .feature-item:last-child { border-right: none; }
+    .feature-icon { background: rgba(59, 130, 246, 0.1); border-radius: 16px; padding: 0.625rem; }
+    .feature-text h4 { font-size: 1rem; font-weight: 800; color: #1e40af; margin: 0; }
+    .feature-text p { font-size: 0.875rem; color: #1d4ed8; margin: 0.25rem 0 0; }
+    @media (max-width: 1200px) { .skills-layout { grid-template-columns: 1fr; } .skills-grid-cols { grid-template-columns: 1fr; } .feature-bar { grid-template-columns: 1fr; } .feature-item { border-right: none; border-bottom: 1px solid rgba(226, 232, 240, 0.8); padding-bottom: 1rem; } .feature-item:last-child { border-bottom: none; } }
+    @media (max-width: 1400px) { .skills-layout { grid-template-columns: 200px 1fr; gap: 0.625rem; } .skills-sidebar { padding: 0.625rem; } .skills-ring-container { width: 140px; height: 140px; } .skills-ring-percentage { font-size: 1.875rem; } .skills-ring-label { font-size: 0.5rem; } .skills-sidebar h3 { font-size: 1rem; margin-top: 0.5rem; } .skills-sidebar p { font-size: 0.875rem; margin-top: 0.25rem; } .skills-continue-btn { margin-top: 0.75rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; } .lesson-header { padding: 0.4rem 0.875rem; } .lesson-title { font-size: 0.85rem; gap: 0.5rem; } .lesson-item { font-size: 0.85rem; padding: 0.3rem 0.75rem; gap: 0.5rem; } .skills-grid { gap: 0.625rem; } .skills-grid-cols { gap: 0.625rem; } .feature-bar { padding: 0.625rem; gap: 0.625rem; margin-top: 0.625rem; } .feature-item { gap: 0.625rem; padding-right: 0.625rem; } .feature-icon { padding: 0.5rem; } .feature-text h4 { font-size: 0.925rem; } .feature-text p { font-size: 0.8rem; } }
+    @media (min-width: 1201px) and (max-width: 1500px) { .skills-layout { grid-template-columns: 230px 1fr; } }
+  </style>
+  <div class="skills-page">
+
+    <div class="skills-layout">
+      <div class="skills-sidebar">
+        <div class="skills-ring-container">
+          <svg width="100%" height="100%" viewBox="0 0 200 200" style="transform: rotate(-90deg);">
+            <circle cx="100" cy="100" r="83" fill="transparent" stroke="rgba(96,122,214,0.16)" stroke-width="18"/>
+            <circle cx="100" cy="100" r="83" fill="transparent" stroke="url(#skillsRing)" stroke-width="18" stroke-linecap="round" stroke-dasharray="521" stroke-dashoffset="287"/>
+            <defs>
+              <linearGradient id="skillsRing" x1="0%" x2="100%" y1="0%" y2="100%">
+                <stop offset="0%" stop-color="#f97316"/>
+                <stop offset="50%" stop-color="#60a5fa"/>
+                <stop offset="100%" stop-color="#1d4ed8"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.6); border-radius: 50%;">
+            <div class="skills-ring-percentage">45%</div>
+            <div class="skills-ring-label">COMPLETE</div>
+          </div>
+        </div>
+        <div style="border-top: 1px solid rgba(226, 232, 240, 0.8); width: 100%; padding-top: 1rem; margin-top: 1rem; text-align: center;">
+          <h3>Learning Progress</h3>
+          <p><i class="bi bi-fire" style="color: #f97316; font-size: 1.25rem;"></i> 7-Day Streak</p>
+        </div>
+        <button class="skills-continue-btn">Continue Learning</button>
+      </div>
+      <div class="skills-grid">
+        <div class="lesson-list"><div class="lesson-header"><div class="lesson-title"><i class="bi bi-piggy-bank-fill" style="font-size: 1.125rem;"></i> Beginner Money Basics</div><i class="bi bi-piggy-bank-fill" style="font-size: 1.75rem; opacity: 0.9;"></i></div><div style="padding: 0.75rem 1.25rem;"><div class="lesson-item"><i class="bi bi-chevron-right" style="color: #1d4ed8;"></i> Budgeting 101</div><div class="lesson-item"><i class="bi bi-chevron-right" style="color: #1d4ed8;"></i> How Credit Works</div><div class="lesson-item"><i class="bi bi-chevron-right" style="color: #1d4ed8;"></i> Needs vs. Wants</div></div></div>
+        <div class="skills-grid-cols">
+          <div class="lesson-list"><div class="lesson-header"><div class="lesson-title"><i class="bi bi-bank" style="font-size: 1.125rem;"></i> Credit Power</div><i class="bi bi-shield-fill-check" style="font-size: 1.75rem; opacity: 0.9;"></i></div><div style="padding: 0.75rem 1.25rem;"><div class="lesson-item"><i class="bi bi-chevron-right" style="color: #1d4ed8;"></i> Understanding Credit Scores</div><div class="lesson-item"><i class="bi bi-chevron-right" style="color: #1d4ed8;"></i> Boosting Your Rent</div><div class="lesson-item"><i class="bi bi-chevron-right" style="color: #1d4ed8;"></i> Avoiding Credit Mistakes</div></div></div>
+          <div class="lesson-list"><div class="lesson-header"><div class="lesson-title"><i class="bi bi-briefcase-fill" style="font-size: 1.125rem;"></i> Life After School</div><i class="bi bi-briefcase-fill" style="font-size: 1.75rem; opacity: 0.9;"></i></div><div style="padding: 0.75rem 1.25rem;"><div class="lesson-item"><i class="bi bi-chevron-right" style="color: #1d4ed8;"></i> Landing Your First Job</div><div class="lesson-item"><i class="bi bi-chevron-right" style="color: #1d4ed8;"></i> Smart Apartment Budgeting</div><div class="lesson-item"><i class="bi bi-chevron-right" style="color: #1d4ed8;"></i> Intro to Investing</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="feature-bar">
+      <div class="feature-item"><div class="feature-icon"><i class="bi bi-arrow-repeat" style="font-size: 1.75rem; color: #1d4ed8;"></i></div><div class="feature-text"><h4>Quick Lessons</h4><p>3-5 Minutes Each</p></div></div>
+      <div class="feature-item"><div class="feature-icon" style="background: rgba(251, 191, 36, 0.1);"><i class="bi bi-lightbulb-fill" style="font-size: 1.75rem; color: #f59e0b;"></i></div><div class="feature-text"><h4>Why It Matters</h4><p>Boost Your Financial IQ</p></div></div>
+      <div class="feature-item"><div class="feature-icon" style="background: rgba(234, 179, 8, 0.1);"><i class="bi bi-trophy-fill" style="font-size: 1.75rem; color: #eab308;"></i></div><div class="feature-text"><h4>Earn Rewards</h4><p>Level Up Your Skills</p></div></div>
+    </div>
   </div>
+  {% else %}
+  <div class="coming-soon-content"><i class="bi bi-hourglass-split"></i><h3>Coming Soon</h3><p>This function will be added soon!</p></div>
   {% endif %}
 </div>
 
 <div id="idProtectContent" style="display: none;">
   {% if resident.name == "Alexander Kelly" %}
-  <img src="{{ url_for('static', filename='images/ID Protect Page.png') }}" 
-       alt="ID Protect Page" 
-       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
-  {% else %}
-  <div class="coming-soon-content">
-    <i class="bi bi-hourglass-split"></i>
-    <h3>Coming Soon</h3>
-    <p>This function will be added soon!</p>
+  <style>
+    .idprotect-page { background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%); border-radius: 20px; padding: 1rem; margin-top: 0.75rem; }
+    .idprotect-inner-grid { display: grid; gap: 1.5rem; }
+
+    .idprotect-layout { display: grid; grid-template-columns: 1fr 280px; gap: 1rem; }
+    .idprotect-card { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 26px; overflow: hidden; box-shadow: 0 12px 40px rgba(70, 92, 190, 0.15); }
+    .idprotect-brand { background: white; padding: 1rem 1.25rem; border-bottom: 1px solid rgba(226, 232, 240, 0.8); display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; font-size: 1.5rem; font-weight: 800; }
+    .feature-tiles { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .feature-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 0.75rem; border-right: 1px solid rgba(226, 232, 240, 0.8); text-align: center; cursor: pointer; transition: all 0.2s ease; }
+    .feature-tile:last-child { border-right: none; }
+    .feature-tile:hover { background: rgba(59, 130, 246, 0.05); transform: translateY(-2px); }
+    .feature-tile-icon { background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(29, 78, 216, 0.2); transition: all 0.2s ease; }
+    .feature-tile:hover .feature-tile-icon { box-shadow: 0 6px 16px rgba(29, 78, 216, 0.35); transform: scale(1.05); }
+    .feature-tile-label { font-size: 1rem; font-weight: 600; color: #1e40af; }
+    .tagline { text-align: center; font-size: 1.25rem; font-weight: 800; font-style: italic; color: #1e40af; margin: 1rem 0; }
+    .coverage-card { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 26px; overflow: hidden; box-shadow: 0 12px 40px rgba(70, 92, 190, 0.15); }
+    .coverage-header { background: linear-gradient(to right, #1d4ed8, #2563eb, #38bdf8); color: white; padding: 0.75rem 1.25rem; font-size: 1rem; font-weight: 800; }
+    .coverage-item { padding: 1rem; border-bottom: 1px solid rgba(226, 232, 240, 0.8); }
+    .coverage-item:last-child { border-bottom: none; }
+    .coverage-label { font-size: 1.125rem; font-weight: 800; color: #1e3a8a; display: inline; }
+    .coverage-value { font-size: 1.125rem; color: #1d4ed8; display: inline; margin-left: 0.5rem; }
+    .action-buttons { display: grid; gap: 0.75rem; padding: 1rem; }
+    .action-btn { padding: 0.75rem 1rem; border-radius: 16px; font-size: 1rem; font-weight: 600; color: white; border: none; cursor: pointer; text-align: center; box-shadow: 0 8px 20px rgba(57, 84, 204, 0.25); }
+    .action-btn-blue { background: linear-gradient(to right, #1d4ed8, #3b82f6); }
+    .action-btn-red { background: linear-gradient(to right, #dc2626, #ef4444); }
+    .action-btn-pink { background: linear-gradient(to right, #db2777, #ec4899); }
+    @media (max-width: 1200px) { .idprotect-layout { grid-template-columns: 1fr; } .feature-tiles { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 1500px) { .idprotect-layout { grid-template-columns: 1fr 260px; } .idprotect-brand { font-size: 1.25rem; padding: 0.875rem 1rem; gap: 0.75rem; } .feature-tile-label { font-size: 0.875rem; } }
+    @media (max-width: 1400px) { .idprotect-page { padding: 0.75rem; } .idprotect-inner-grid { gap: 0.75rem; } .idprotect-layout { grid-template-columns: 1fr 240px; gap: 0.75rem; } .idprotect-brand { font-size: 1.125rem; padding: 0.625rem 0.875rem; gap: 0.5rem; } .idprotect-brand i { font-size: 1.5rem !important; } .idprotect-brand span:last-child { font-size: 1rem !important; } .feature-tile { padding: 0.75rem 0.5rem; gap: 0.375rem; } .feature-tile-icon { padding: 0.5rem; } .feature-tile-icon i { font-size: 1.75rem; } .feature-tile-label { font-size: 0.8rem; } .tagline { font-size: 1.125rem; margin: 0.75rem 0; } .coverage-header { padding: 0.625rem 1rem; font-size: 0.925rem; } .coverage-item { padding: 0.75rem; } .coverage-label, .coverage-value { font-size: 1rem; } .action-buttons { gap: 0.5rem; padding: 0.75rem; } .action-btn { padding: 0.625rem 0.875rem; font-size: 0.925rem; } }
+    @media (min-width: 1201px) and (max-width: 1400px) { .feature-tiles { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+  <div class="idprotect-page">
+
+    <div class="idprotect-layout">
+      <div class="idprotect-inner-grid">
+        <div class="idprotect-card">
+          <div class="idprotect-brand">
+            <span style="display: inline-flex; align-items: center; gap: 0.75rem; color: #1e293b;"><i class="bi bi-shield-fill-check" style="color: #dc2626; font-size: 2rem;"></i> LifeLock</span>
+            <span style="color: #cbd5e1;">|</span>
+            <span style="display: inline-flex; align-items: center; gap: 0.75rem; color: #1d4ed8;"><i class="bi bi-lock-fill" style="font-size: 2rem;"></i> Allstate</span>
+            <span style="font-size: 1.25rem; font-weight: 600; color: #64748b;">Identity Protection</span>
+          </div>
+        </div>
+        <div class="idprotect-card">
+          <div class="feature-tiles">
+            <div class="feature-tile"><div class="feature-tile-icon"><i class="bi bi-shield-fill-check" style="font-size: 2rem; color: #1d4ed8;"></i></div><div class="feature-tile-label">$1M Theft Insurance</div></div>
+            <div class="feature-tile"><div class="feature-tile-icon"><i class="bi bi-search" style="font-size: 2rem; color: #1d4ed8;"></i></div><div class="feature-tile-label">Dark Web Monitoring</div></div>
+            <div class="feature-tile"><div class="feature-tile-icon"><i class="bi bi-person-fill" style="font-size: 2rem; color: #1d4ed8;"></i></div><div class="feature-tile-label">24/7 Support</div></div>
+            <div class="feature-tile"><div class="feature-tile-icon"><i class="bi bi-lock-fill" style="font-size: 2rem; color: #1d4ed8;"></i></div><div class="feature-tile-label">Fraud Resolution</div></div>
+          </div>
+        </div>
+        <div class="tagline">We've Got Your Back!</div>
+      </div>
+      <div class="coverage-card">
+        <div class="coverage-header">Coverage Status</div>
+        <div style="padding: 1.5rem;">
+          <div class="coverage-item"><span class="coverage-label">Plan :</span><span class="coverage-value">Active Coverage</span></div>
+          <div class="coverage-item"><span class="coverage-label">Protection :</span><span class="coverage-value">Premium</span></div>
+          <div class="coverage-item"><span class="coverage-label">Next Review :</span><span class="coverage-value">Annual Checkup</span></div>
+        </div>
+        <div class="action-buttons">
+          <button class="action-btn action-btn-blue">View Coverage</button>
+          <button class="action-btn action-btn-red">File a Claim</button>
+          <button class="action-btn action-btn-pink">Upgrade Plan</button>
+        </div>
+      </div>
+    </div>
   </div>
+  {% else %}
+  <div class="coming-soon-content"><i class="bi bi-hourglass-split"></i><h3>Coming Soon</h3><p>This function will be added soon!</p></div>
   {% endif %}
 </div>
 
 <div id="idAlertContent" style="display: none;">
   {% if resident.name == "Alexander Kelly" %}
-  <img src="{{ url_for('static', filename='images/ID Alert Page.png') }}" 
-       alt="ID Alert Page" 
-       style="max-width: 90%; height: auto; display: block; margin: 12px auto 0 auto;">
-  {% else %}
-  <div class="coming-soon-content">
-    <i class="bi bi-hourglass-split"></i>
-    <h3>Coming Soon</h3>
-    <p>This function will be added soon!</p>
+  <style>
+    .idalert-page { background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%); border-radius: 20px; padding: 1.5rem; margin-top: 0.75rem; }
+    @media (max-width: 1400px) {
+      .idalert-page {
+        padding: 1rem;
+      }
+    }
+
+    .idalert-layout { display: grid; grid-template-columns: 1fr 290px; gap: 1rem; }
+    .idalert-card { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 26px; overflow: hidden; box-shadow: 0 12px 40px rgba(70, 92, 190, 0.15); }
+    .idalert-section-header { background: linear-gradient(to right, #1d4ed8, #2563eb, #38bdf8); color: white; padding: 0.75rem 1.25rem; font-size: 1rem; font-weight: 800; }
+    .idalert-table-row { display: grid; grid-template-columns: minmax(100px, 140px) minmax(150px, 210px) 1fr minmax(150px, 200px); gap: 0.75rem; align-items: center; padding: 0.5rem 0.875rem; border-bottom: 2px solid rgba(148, 163, 184, 0.4); font-size: 1.125rem; }
+    .idalert-table-row:last-child { border-bottom: none; }
+    .idalert-date { font-weight: 800; color: #1e3a8a; }
+    .idalert-type { color: #1e40af; }
+    .idalert-desc { color: #1d4ed8; }
+    .idalert-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: white; border: 1px solid rgba(226, 232, 240, 1); border-radius: 16px; padding: 0.5rem 1.25rem; font-weight: 700; color: #16a34a; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+    .type-tiles { padding: 0.75rem; border-top: 2px solid rgba(148, 163, 184, 0.4); border-bottom: 2px solid rgba(148, 163, 184, 0.4); display: flex; flex-direction: column; gap: 0.625rem; }
+    .type-tiles-row { display: flex; justify-content: center; gap: 1rem; }
+    .type-tiles-row-top { display: flex; justify-content: center; gap: 1rem; }
+    .type-tile { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.875rem; font-size: 1rem; font-weight: 500; color: #1e40af; white-space: nowrap; background: rgba(255, 255, 255, 0.5); border-radius: 12px; border: 1px solid rgba(226, 232, 240, 0.8); }
+    .alert-levels { display: flex; flex-direction: column; gap: 0.625rem; padding: 0.75rem; }
+    .alert-levels-title { font-size: 1.125rem; font-weight: 800; color: #1e40af; margin-bottom: 0.25rem; }
+    .alert-levels-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+    .alert-level { padding: 0.5rem 0.875rem; border-radius: 12px; text-align: center; font-size: 1rem; font-weight: 700; color: white; }
+    .sidebar-card { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 26px; padding: 0.75rem; box-shadow: 0 12px 40px rgba(70, 92, 190, 0.15); }
+    .sidebar-item { display: flex; align-items: center; gap: 0.625rem; padding: 0.5rem 0.5rem; font-size: 1rem; color: #1e40af; border-bottom: 1px solid rgba(226, 232, 240, 0.8); }
+    .sidebar-item:last-child { border-bottom: none; }
+    .sidebar-icon { padding: 0.4rem; border-radius: 10px; color: white; }
+    .sidebar-icon-blue { background: linear-gradient(135deg, #1d4ed8, #3b82f6); }
+    .sidebar-icon-orange { background: linear-gradient(135deg, #f59e0b, #fb923c); }
+    .sidebar-icon-pink { background: linear-gradient(135deg, #db2777, #f43f5e); }
+    .view-btn { width: 100%; padding: 0.625rem 0.875rem; background: linear-gradient(to right, #1d4ed8, #3b82f6); color: white; border: none; border-radius: 16px; font-size: 1rem; font-weight: 600; cursor: pointer; box-shadow: 0 8px 20px rgba(57, 84, 204, 0.25); }
+    @media (max-width: 1200px) { .idalert-layout { grid-template-columns: 1fr; } .idalert-table-row { grid-template-columns: 1fr; gap: 0.5rem; } .type-tiles-row, .type-tiles-row-top { flex-wrap: wrap; } .alert-levels-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 1500px) { .idalert-layout { grid-template-columns: 1fr 260px; } .idalert-table-row { font-size: 0.95rem; padding: 0.5rem 0.75rem; } .type-tile { font-size: 0.9rem; padding: 0.4rem 0.625rem; } .sidebar-item { font-size: 0.95rem; padding: 0.4rem 0.4rem; } }
+    @media (max-width: 1400px) { .idalert-page { padding: 0.75rem; } .idalert-layout { grid-template-columns: 1fr 240px; gap: 0.75rem; } .idalert-section-header { padding: 0.625rem 1rem; font-size: 0.925rem; } .idalert-table-row { font-size: 0.9rem; padding: 0.4rem 0.625rem; gap: 0.5rem; } .idalert-badge { padding: 0.375rem 0.875rem; font-size: 0.875rem; } .type-tiles { padding: 0.5rem; gap: 0.5rem; } .type-tiles-row, .type-tiles-row-top { gap: 0.625rem; } .type-tile { padding: 0.375rem 0.625rem; font-size: 0.85rem; } .type-tile i { font-size: 1.25rem !important; } .alert-levels { padding: 0.5rem; gap: 0.5rem; } .alert-levels-title { font-size: 1rem; margin-bottom: 0.25rem; } .alert-levels-grid { gap: 0.5rem; } .alert-level { padding: 0.4rem 0.625rem; font-size: 0.875rem; } .sidebar-card { padding: 0.5rem; } .sidebar-item { font-size: 0.875rem; padding: 0.375rem 0.375rem; gap: 0.5rem; } .sidebar-icon { padding: 0.35rem; } .sidebar-icon i { font-size: 1.125rem !important; } .view-btn { padding: 0.5rem 0.75rem; font-size: 0.925rem; } }
+
+  </style>
+  <div class="idalert-page">
+
+    <div class="idalert-layout">
+      <div class="idalert-card">
+        <div class="idalert-section-header">Identity Alert Activity</div>
+        <div style="padding: 0.75rem 1.5rem;">
+          <div class="idalert-table-row"><div class="idalert-date">Today</div><div class="idalert-type">Dark Web Scan</div><div class="idalert-desc">No issues found</div><div></div></div>
+          <div class="idalert-table-row"><div class="idalert-date">Mar 10</div><div class="idalert-type">Address Change</div><div class="idalert-desc">Verified</div><div><span class="idalert-badge"><i class="bi bi-check-circle-fill"></i> Verified</span></div></div>
+          <div class="idalert-table-row"><div class="idalert-date">Feb 01</div><div class="idalert-type">SSN Scan</div><div class="idalert-desc">All Clear</div><div></div></div>
+        </div>
+        <div class="type-tiles">
+          <div class="type-tiles-row-top">
+            <div class="type-tile"><i class="bi bi-credit-card" style="font-size: 1.5rem; color: #1d4ed8;"></i> SSN</div>
+            <div class="type-tile"><i class="bi bi-envelope-fill" style="font-size: 1.5rem; color: #1d4ed8;"></i> Email</div>
+            <div class="type-tile"><i class="bi bi-telephone-fill" style="font-size: 1.5rem; color: #1d4ed8;"></i> Phone</div>
+          </div>
+          <div class="type-tiles-row">
+            <div class="type-tile"><i class="bi bi-house-fill" style="font-size: 1.5rem; color: #1d4ed8;"></i> Address</div>
+            <div class="type-tile"><i class="bi bi-shield-fill" style="font-size: 1.5rem; color: #1d4ed8;"></i> Public Records</div>
+          </div>
+        </div>
+        <div class="alert-levels">
+          <div class="alert-levels-title">Alert Level:</div>
+          <div class="alert-levels-grid">
+            <div class="alert-level" style="background: linear-gradient(to right, #fbbf24, #fde047);">Informational</div>
+            <div class="alert-level" style="background: linear-gradient(to right, #f97316, #fb923c);">Suspicious</div>
+            <div class="alert-level" style="background: linear-gradient(to right, #dc2626, #ef4444);">Urgent</div>
+          </div>
+        </div>
+      </div>
+      <div style="display: grid; gap: 0.5rem;">
+        <div class="sidebar-card">
+          <div class="sidebar-item"><div class="sidebar-icon sidebar-icon-blue"><i class="bi bi-wallet2" style="font-size: 1.25rem;"></i></div><span>New Accounts</span></div>
+          <div class="sidebar-item"><div class="sidebar-icon sidebar-icon-blue"><i class="bi bi-exclamation-triangle-fill" style="font-size: 1.25rem;"></i></div><span>Late Payments</span></div>
+          <div class="sidebar-item"><div class="sidebar-icon sidebar-icon-orange"><i class="bi bi-currency-dollar" style="font-size: 1.25rem;"></i></div><span>Balance Changes</span></div>
+          <div class="sidebar-item"><div class="sidebar-icon sidebar-icon-blue"><i class="bi bi-search" style="font-size: 1.25rem;"></i></div><span>Credit Inquiries</span></div>
+          <div class="sidebar-item"><div class="sidebar-icon sidebar-icon-pink"><i class="bi bi-credit-card-fill" style="font-size: 1.25rem;"></i></div><span>Score Updates</span></div>
+        </div>
+        <button class="view-btn">View Monitoring Details</button>
+      </div>
+    </div>
   </div>
+  {% else %}
+  <div class="coming-soon-content"><i class="bi bi-hourglass-split"></i><h3>Coming Soon</h3><p>This function will be added soon!</p></div>
   {% endif %}
 </div>
 

@@ -84,6 +84,7 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
                 'unit': str(row.get('Unit', '')),
                 'unit_number': str(row.get('Unit', '')),
                 'property': str(row.get('Property', '48 West')),
+                'property_name': str(row.get('Property', '48 West')),  # Alias for template compatibility
                 'dob': str(row.get('DOB', '')),
                 'address': str(row.get('Address', '')),
                 'ssn': masked_ssn,  # Always masked
@@ -93,6 +94,7 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
                 'credit_score_date': calculate_last_quarter_date(),  # Quarterly credit score update
                 'lease_start_date': str(row.get('Lease Start', '')),
                 'lease_end_date': str(row.get('Lease End', '')),
+                'move_in_date': str(row.get('Lease Start', '')),  # Alias for template compatibility
                 'monthly_rent': monthly_rent,
                 
                 # Account status fields

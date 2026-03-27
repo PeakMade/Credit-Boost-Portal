@@ -55,7 +55,7 @@
                             <dd class="col-sm-7">{{ resident.first_name }} {{ resident.last_name }}</dd>
 
                             <dt class="col-sm-5">Date of Birth:</dt>
-                            <dd class="col-sm-7">{{ resident.dob|date_format if resident.dob else 'N/A' }}</dd>
+                            <dd class="col-sm-7">{{ resident.dob|mask_dob if resident.dob else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Address:</dt>
                             <dd class="col-sm-7">{{ resident.address if resident.address else 'N/A' }}</dd>
@@ -65,9 +65,6 @@
 
                             <dt class="col-sm-5">Unit:</dt>
                             <dd class="col-sm-7">{{ resident.unit if resident.unit else 'N/A' }}</dd>
-
-                            <dt class="col-sm-5">SSN:</dt>
-                            <dd class="col-sm-7">{{ resident.ssn if resident.ssn else 'N/A' }}</dd>
 
                             <dt class="col-sm-5">Enrolled:</dt>
                             <dd class="col-sm-7">

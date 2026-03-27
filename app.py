@@ -1,7 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from datetime import datetime
 import json
+import base64
 import os
+import logging
+import sys
 from dotenv import load_dotenv
 from utils.data_loader import load_residents_from_excel
 from utils.sharepoint_data_loader import load_residents_from_sharepoint_list, load_residents_from_credhub_lists
@@ -13,6 +16,14 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'demo-secret-key-change-in-production')
+
+# Configure logging for Azure
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
 # Custom Jinja filter for currency formatting with commas
 @app.template_filter('currency')
@@ -43,6 +54,14 @@ def date_format_filter(value):
         return date_obj.strftime('%m-%d-%y')
     except (ValueError, TypeError, AttributeError):
         return value
+
+# Custom Jinja filter for masking DOB
+@app.template_filter('mask_dob')
+def mask_dob_filter(value):
+    """Mask date of birth for privacy"""
+    if not value:
+        return ''
+    return '**/**/****'
 
 # Custom Jinja filter to filter payments during enrollment
 @app.template_filter('enrolled_payments')
@@ -129,15 +148,205 @@ def get_last_reported_month(resident):
     return "N/A"
 
 
+# ============= EASY AUTH INTEGRATION =============
+
+def get_easy_auth_claims():
+    """
+    Extract claims from Azure Easy Auth headers.
+    Returns dict with user info or None if not authenticated.
+    """
+    # Easy Auth passes the authenticated user in this header
+    principal_header = request.headers.get('X-MS-CLIENT-PRINCIPAL')
+    
+    if not principal_header:
+        return None
+    
+    try:
+        # Decode the base64-encoded JSON
+        decoded = base64.b64decode(principal_header).decode('utf-8')
+        claims = json.loads(decoded)
+        
+        # Extract useful information
+        user_email = None
+        user_name = None
+        
+        # Look for email claim (varies by provider)
+        for claim in claims.get('claims', []):
+            if claim.get('typ') in ['emails', 'email', 'preferred_username']:
+                user_email = claim.get('val')
+            if claim.get('typ') == 'name':
+                user_name = claim.get('val')
+        
+        # Fallback to simple headers if claims parsing fails
+        if not user_email:
+            user_email = request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME')
+        
+        return {
+            'email': user_email,
+            'name': user_name or user_email,
+            'identity_provider': claims.get('identity_provider', 'aad'),
+            'raw_claims': claims
+        }
+    except Exception as e:
+        logger.error(f"Error parsing Easy Auth claims: {e}")
+        # Fallback to simpler header
+        email = request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME')
+        if email:
+            return {
+                'email': email,
+                'name': email,
+                'identity_provider': 'aad',
+                'raw_claims': None
+            }
+        return None
+
+
+@app.before_request
+def setup_session_from_easy_auth():
+    """
+    Middleware to populate Flask session from Easy Auth on every request.
+    This runs before every route handler.
+    """
+    # Skip for static files
+    if request.path.startswith('/static/'):
+        return
+    
+    # Skip if session is already set (performance optimization)
+    if 'user_email' in session and 'role' in session:
+        return
+    
+    # Get Easy Auth claims
+    claims = get_easy_auth_claims()
+    
+    if not claims:
+        # No authentication - Easy Auth should have caught this
+        # This might happen in local dev without Easy Auth
+        if app.debug:
+            logger.warning("⚠️ No Easy Auth claims found - using fallback for local dev")
+        return
+    
+    user_email = claims['email']
+    
+    # Set session data
+    session['user_email'] = user_email
+    session['easy_auth_claims'] = claims
+    
+    # Determine role based on email/resident lookup
+    # Check if admin
+    if user_email.lower() == 'pbatson@peakmade.com':
+        session['role'] = 'admin'
+        logger.info(f"✅ Easy Auth: Admin user {user_email}")
+        return
+    
+    # Check if resident
+    for resident in residents:
+        if resident.get('email', '').lower() == user_email.lower():
+            session['role'] = 'resident'
+            session['resident_id'] = resident['id']
+            logger.info(f"✅ Easy Auth: Resident user {user_email} (ID: {resident['id']})")
+            return
+    
+    # User authenticated but not in our system
+    session['role'] = 'unknown'
+    logger.warning(f"⚠️ Easy Auth: Authenticated user {user_email} not found in resident/admin data")
+
+
+# Log startup
+logger.info("=" * 60)
+logger.info("Flask app starting...")
+logger.info(f"Environment: {'Development' if app.debug else 'Production'}")
+logger.info(f"Residents loaded: {len(residents)}")
+logger.info("=" * 60)
+
+
+# ============= DIAGNOSTIC ROUTES =============
+
+@app.route('/health')
+def health_check():
+    """
+    Simple health check endpoint for Azure monitoring.
+    Returns 200 OK if the app is running.
+    """
+    return {
+        'status': 'healthy',
+        'timestamp': datetime.utcnow().isoformat(),
+        'residents_loaded': len(residents)
+    }, 200
+
+
+@app.route('/debug-auth')
+def debug_auth():
+    """
+    Diagnostic endpoint to inspect Easy Auth state.
+    Remove or secure this in production!
+    """
+    claims = get_easy_auth_claims()
+    
+    return {
+        'easy_auth_claims': claims,
+        'session_data': {
+            'role': session.get('role'),
+            'user_email': session.get('user_email'),
+            'resident_id': session.get('resident_id')
+        },
+        'easy_auth_headers': {
+            'X-MS-CLIENT-PRINCIPAL': request.headers.get('X-MS-CLIENT-PRINCIPAL', 'Not present')[:100] if request.headers.get('X-MS-CLIENT-PRINCIPAL') else 'Not present',
+            'X-MS-CLIENT-PRINCIPAL-NAME': request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME', 'Not present'),
+            'X-MS-CLIENT-PRINCIPAL-ID': request.headers.get('X-MS-CLIENT-PRINCIPAL-ID', 'Not present'),
+            'X-MS-CLIENT-PRINCIPAL-IDP': request.headers.get('X-MS-CLIENT-PRINCIPAL-IDP', 'Not present')
+        },
+        'request_path': request.path,
+        'debug_mode': app.debug
+    }, 200
+
+
 # Landing / Role selection
 @app.route('/')
 @app.route('/login')
 def landing():
-    return render_template('landing.html')
+    """
+    Root route - redirects to appropriate dashboard if authenticated,
+    otherwise shows error (since Easy Auth should handle login)
+    """
+    # Check if user is authenticated via Easy Auth
+    claims = get_easy_auth_claims()
+    
+    if claims and 'role' in session:
+        # User is authenticated, redirect to appropriate dashboard
+        role = session.get('role')
+        if role == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif role == 'resident':
+            return redirect(url_for('resident_dashboard'))
+        elif role == 'unknown':
+            return render_template('error.html', 
+                                 message='Your account is authenticated but not authorized to access this application.',
+                                 details=f'Email: {claims["email"]}')
+    
+    # If we reach here with Easy Auth enabled, something is wrong
+    # In production, Easy Auth should prevent unauthenticated access
+    # This path is mainly for local development
+    if app.debug:
+        return render_template('landing.html')
+    else:
+        return render_template('error.html',
+                             message='Authentication required',
+                             details='Please ensure Azure Easy Auth is configured correctly.')
 
 
 @app.route('/login', methods=['POST'])
 def login():
+    """
+    Old manual login route - now deactivated with Easy Auth.
+    Kept for local development fallback only.
+    """
+    # In production with Easy Auth, this should not be used
+    if not app.debug:
+        return render_template('error.html',
+                             message='Manual login is disabled',
+                             details='This application uses Azure Easy Auth. Please access the root URL to authenticate.'), 403
+    
+    # Local development fallback (when Easy Auth is not available)
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '').strip()
     
@@ -177,6 +386,24 @@ def select_role():
     else:
         flash('Please select a role', 'danger')
         return redirect(url_for('landing'))
+
+
+@app.route('/logout')
+def logout():
+    """
+    Logout route - clears Flask session and redirects to Easy Auth logout.
+    """
+    session.clear()
+    logger.info(f"User logged out: {session.get('user_email', 'unknown')}")
+    
+    # Easy Auth logout endpoint
+    # This will clear the Easy Auth session and redirect to post-logout URL
+    logout_url = '/.auth/logout'
+    
+    # Optional: specify post-logout redirect (uncomment to use)
+    # logout_url = '/.auth/logout?post_logout_redirect_uri=https://creditboostportal-hde4crgcc2hyajh4.eastus-01.azurewebsites.net'
+    
+    return redirect(logout_url)
 
 
 # ============= RESIDENT ROUTES =============
