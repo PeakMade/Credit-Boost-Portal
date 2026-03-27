@@ -259,7 +259,7 @@ def setup_session_from_easy_auth_middleware():
     """
     try:
         # Skip for health check and debug endpoints (must work without auth)
-        if request.path in ['/health', '/debug-auth']:
+        if request.path in ['/health', '/debug-ping', '/debug-auth']:
             return
         
         # Skip for static files
@@ -343,25 +343,21 @@ def log_application_startup():
 @app.route('/health')
 def health_check():
     """
-    Simple health check endpoint for Azure monitoring.
-    Returns 200 OK if the app is running.
-    Must work even if Easy Auth, sessions, or data loading fails.
+    Minimal health check endpoint for Azure monitoring.
+    Must return immediately without any heavy operations.
     """
-    try:
-        resident_count = len(get_residents()) if _residents_cache is not None else 0
-        return {
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'residents_loaded': resident_count,
-            'residents_cache_initialized': _residents_cache is not None
-        }, 200
-    except Exception as e:
-        # Even if something breaks, return 200 so Azure knows app is running
-        logger.error(f"Health check error: {str(e)}", exc_info=True)
-        return {
-            'status': 'degraded',
-            'error': str(e)
-        }, 200
+    logger.info("HEALTH ROUTE HIT")
+    return {'status': 'ok'}, 200
+
+
+@app.route('/debug-ping')
+def debug_ping():
+    """
+    Simplest possible diagnostic route.
+    Returns plain text immediately.
+    """
+    logger.info("DEBUG PING HIT")
+    return 'pong', 200
 
 
 @app.route('/debug-auth')
@@ -433,8 +429,11 @@ def handle_unexpected_error(error):
 @app.before_request
 def log_request_info():
     """Log all incoming requests for debugging"""
-    # Flask 3.x compatible: Call first-request handler here instead of @before_first_request
-    log_application_startup()
+    # Skip heavy startup logging for health/debug endpoints to prevent timeout
+    if request.path not in ['/health', '/debug-ping']:
+        # Flask 3.x compatible: Call first-request handler here instead of @before_first_request
+        log_application_startup()
+    
     logger.info(f"REQUEST: {request.method} {request.path} from {request.remote_addr}")
 
 
