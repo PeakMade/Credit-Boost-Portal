@@ -255,7 +255,7 @@ def setup_session_from_easy_auth():
 logger.info("=" * 60)
 logger.info("Flask app starting...")
 logger.info(f"Environment: {'Development' if app.debug else 'Production'}")
-logger.info(f"Residents loaded: {len(residents)}")
+logger.info(f\"Residents loaded: {len(residents)}\")`nlogger.info(f\"Debug mode: {app.debug}\")`nlogger.info(f\"Secret key: {\"Set\" if app.secret_key else \"NOT SET\"}\")
 logger.info("=" * 60)
 
 
@@ -977,3 +977,4 @@ if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=debug_mode, host='0.0.0.0', port=port)
+
