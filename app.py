@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from werkzeug.exceptions import HTTPException
 from datetime import datetime
 import json
 import base64
@@ -401,9 +402,26 @@ def debug_auth():
 
 # ============= GLOBAL ERROR HANDLERS =============
 
+@app.errorhandler(HTTPException)
+def handle_http_exception(error):
+    """Handle HTTP exceptions (404, 403, etc.) and preserve their status codes"""
+    # Log at info level for common errors like 404, warn for others
+    if error.code == 404:
+        logger.info(f"HTTP {error.code}: {request.method} {request.path}")
+    else:
+        logger.warning(f"HTTP {error.code}: {request.method} {request.path} - {error.description}")
+    
+    return {
+        'error': error.name,
+        'message': error.description,
+        'code': error.code
+    }, error.code
+
+
 @app.errorhandler(Exception)
 def handle_unexpected_error(error):
-    """Catch-all error handler to prevent silent failures"""
+    """Catch-all for true unexpected errors (not HTTP exceptions)"""
+    # This will only catch non-HTTP exceptions due to HTTPException handler above
     logger.error(f"Unexpected error: {str(error)}", exc_info=True)
     return {
         'error': 'Internal server error',
