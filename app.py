@@ -332,9 +332,7 @@ def log_application_startup():
     logger.info(f"Environment: {'Development' if app.debug else 'Production'}")
     logger.info(f"Debug mode: {app.debug}")
     logger.info(f"Secret key: {'Set' if app.secret_key else 'NOT SET'}")
-    # Trigger lazy load of residents
-    resident_count = len(get_residents())
-    logger.info(f"Residents loaded: {resident_count}")
+    # Note: Residents will be loaded on-demand when first needed by a business route
     logger.info("=" * 60)
 
 
