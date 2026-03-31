@@ -291,13 +291,20 @@ def setup_session_from_easy_auth_middleware():
         session['identity_provider'] = claims.get('identity_provider', 'unknown')
         
         # Determine role based on email/resident lookup
-        # Check if admin
+        # Check if admin (hardcoded for now)
         if user_email.lower() == 'pbatson@peakmade.com':
             session['role'] = 'admin'
             logger.info(f"✅ Easy Auth: Admin user {user_email}")
             return
         
-        # Check if resident
+        # Hardcoded test user: jbatson444@gmail.com as Alexander Kelly (resident ID 1)
+        if user_email.lower() == 'jbatson444@gmail.com':
+            session['role'] = 'resident'
+            session['resident_id'] = 1  # Alexander Kelly
+            logger.info(f"✅ Easy Auth: Test resident user {user_email} mapped to resident ID 1 (Alexander Kelly)")
+            return
+        
+        # Check if resident exists in data
         for resident in residents:
             if resident.get('email', '').lower() == user_email.lower():
                 session['role'] = 'resident'
@@ -337,6 +344,16 @@ def log_application_startup():
 
 
 # ============= DIAGNOSTIC ROUTES =============
+
+@app.route('/.auth/login/done')
+def auth_login_done():
+    """
+    Handle Azure Easy Auth post-login redirect.
+    Redirects user to appropriate dashboard based on their role.
+    """
+    logger.info("Post-login redirect handler called")
+    return redirect(url_for('landing'))
+
 
 @app.route('/health')
 def health_check():
