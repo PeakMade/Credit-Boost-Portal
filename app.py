@@ -447,8 +447,7 @@ def log_response_info(response):
 @app.route('/login')
 def landing():
     """
-    Root route - redirects to appropriate dashboard if authenticated,
-    otherwise shows error (since Easy Auth should handle login)
+    Root route - shows login options or redirects to appropriate dashboard if authenticated
     """
     try:
         # Check if user is authenticated via Easy Auth
@@ -466,15 +465,9 @@ def landing():
                                      message='Your account is authenticated but not authorized to access this application.',
                                      details=f'Email: {claims.get("email", "Unknown")}')
         
-        # If we reach here with Easy Auth enabled, something is wrong
-        # In production, Easy Auth should prevent unauthenticated access
-        # This path is mainly for local development
-        if app.debug:
-            return render_template('landing.html')
-        else:
-            return render_template('error.html',
-                                 message='Authentication required',
-                                 details='Please ensure Azure Easy Auth is configured correctly.')
+        # Show landing page with login options
+        return render_template('landing.html')
+        
     except Exception as e:
         logger.error(f"❌ Error in landing route: {str(e)}", exc_info=True)
         return render_template('error.html',
