@@ -86,9 +86,12 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
         }
     
     try:
-        # Get SharePoint site
-        site_hostname = "peakcampus.sharepoint.com"
-        site_path = "/sites/BaseCampApps"
+        # Get SharePoint site for verification list
+        # This may be different from the main app's SharePoint site
+        # Default: OneDrive personal site with verification list
+        site_hostname = os.environ.get('SHAREPOINT_VERIFICATION_SITE_HOSTNAME', 'peakcampus-my.sharepoint.com')
+        site_path = os.environ.get('SHAREPOINT_VERIFICATION_SITE_PATH', '/personal/pbatson_peakmade_com')
+        
         site_url = f"https://graph.microsoft.com/v1.0/sites/{site_hostname}:{site_path}"
         
         headers = {
@@ -96,15 +99,15 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
             "Accept": "application/json"
         }
         
+        logger.info(f"Resolving SharePoint site: {site_hostname}{site_path}")
         site_response = requests.get(site_url, headers=headers)
         site_response.raise_for_status()
         site_data = site_response.json()
         site_id = site_data["id"]
         
-        # Get verification test list
-        # Try custom test list first, fall back to tenants list
-        test_list_id = os.environ.get('SHAREPOINT_VERIFICATION_LIST_ID')
-        list_id = test_list_id if test_list_id else '7569dfb7-5d2f-452d-a384-0af63b38b559'  # Tenants list
+        # Get verification list ID
+        # Default: Credit Boost Verification list (f2ebd72a-6c00-448c-bf07-19f9afbad017)
+        list_id = os.environ.get('SHAREPOINT_VERIFICATION_LIST_ID', 'f2ebd72a-6c00-448c-bf07-19f9afbad017')
         
         logger.info(f"🔍 Querying SharePoint list {list_id} for verification")
         

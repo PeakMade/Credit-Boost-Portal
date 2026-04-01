@@ -10,7 +10,14 @@ Since the Entrata test environment is undergoing a data refresh, you can use Sha
 
 ## SharePoint List Requirements
 
-Your SharePoint list for verification testing must have these columns:
+The verification list is already configured:
+
+**List Name:** Credit Boost Verification  
+**List ID:** `f2ebd72a-6c00-448c-bf07-19f9afbad017`  
+**Location:** `https://peakcampus-my.sharepoint.com/personal/pbatson_peakmade_com/Lists/CreditBoost Verification/`  
+**Site Type:** OneDrive for Business (Personal Site)
+
+This list is used to verify resident data during sign-up. Only residents in this list can create accounts.
 
 ### Required Columns
 
@@ -30,75 +37,30 @@ Your SharePoint list for verification testing must have these columns:
 
 ---
 
-## Which List to Use?
-
-### Option 1: Use Existing "Credit Boost - Tenants" List (Default)
-
-**List ID:** `7569dfb7-5d2f-452d-a384-0af63b38b559`
-
-**Pros:**
-- Already exists
-- No additional configuration needed
-- Code defaults to this list
-
-**Cons:**
-- Contains production/real data (if already populated)
-
-### Option 2: Create Dedicated "Verification Test" List (Recommended)
-
-**Steps:**
-1. In SharePoint, create new list: "Credit Boost - Verification Test"
-2. Add the required columns above
-3. Add your test resident data
-4. Copy the List ID from the list URL
-5. Set environment variable: `SHAREPOINT_VERIFICATION_LIST_ID=your-list-id-here`
-
-**Pros:**
-- Clean test data
-- Won't interfere with production lists
-- Easy to reset/modify
-
----
-
-## Example Test Resident Data
-
-Add a test resident to your SharePoint list:
-
-| Email | FirstName | LastName | DateofBirth | ResidentID |
-|-------|-----------|----------|-------------|------------|
-| test@example.com | John | Smith | 1990-01-15 | TEST001 |
-
-Then test sign-up with:
-- **Email:** test@example.com
-- **First Name:** John
-- **Last Name:** Smith  
-- **Date of Birth:** 1990-01-15
-
-**Expected:** Account created successfully ✅
-
----
-
 ## Configuration
 
-### Environment Variables
-
-In your `.env` file (already configured):
+The verification list is already configured in [.env](.env):
 
 ```env
 # Use SharePoint for verification (testing mode)
 USE_SHAREPOINT_VERIFICATION=true
 
-# Optional: Custom verification list ID
-# SHAREPOINT_VERIFICATION_LIST_ID=your-custom-list-id-here
+# Verification list configuration (already set)
+SHAREPOINT_VERIFICATION_LIST_ID=f2ebd72a-6c00-448c-bf07-19f9afbad017
+SHAREPOINT_VERIFICATION_SITE_HOSTNAME=peakcampus-my.sharepoint.com
+SHAREPOINT_VERIFICATION_SITE_PATH=/personal/pbatson_peakmade_com
 ```
+
+**No additional configuration needed** - the code is ready to use the Credit Boost Verification list.
 
 ### Azure App Service Settings
 
 Add these to Azure App Service → Configuration → Application Settings:
 
 1. `USE_SHAREPOINT_VERIFICATION` = `true`
-2. `AZURE_API_CONNECTOR_KEY` = `i4df6gcmoOn-xIfdspdkiBcUnOiOO0Vx92Vqrmb8xbE`
-3. (Optional) `SHAREPOINT_VERIFICATION_LIST_ID` = `your-custom-list-id`
+2. `SHAREPOINT_VERIFICATION_LIST_ID` = `f2ebd72a-6c00-448c-bf07-19f9afbad017`
+3. `SHAREPOINT_VERIFICATION_SITE_HOSTNAME` = `peakcampus-my.sharepoint.com`
+4. `SHAREPOINT_VERIFICATION_SITE_PATH` = `/personal/pbatson_peakmade_com`
 
 **Note:** Azure credentials (`AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`) are already configured for SharePoint access.
 
@@ -137,7 +99,8 @@ Azure App Service → Log Stream:
 ```
 🔍 Verifying resident sign-up: test@example.com (John Smith, DOB: 1990-01-15)
 Using SharePoint for verification (test mode)
-🔍 Querying SharePoint list 7569dfb7-5d2f-452d-a384-0af63b38b559 for verification
+Resolving SharePoint site: peakcampus-my.sharepoint.com/personal/pbatson_peakmade_com
+🔍 Querying SharePoint list f2ebd72a-6c00-448c-bf07-19f9afbad017 for verification
 Found 1 records in SharePoint list
 ✅ Resident verified via SharePoint: test@example.com (ID: TEST001)
 ✅ Resident verified for sign-up: test@example.com
@@ -195,8 +158,8 @@ No code changes needed! Just flip the environment variable.
 
 Check which list is being queried:
 - Look for log: `🔍 Querying SharePoint list [list-id] for verification`
-- Verify list ID matches your test list
-- Set `SHAREPOINT_VERIFICATION_LIST_ID` if using custom list
+- Should show: `f2ebd72a-6c00-448c-bf07-19f9afbad017`
+- Verify you're adding test data to the correct "Credit Boost Verification" list
 
 ---
 

@@ -13,6 +13,13 @@ from utils.excel_export import (create_resident_list_export, create_reporting_ru
                                 create_disputes_export, create_audit_logs_export)
 from utils.entrata_api import get_entrata_client
 from utils.sharepoint_verification import verify_resident_sharepoint
+from utils.entra_token_validation import require_bearer_token
+from utils.custom_extension_responses import (
+    build_continue_response,
+    build_validation_error_response,
+    build_block_page_response,
+    parse_custom_extension_request
+)
 
 # Load environment variables from .env file (for local development)
 load_dotenv()
@@ -345,100 +352,135 @@ def log_application_startup():
     logger.info("=" * 60)
 
 
-# ============= API ROUTES (Azure Entra External ID Integration) =============
+# ============= API ROUTES (Azure Entra External ID Custom Authentication Extension) =============
 
 @app.route('/api/verify-resident', methods=['POST'])
+@require_bearer_token
 def verify_resident_signup():
     """
-    API endpoint called by Azure Entra External ID during sign-up flow.
-    Verifies resident exists in Entrata PMS before allowing account creation.
+    API endpoint called by Azure Entra External ID custom authentication extension.
     
-    Expected request body from Azure:
-    {
-        "email": "user@example.com",
-        "givenName": "John",
-        "surname": "Doe",
-        "extension_DateOfBirth": "1990-01-15"
-    }
+    This endpoint is invoked during the OnAttributeCollectionSubmit event.
+    It validates resident data against our business system before allowing account creation.
     
-    Returns Azure API Connector response:
-    - Continue action: Allow account creation
-    - ShowBlockPage action: Block account with error message
+    Authentication:
+        - Bearer token (OAuth 2.0 client credentials)
+        - Token validated via @require_bearer_token decorator
+    
+    Request payload:
+        Custom authentication extension format with type, source, and data containing:
+        - attributes: user-submitted sign-up data (email, givenName, surname, custom fields)
+        - tenantId, authenticationEventListenerId, customAuthenticationExtensionId
+    
+    Response:
+        - ContinueWithDefaultBehavior: Allow sign-up (verification passed)
+        - ShowValidationError: Display validation errors (verification failed)
+        - ShowBlockPage: Hard block (service unavailable)
+    
+    Note:
+        This endpoint is isolated from the rest of the app's authentication flow.
+        It does not depend on Flask sessions, Easy Auth headers, or browser cookies.
     """
-    # Verify API authentication
-    api_key = request.headers.get('X-API-Key')
-    expected_key = os.environ.get('AZURE_API_CONNECTOR_KEY')
+    logger.info("="*60)
+    logger.info("🔐 Custom authentication extension endpoint called")
+    logger.info("="*60)
     
-    if not expected_key:
-        logger.error("❌ AZURE_API_CONNECTOR_KEY not configured")
-        return jsonify({
-            "version": "1.0.0",
-            "action": "ShowBlockPage",
-            "userMessage": "Service temporarily unavailable. Please try again later."
-        }), 200
+    try:
+        # Parse the custom extension request payload
+        request_data = request.get_json()
+        
+        if not request_data:
+            logger.error("❌ Empty request body")
+            return jsonify(build_block_page_response(
+                "Service temporarily unavailable. Please try again later."
+            )), 200
+        
+        # Log the event type for debugging (safely)
+        event_type = request_data.get('type', 'unknown')
+        logger.info(f"📋 Event type: {event_type}")
+        
+        # Parse attributes from the custom extension payload
+        parsed_attrs = parse_custom_extension_request(request_data)
+        
+        if parsed_attrs is None:
+            logger.error("❌ Failed to parse custom extension request")
+            return jsonify(build_block_page_response(
+                "Service temporarily unavailable. Please try again later."
+            )), 200
+        
+        # Extract user-submitted data
+        email = parsed_attrs.get('email', '')
+        first_name = parsed_attrs.get('given_name', '')
+        last_name = parsed_attrs.get('surname', '')
+        date_of_birth = parsed_attrs.get('date_of_birth', '')
+        
+        logger.info(f"🔍 Verifying resident sign-up: {email} ({first_name} {last_name})")
+        
+        # Validate required fields
+        missing_fields = []
+        if not email:
+            missing_fields.append('email')
+        if not first_name:
+            missing_fields.append('first name')
+        if not last_name:
+            missing_fields.append('last name')
+        if not date_of_birth:
+            missing_fields.append('date of birth')
+        
+        if missing_fields:
+            logger.warning(f"⚠️ Missing required fields: {', '.join(missing_fields)}")
+            return jsonify(build_validation_error_response(
+                f"Please provide all required information: {', '.join(missing_fields)}."
+            )), 200
+        
+        # Determine verification method: SharePoint (testing) or Entrata (production)
+        use_sharepoint = os.environ.get('USE_SHAREPOINT_VERIFICATION', 'true').lower() == 'true'
+        
+        if use_sharepoint:
+            logger.info("📊 Using SharePoint for verification (test mode)")
+            verification_result = verify_resident_sharepoint(
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                date_of_birth=date_of_birth
+            )
+        else:
+            logger.info("🏢 Using Entrata API for verification (production mode)")
+            entrata_client = get_entrata_client()
+            verification_result = entrata_client.verify_resident(
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                date_of_birth=date_of_birth
+            )
+        
+        # Process verification result
+        if verification_result['verified']:
+            # Resident verified - allow account creation
+            logger.info(f"✅ Resident verified for sign-up: {email}")
+            logger.info(f"Action: ContinueWithDefaultBehavior")
+            return jsonify(build_continue_response()), 200
+        else:
+            # Verification failed - show validation error
+            error_message = verification_result.get('message', 'The data you provided could not be verified.')
+            logger.warning(f"❌ Resident verification failed: {email}")
+            logger.info(f"Action: ShowValidationError")
+            
+            # Return validation error with attribute-specific errors
+            # Map the error to the email field as that's the primary identifier
+            return jsonify(build_validation_error_response(
+                "The data you provided could not be verified. Please contact property management to enroll in the Credit Boost Program or verify your information is correct.",
+                attribute_errors={
+                    "email": "Unable to verify your information in our system."
+                }
+            )), 200
     
-    if api_key != expected_key:
-        logger.warning(f"⚠️ Invalid API key for verify-resident: {api_key[:10]}...")
-        return jsonify({
-            "version": "1.0.0",
-            "action": "ShowBlockPage",
-            "userMessage": "Service temporarily unavailable. Please try again later."
-        }), 200
-    
-    # Parse request data from Azure
-    data = request.json
-    email = data.get('email', '').strip()
-    first_name = data.get('givenName', '').strip()
-    last_name = data.get('surname', '').strip()
-    date_of_birth = data.get('extension_DateOfBirth', '').strip()
-    
-    logger.info(f"🔍 Verifying resident sign-up: {email} ({first_name} {last_name}, DOB: {date_of_birth})")
-    
-    # Validate required fields
-    if not all([email, first_name, last_name, date_of_birth]):
-        logger.warning("⚠️ Missing required fields in verification request")
-        return jsonify({
-            "version": "1.0.0",
-            "action": "ShowBlockPage",
-            "userMessage": "Please provide all required information including your date of birth."
-        }), 200
-    
-    # Determine verification method: SharePoint (testing) or Entrata (production)
-    use_sharepoint = os.environ.get('USE_SHAREPOINT_VERIFICATION', 'true').lower() == 'true'
-    
-    if use_sharepoint:
-        logger.info("Using SharePoint for verification (test mode)")
-        verification_result = verify_resident_sharepoint(
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            date_of_birth=date_of_birth
-        )
-    else:
-        logger.info("Using Entrata API for verification (production mode)")
-        entrata_client = get_entrata_client()
-        verification_result = entrata_client.verify_resident(
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            date_of_birth=date_of_birth
-        )
-    
-    if verification_result['verified']:
-        # Resident verified - allow account creation
-        logger.info(f"✅ Resident verified for sign-up: {email}")
-        return jsonify({
-            "version": "1.0.0",
-            "action": "Continue"
-        }), 200
-    else:
-        # Verification failed - block account creation
-        logger.warning(f"❌ Resident verification failed: {email} - {verification_result['message']}")
-        return jsonify({
-            "version": "1.0.0",
-            "action": "ShowBlockPage",
-            "userMessage": "The data you provided could not be verified. Please contact property management to enroll in the Credit Boost Program or verify your information is correct."
-        }), 200
+    except Exception as e:
+        # Catch-all for unexpected errors
+        logger.error(f"❌ Unexpected error in verification endpoint: {e}", exc_info=True)
+        return jsonify(build_block_page_response(
+            "Service temporarily unavailable. Please try again later."
+        )), 200
 
 
 # ============= DIAGNOSTIC ROUTES =============
