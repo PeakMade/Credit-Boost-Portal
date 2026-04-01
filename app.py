@@ -11,6 +11,7 @@ from utils.data_loader import load_residents_from_excel
 from utils.sharepoint_data_loader import load_residents_from_sharepoint_list, load_residents_from_credhub_lists
 from utils.excel_export import (create_resident_list_export, create_reporting_runs_export,
                                 create_disputes_export, create_audit_logs_export)
+from utils.entrata_api import get_entrata_client
 
 # Load environment variables from .env file (for local development)
 load_dotenv()
@@ -341,6 +342,90 @@ def log_application_startup():
     logger.info(f"Secret key: {'Set' if app.secret_key else 'NOT SET'}")
     # Note: Residents will be loaded on-demand when first needed by a business route
     logger.info("=" * 60)
+
+
+# ============= API ROUTES (Azure Entra External ID Integration) =============
+
+@app.route('/api/verify-resident', methods=['POST'])
+def verify_resident_signup():
+    """
+    API endpoint called by Azure Entra External ID during sign-up flow.
+    Verifies resident exists in Entrata PMS before allowing account creation.
+    
+    Expected request body from Azure:
+    {
+        "email": "user@example.com",
+        "givenName": "John",
+        "surname": "Doe",
+        "extension_DateOfBirth": "1990-01-15"
+    }
+    
+    Returns Azure API Connector response:
+    - Continue action: Allow account creation
+    - ShowBlockPage action: Block account with error message
+    """
+    # Verify API authentication
+    api_key = request.headers.get('X-API-Key')
+    expected_key = os.environ.get('AZURE_API_CONNECTOR_KEY')
+    
+    if not expected_key:
+        logger.error("❌ AZURE_API_CONNECTOR_KEY not configured")
+        return jsonify({
+            "version": "1.0.0",
+            "action": "ShowBlockPage",
+            "userMessage": "Service temporarily unavailable. Please try again later."
+        }), 200
+    
+    if api_key != expected_key:
+        logger.warning(f"⚠️ Invalid API key for verify-resident: {api_key[:10]}...")
+        return jsonify({
+            "version": "1.0.0",
+            "action": "ShowBlockPage",
+            "userMessage": "Service temporarily unavailable. Please try again later."
+        }), 200
+    
+    # Parse request data from Azure
+    data = request.json
+    email = data.get('email', '').strip()
+    first_name = data.get('givenName', '').strip()
+    last_name = data.get('surname', '').strip()
+    date_of_birth = data.get('extension_DateOfBirth', '').strip()
+    
+    logger.info(f"🔍 Verifying resident sign-up: {email} ({first_name} {last_name}, DOB: {date_of_birth})")
+    
+    # Validate required fields
+    if not all([email, first_name, last_name, date_of_birth]):
+        logger.warning("⚠️ Missing required fields in verification request")
+        return jsonify({
+            "version": "1.0.0",
+            "action": "ShowBlockPage",
+            "userMessage": "Please provide all required information including your date of birth."
+        }), 200
+    
+    # Call Entrata API for verification
+    entrata_client = get_entrata_client()
+    verification_result = entrata_client.verify_resident(
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        date_of_birth=date_of_birth
+    )
+    
+    if verification_result['verified']:
+        # Resident verified - allow account creation
+        logger.info(f"✅ Resident verified for sign-up: {email}")
+        return jsonify({
+            "version": "1.0.0",
+            "action": "Continue"
+        }), 200
+    else:
+        # Verification failed - block account creation
+        logger.warning(f"❌ Resident verification failed: {email} - {verification_result['message']}")
+        return jsonify({
+            "version": "1.0.0",
+            "action": "ShowBlockPage",
+            "userMessage": "The data you provided could not be verified. Please contact property management to enroll in the Credit Boost Program or verify your information is correct."
+        }), 200
 
 
 # ============= DIAGNOSTIC ROUTES =============
