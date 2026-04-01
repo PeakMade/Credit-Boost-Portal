@@ -12,6 +12,7 @@ from utils.sharepoint_data_loader import load_residents_from_sharepoint_list, lo
 from utils.excel_export import (create_resident_list_export, create_reporting_runs_export,
                                 create_disputes_export, create_audit_logs_export)
 from utils.entrata_api import get_entrata_client
+from utils.sharepoint_verification import verify_resident_sharepoint
 
 # Load environment variables from .env file (for local development)
 load_dotenv()
@@ -402,14 +403,26 @@ def verify_resident_signup():
             "userMessage": "Please provide all required information including your date of birth."
         }), 200
     
-    # Call Entrata API for verification
-    entrata_client = get_entrata_client()
-    verification_result = entrata_client.verify_resident(
-        email=email,
-        first_name=first_name,
-        last_name=last_name,
-        date_of_birth=date_of_birth
-    )
+    # Determine verification method: SharePoint (testing) or Entrata (production)
+    use_sharepoint = os.environ.get('USE_SHAREPOINT_VERIFICATION', 'true').lower() == 'true'
+    
+    if use_sharepoint:
+        logger.info("Using SharePoint for verification (test mode)")
+        verification_result = verify_resident_sharepoint(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            date_of_birth=date_of_birth
+        )
+    else:
+        logger.info("Using Entrata API for verification (production mode)")
+        entrata_client = get_entrata_client()
+        verification_result = entrata_client.verify_resident(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            date_of_birth=date_of_birth
+        )
     
     if verification_result['verified']:
         # Resident verified - allow account creation
