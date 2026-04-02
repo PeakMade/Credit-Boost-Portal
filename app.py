@@ -306,11 +306,17 @@ def setup_session_from_easy_auth_middleware():
             logger.info(f"✅ Easy Auth: Admin user {user_email}")
             return
         
-        # Hardcoded test user: jbatson444@gmail.com as Alexander Kelly (resident ID 1)
+        # Hardcoded test users
         if user_email.lower() == 'jbatson444@gmail.com':
             session['role'] = 'resident'
             session['resident_id'] = 1  # Alexander Kelly
             logger.info(f"✅ Easy Auth: Test resident user {user_email} mapped to resident ID 1 (Alexander Kelly)")
+            return
+        
+        if user_email.lower() == 'jeffeckard100@gmail.com':
+            session['role'] = 'resident'
+            session['resident_id'] = 2  # John Smith
+            logger.info(f"✅ Easy Auth: Test resident user {user_email} mapped to resident ID 2 (John Smith)")
             return
         
         # Check if resident exists in data
