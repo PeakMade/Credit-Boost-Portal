@@ -201,3 +201,104 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
             'resident_id': None,
             'message': 'Unable to verify at this time. Please try again later.'
         }
+
+
+def check_admin_authorization(email):
+    """
+    Check if user is authorized as admin via SharePoint admin list
+    
+    Args:
+        email: User email address
+        
+    Returns:
+        bool: True if authorized admin, False otherwise
+    """
+    email = email.lower().strip()
+    
+    # Get access token
+    access_token = get_sharepoint_access_token()
+    if not access_token:
+        logger.error("❌ Unable to verify admin authorization - no access token")
+        return False
+    
+    try:
+        # Get SharePoint site (main app site for admin list)
+        site_url = os.environ.get('SHAREPOINT_SITE_URL', 'https://peakcampus.sharepoint.com/sites/BaseCampApps')
+        # Extract hostname and path from full URL
+        from urllib.parse import urlparse
+        parsed = urlparse(site_url)
+        site_hostname = parsed.hostname
+        site_path = parsed.path
+        
+        graph_site_url = f"https://graph.microsoft.com/v1.0/sites/{site_hostname}:{site_path}"
+        
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+        
+        logger.info(f"Resolving SharePoint site for admin list: {site_hostname}{site_path}")
+        site_response = requests.get(graph_site_url, headers=headers)
+        site_response.raise_for_status()
+        site_data = site_response.json()
+        site_id = site_data["id"]
+        
+        # Get admin list ID from environment
+        admin_list_id = os.environ.get('SHAREPOINT_ADMIN_LIST_ID', 'c07805eb-b91c-47df-ac6e-b8dc811862c0')
+        
+        logger.info(f"🔍 Checking admin authorization for {email} in list {admin_list_id}")
+        
+        # Query SharePoint admin list
+        list_items_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{admin_list_id}/items?expand=fields"
+        items_response = requests.get(list_items_url, headers=headers)
+        items_response.raise_for_status()
+        items_data = items_response.json()
+        
+        items = items_data.get("value", [])
+        logger.info(f"Found {len(items)} admin records in SharePoint list")
+        
+        # Search for matching admin
+        for item in items:
+            fields = item.get("fields", {})
+            
+            # Get email (try multiple field names)
+            admin_email = (
+                fields.get('Email', '') or 
+                fields.get('EmailAddress', '') or 
+                fields.get('email', '')
+            ).lower().strip()
+            
+            if not admin_email:
+                continue
+            
+            # Check if email matches
+            if admin_email == email:
+                # Check if active (try multiple field names and values)
+                active = fields.get('Active', fields.get('IsActive', ''))
+                
+                # Handle different active value formats
+                is_active = False
+                if isinstance(active, bool):
+                    is_active = active
+                elif isinstance(active, str):
+                    is_active = active.lower() in ['yes', 'true', '1', 'active']
+                elif active == 1:
+                    is_active = True
+                
+                if is_active:
+                    logger.info(f"✅ Admin authorized: {email}")
+                    return True
+                else:
+                    logger.info(f"❌ Admin found but not active: {email}")
+                    return False
+        
+        # No match found
+        logger.info(f"❌ Email not found in admin list: {email}")
+        return False
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"❌ SharePoint API error checking admin: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Admin authorization check error: {e}")
+        return False

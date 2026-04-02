@@ -300,8 +300,9 @@ def setup_session_from_easy_auth_middleware():
         session['identity_provider'] = claims.get('identity_provider', 'unknown')
         
         # Determine role based on email/resident lookup
-        # Check if admin (hardcoded for now)
-        if user_email.lower() == 'pbatson@peakmade.com':
+        # Check if admin via SharePoint admin list
+        from utils.sharepoint_verification import check_admin_authorization
+        if check_admin_authorization(user_email):
             session['role'] = 'admin'
             logger.info(f"✅ Easy Auth: Admin user {user_email}")
             return
@@ -654,8 +655,9 @@ def login():
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '').strip()
     
-    # Hardcoded credentials for demo
-    if email == 'pbatson@peakmade.com' and password == 'admin':
+    # Check admin authorization via SharePoint
+    from utils.sharepoint_verification import check_admin_authorization
+    if password == 'admin' and check_admin_authorization(email):
         session['role'] = 'admin'
         session['user_email'] = email
         return redirect(url_for('admin_dashboard'))
