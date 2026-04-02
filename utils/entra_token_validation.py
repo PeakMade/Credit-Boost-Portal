@@ -18,13 +18,16 @@ class EntraTokenValidator:
     """Validates bearer tokens from Microsoft Entra External ID custom authentication extensions"""
     
     def __init__(self):
-        self.tenant_id = os.environ.get('AZURE_TENANT_ID')
-        self.client_id = os.environ.get('AZURE_CLIENT_ID')
+        # Use the External ID tenant for token validation (where custom auth extension is configured)
+        self.tenant_id = os.environ.get('AUTH_EXTENSION_TENANT_ID')
+        # Use the custom authentication extension API client ID for token validation
+        # This is the App ID that Azure uses as the target resource/audience
+        self.client_id = os.environ.get('AUTH_EXTENSION_API_CLIENT_ID')
         
-        # For custom authentication extensions, the token issuer is the Entra tenant
+        # For custom authentication extensions, the token issuer is the External ID tenant
         self.issuer = f"https://login.microsoftonline.com/{self.tenant_id}/v2.0"
         
-        # JWKS endpoint for token signature validation
+        # JWKS endpoint for token signature validation (from External ID tenant)
         self.jwks_uri = f"https://login.microsoftonline.com/{self.tenant_id}/discovery/v2.0/keys"
         
         # Audience should be the application ID / client ID of your API
