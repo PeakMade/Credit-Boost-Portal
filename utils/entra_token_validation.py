@@ -30,8 +30,9 @@ class EntraTokenValidator:
         # JWKS endpoint for token signature validation (from External ID tenant)
         self.jwks_uri = f"https://login.microsoftonline.com/{self.tenant_id}/discovery/v2.0/keys"
         
-        # Audience should be the application ID / client ID of your API
-        self.audience = self.client_id
+        # Audience should match the Application ID URI from the app registration
+        # Azure uses the format: api://{hostname}/{client_id}
+        self.audience = f"api://creditboostportal.azurewebsites.net/{self.client_id}"
         
         # Cache for JWKS client
         self._jwks_client = None
