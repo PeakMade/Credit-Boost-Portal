@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask_cors import CORS, cross_origin
 from werkzeug.exceptions import HTTPException
 from datetime import datetime
 import json
@@ -361,7 +362,8 @@ def log_application_startup():
 
 # ============= API ROUTES (Azure Entra External ID Custom Authentication Extension) =============
 
-@app.route('/api/verify-resident', methods=['POST'])
+@app.route('/api/verify-resident', methods=['POST', 'OPTIONS'])
+@cross_origin(origins="*", methods=['POST', 'OPTIONS'], allow_headers=['Content-Type', 'Authorization'])
 @require_bearer_token
 def verify_resident_signup():
     """

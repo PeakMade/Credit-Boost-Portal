@@ -125,6 +125,10 @@ def require_bearer_token(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Allow OPTIONS requests without token (CORS preflight)
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+        
         # Extract bearer token from Authorization header
         auth_header = request.headers.get('Authorization', '')
         
