@@ -308,30 +308,22 @@ def setup_session_from_easy_auth_middleware():
             logger.info(f"✅ Easy Auth: Admin user {user_email}")
             return
         
-        # Hardcoded test users
-        if user_email.lower() == 'jbatson444@gmail.com':
-            session['role'] = 'resident'
-            session['resident_id'] = 1  # Alexander Kelly
-            logger.info(f"✅ Easy Auth: Test resident user {user_email} mapped to resident ID 1 (Alexander Kelly)")
-            return
-        
-        if user_email.lower() == 'jeffeckard100@gmail.com':
-            session['role'] = 'resident'
-            session['resident_id'] = 2  # John Smith
-            logger.info(f"✅ Easy Auth: Test resident user {user_email} mapped to resident ID 2 (John Smith)")
-            return
-        
-        # Check if resident exists in data
+        # All other authenticated users are residents
+        session['role'] = 'resident'
+        # Look up resident ID from data if available
+        resident_id = None
         for resident in residents:
             if resident.get('email', '').lower() == user_email.lower():
-                session['role'] = 'resident'
-                session['resident_id'] = resident['id']
-                logger.info(f"✅ Easy Auth: Resident user {user_email} (ID: {resident['id']})")
-                return
+                resident_id = resident['id']
+                break
         
-        # User authenticated but not in our system
-        session['role'] = 'unknown'
-        logger.warning(f"⚠️ Easy Auth: Authenticated user {user_email} not found in resident/admin data")
+        if resident_id:
+            session['resident_id'] = resident_id
+            logger.info(f"✅ Easy Auth: Resident user {user_email} (ID: {resident_id})")
+        else:
+            # New resident from External ID sign-up - no resident_id yet
+            logger.info(f"✅ Easy Auth: New resident user {user_email} (no resident_id)")
+
     
     except Exception as e:
         logger.error(f"❌ Error in Easy Auth middleware: {str(e)}", exc_info=True)
@@ -664,20 +656,21 @@ def login():
         session['user_email'] = email
         return redirect(url_for('admin_dashboard'))
     elif password == 'resident':
-        # Check if email matches any resident in the data
-        resident_found = None
+        # All users with correct password become residents
+        session['role'] = 'resident'
+        session['user_email'] = email
+        
+        # Look up resident ID if available in data
+        resident_id = None
         for resident in residents:
             if resident.get('email', '').lower() == email.lower():
-                resident_found = resident
+                resident_id = resident['id']
                 break
         
-        if resident_found:
-            session['role'] = 'resident'
-            session['user_email'] = email
-            session['resident_id'] = resident_found['id']
-            return redirect(url_for('resident_dashboard'))
-        else:
-            return render_template('landing.html', error='Email not found')
+        if resident_id:
+            session['resident_id'] = resident_id
+        
+        return redirect(url_for('resident_dashboard'))
     else:
         return render_template('landing.html', error='Invalid email or password')
 
