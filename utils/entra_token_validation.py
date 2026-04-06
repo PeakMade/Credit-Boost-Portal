@@ -24,15 +24,15 @@ class EntraTokenValidator:
         # This is the App ID that Azure uses as the target resource/audience
         self.client_id = os.environ.get('AUTH_EXTENSION_API_CLIENT_ID')
         
-        # For custom authentication extensions, the token issuer is the External ID tenant
-        self.issuer = f"https://login.microsoftonline.com/{self.tenant_id}/v2.0"
+        # External ID (CIAM) uses ciamlogin.com domain, not login.microsoftonline.com
+        # Token issuer format: https://{tenant}.ciamlogin.com/{tenant}/v2.0
+        self.issuer = f"https://{self.tenant_id}.ciamlogin.com/{self.tenant_id}/v2.0"
         
-        # JWKS endpoint for token signature validation (from External ID tenant)
-        self.jwks_uri = f"https://login.microsoftonline.com/{self.tenant_id}/discovery/v2.0/keys"
+        # JWKS endpoint for External ID (CIAM) uses ciamlogin.com domain
+        self.jwks_uri = f"https://{self.tenant_id}.ciamlogin.com/{self.tenant_id}/discovery/v2.0/keys"
         
-        # Audience should match the Application ID URI from the app registration
-        # Azure uses the format: api://{hostname}/{client_id}
-        self.audience = f"api://creditboostportal-hde4crgcc2hyajh4.eastus-01.azurewebsites.net/{self.client_id}"
+        # External ID tokens use simplified audience - just the client ID, not full Application ID URI
+        self.audience = self.client_id
         
         # Cache for JWKS client
         self._jwks_client = None
