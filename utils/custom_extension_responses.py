@@ -3,29 +3,54 @@ Response builders for Microsoft Entra External ID custom authentication extensio
 Constructs proper response payloads for OnAttributeCollectionSubmit events
 """
 import logging
+import json
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# CANONICAL SUCCESS RESPONSE
+# ============================================================================
+# This is the exact response structure that External ID expects for successful
+# verification. Use this constant everywhere to ensure byte-for-byte consistency.
+# DO NOT build this response differently in different code paths.
+# ============================================================================
+
+CANONICAL_SUCCESS_RESPONSE = {
+    "data": {
+        "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
+        "actions": [
+            {
+                "@odata.type": "#microsoft.graph.attributeCollectionSubmit.continueWithDefaultBehavior"
+            }
+        ]
+    }
+}
+
+def get_canonical_success_response():
+    """
+    Get the canonical success response for External ID custom authentication extension.
+    
+    This is the ONLY success response that should be returned for OnAttributeCollectionSubmit.
+    Returns a deep copy to prevent accidental mutations.
+    
+    Returns:
+        dict: Canonical success response structure
+    """
+    # Return a fresh deep copy to prevent any mutations
+    return json.loads(json.dumps(CANONICAL_SUCCESS_RESPONSE))
 
 
 def build_continue_response():
     """
     Build a response that allows the user to continue with sign-up
     
-    Used when resident verification succeeds
+    Used when resident verification succeeds.
+    Returns the canonical success response to ensure consistency.
     
     Returns:
-        dict: Formatted response for Entra custom authentication extension
+        dict: Canonical success response for Entra custom authentication extension
     """
-    return {
-        "data": {
-            "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
-            "actions": [
-                {
-                    "@odata.type": "#microsoft.graph.attributeCollectionSubmit.continueWithDefaultBehavior"
-                }
-            ]
-        }
-    }
+    return get_canonical_success_response()
 
 
 def build_validation_error_response(message, attribute_errors=None):

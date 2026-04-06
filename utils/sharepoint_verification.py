@@ -6,20 +6,23 @@ import os
 import logging
 import msal
 import requests
+import time
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
 def get_sharepoint_access_token():
-    """Get access token for SharePoint/Microsoft Graph API"""
+    """Get access token for SharePoint/Microsoft Graph API with timing"""
+    token_start = time.time()
+    
     client_id = os.environ.get('AZURE_CLIENT_ID')
     client_secret = os.environ.get('AZURE_CLIENT_SECRET')
     tenant_id = os.environ.get('AZURE_TENANT_ID')
     
     if not all([client_id, client_secret, tenant_id]):
         logger.error("❌ Azure credentials not configured")
-        return None
+        return None, {}
     
     try:
         authority = f"https://login.microsoftonline.com/{tenant_id}"
@@ -33,15 +36,19 @@ def get_sharepoint_access_token():
         
         result = app.acquire_token_for_client(scopes=scope)
         
+        token_elapsed = (time.time() - token_start) * 1000  # Convert to ms
+        
         if "access_token" not in result:
             logger.error(f"❌ Token acquisition failed: {result.get('error')}")
-            return None
+            return None, {'token_acquisition_ms': token_elapsed}
         
-        return result["access_token"]
+        logger.info(f"⏱️ SharePoint token acquisition: {token_elapsed:.1f}ms")
+        return result["access_token"], {'token_acquisition_ms': token_elapsed}
     
     except Exception as e:
         logger.error(f"❌ Authentication error: {e}")
-        return None
+        token_elapsed = (time.time() - token_start) * 1000
+        return None, {'token_acquisition_ms': token_elapsed}
 
 
 def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
@@ -55,8 +62,12 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
         date_of_birth: Date of birth (YYYY-MM-DD format or datetime object)
         
     Returns:
-        dict with 'verified': bool, 'resident_id': str/None, 'message': str
+        dict with 'verified': bool, 'resident_id': str/None, 'message': str, 'timings': dict
     """
+    # Track timing for each stage
+    timings = {}
+    overall_start = time.time()
+    
     # Normalize inputs
     email = email.lower().strip()
     first_name = first_name.strip()
@@ -81,24 +92,26 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
                     return {
                         'verified': False,
                         'resident_id': None,
-                        'message': 'Invalid date of birth format. Please use MM-DD-YYYY.'
+                        'message': 'Invalid date of birth format. Please use MM-DD-YYYY.',
+                        'timings': timings
                     }
     else:
         dob = date_of_birth
     
     # Get access token
-    access_token = get_sharepoint_access_token()
+    access_token, token_timings = get_sharepoint_access_token()
+    timings.update(token_timings)
+    
     if not access_token:
         return {
             'verified': False,
             'resident_id': None,
-            'message': 'Unable to verify at this time. Please try again later.'
+            'message': 'Unable to verify at this time. Please try again later.',
+            'timings': timings
         }
     
     try:
         # Get SharePoint site for verification list
-        # This may be different from the main app's SharePoint site
-        # Default: OneDrive personal site with verification list
         site_hostname = os.environ.get('SHAREPOINT_VERIFICATION_SITE_HOSTNAME', 'peakcampus-my.sharepoint.com')
         site_path = os.environ.get('SHAREPOINT_VERIFICATION_SITE_PATH', '/personal/pbatson_peakmade_com')
         
@@ -109,26 +122,47 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
             "Accept": "application/json"
         }
         
-        logger.info(f"Resolving SharePoint site: {site_hostname}{site_path}")
+        logger.info(f"🔗 Graph endpoint: {site_url}")
+        
+        # Resolve site - with timing
+        site_start = time.time()
         site_response = requests.get(site_url, headers=headers)
+        site_elapsed = (time.time() - site_start) * 1000
+        timings['site_resolution_ms'] = site_elapsed
+        
+        logger.info(f"📊 Graph site resolution: {site_response.status_code} in {site_elapsed:.1f}ms")
+        if 'request-id' in site_response.headers:
+            logger.info(f"📊 Graph request-id: {site_response.headers['request-id']}")
+        if 'client-request-id' in site_response.headers:
+            logger.info(f"📊 Graph client-request-id: {site_response.headers['client-request-id']}")
+        
         site_response.raise_for_status()
         site_data = site_response.json()
         site_id = site_data["id"]
         
         # Get verification list ID
-        # Default: Credit Boost Verification list (f2ebd72a-6c00-448c-bf07-19f9afbad017)
         list_id = os.environ.get('SHAREPOINT_VERIFICATION_LIST_ID', 'f2ebd72a-6c00-448c-bf07-19f9afbad017')
         
-        logger.info(f"🔍 Querying SharePoint list {list_id} for verification")
-        
-        # Query SharePoint list
+        # Query SharePoint list - with timing
         list_items_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{list_id}/items?expand=fields"
+        logger.info(f"🔗 Graph endpoint: {list_items_url}")
+        
+        list_start = time.time()
         items_response = requests.get(list_items_url, headers=headers)
+        list_elapsed = (time.time() - list_start) * 1000
+        timings['list_query_ms'] = list_elapsed
+        
+        logger.info(f"📊 Graph list query: {items_response.status_code} in {list_elapsed:.1f}ms")
+        if 'request-id' in items_response.headers:
+            logger.info(f"📊 Graph request-id: {items_response.headers['request-id']}")
+        if 'client-request-id' in items_response.headers:
+            logger.info(f"📊 Graph client-request-id: {items_response.headers['client-request-id']}")
+        
         items_response.raise_for_status()
         items_data = items_response.json()
         
         items = items_data.get("value", [])
-        logger.info(f"Found {len(items)} records in SharePoint list")
+        logger.info(f"📊 Graph returned {len(items)} records")
         
         # Helper to parse SharePoint dates
         def parse_sp_date(date_val):
@@ -182,34 +216,53 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
             
             # Match found!
             resident_id = str(fields.get('ResidentID', '') or fields.get('ID', ''))
+            
+            overall_elapsed = (time.time() - overall_start) * 1000
+            timings['total_verification_ms'] = overall_elapsed
+            
             logger.info(f"✅ Resident verified via SharePoint: {email} (ID: {resident_id})")
+            logger.info(f"⏱️ Total SharePoint verification: {overall_elapsed:.1f}ms")
+            
             return {
                 'verified': True,
                 'resident_id': resident_id,
-                'message': 'Resident verified successfully'
+                'message': 'Resident verified successfully',
+                'timings': timings
             }
         
         # No match found
+        overall_elapsed = (time.time() - overall_start) * 1000
+        timings['total_verification_ms'] = overall_elapsed
+        
         logger.info(f"❌ No matching resident found in SharePoint: {email}")
         return {
             'verified': False,
             'resident_id': None,
-            'message': 'The data you provided could not be verified.'
+            'message': 'The data you provided could not be verified.',
+            'timings': timings
         }
     
     except requests.exceptions.RequestException as e:
+        overall_elapsed = (time.time() - overall_start) * 1000
+        timings['total_verification_ms'] = overall_elapsed
+        
         logger.error(f"❌ SharePoint API error: {e}")
         return {
             'verified': False,
             'resident_id': None,
-            'message': 'Unable to verify at this time. Please try again later.'
+            'message': 'Unable to verify at this time. Please try again later.',
+            'timings': timings
         }
     except Exception as e:
+        overall_elapsed = (time.time() - overall_start) * 1000
+        timings['total_verification_ms'] = overall_elapsed
+        
         logger.error(f"❌ Verification error: {e}")
         return {
             'verified': False,
             'resident_id': None,
-            'message': 'Unable to verify at this time. Please try again later.'
+            'message': 'Unable to verify at this time. Please try again later.',
+            'timings': timings
         }
 
 

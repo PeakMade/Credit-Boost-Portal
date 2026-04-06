@@ -7,6 +7,8 @@ import base64
 import os
 import logging
 import sys
+import time
+import hashlib
 from dotenv import load_dotenv
 from utils.data_loader import load_residents_from_excel
 from utils.sharepoint_data_loader import load_residents_from_sharepoint_list, load_residents_from_credhub_lists
@@ -19,7 +21,9 @@ from utils.custom_extension_responses import (
     build_continue_response,
     build_validation_error_response,
     build_block_page_response,
-    parse_custom_extension_request
+    parse_custom_extension_request,
+    get_canonical_success_response,
+    CANONICAL_SUCCESS_RESPONSE
 )
 
 # Load environment variables from .env file (for local development)
@@ -361,14 +365,29 @@ def verify_resident_signup():
     """
     API endpoint called by Azure Entra External ID custom authentication extension.
     
-    **DIAGNOSTIC MODE ACTIVE - MINIMAL IMPLEMENTATION FOR ISOLATION TESTING**
+    **COMPREHENSIVE DIAGNOSTIC MODE - CANONICAL RESPONSE ENFORCEMENT**
     
-    This temporary version:
-    - Logs extensively to confirm request reaches Flask
-    - Skips all SharePoint/Graph API calls
-    - Skips all resident verification logic
-    - Returns hard-coded success response
-    - Goal: Isolate whether issue is extension plumbing or downstream logic
+    This version implements:
+    - CANONICAL success response (get_canonical_success_response) used for ALL success paths
+    - SHA-256 hashing of response body for byte-for-byte comparison
+    - Comprehensive timing breakdown (token acquisition, site resolution, list query, serialization)
+    - Graph API diagnostics (endpoint URLs, status codes, request IDs, elapsed times)
+    - OData type logging (incoming vs outgoing for comparison)
+    
+    Goal: Determine whether SharePoint verification logic is causing response format issues
+    
+    How to compare responses:
+    1. Look for "🔐 Response SHA-256 hash" in logs
+    2. Compare hash between minimal test (if any) and SharePoint success path
+    3. If hashes differ, compare the "📡 ACTUAL DATA being sent" sections
+    4. Check OData types: incoming (@odata.type) vs outgoing (data, action)
+    5. Review timing breakdown to find bottlenecks
+    
+    Expected timings:
+    - Token acquisition: <500ms typical
+    - Site resolution: <500ms typical
+    - List query: <1000ms typical
+    - Total: <2000ms typical
     
     Authentication:
         - Bearer token (OAuth 2.0 client credentials)
@@ -377,18 +396,19 @@ def verify_resident_signup():
     Request payload:
         Custom authentication extension format with type, source, and data containing:
         - attributes: user-submitted sign-up data (email, givenName, surname, custom fields)
+        - identities: array with email addresses
         - tenantId, authenticationEventListenerId, customAuthenticationExtensionId
     
     Response:
-        - ContinueWithDefaultBehavior: Allow sign-up (verification passed)
+        - ContinueWithDefaultBehavior: Allow sign-up (verification passed) - CANONICAL RESPONSE
         - ShowValidationError: Display validation errors (verification failed)
         - ShowBlockPage: Hard block (service unavailable)
     
     Note:
         This endpoint is isolated from the rest of the app's authentication flow.
         It does not depend on Flask sessions, Easy Auth headers, or browser cookies.
+        Response format MUST match Microsoft Graph API expectations exactly.
     """
-    import time
     start_time = time.time()
     
     logger.info("="*80)
@@ -411,7 +431,9 @@ def verify_resident_signup():
     
     try:
         # Parse the custom extension request payload
+        parsing_start = time.time()
         request_data = request.get_json()
+        parsing_elapsed_ms = (time.time() - parsing_start) * 1000
         
         if not request_data:
             logger.error("❌ Empty request body")
@@ -423,8 +445,9 @@ def verify_resident_signup():
         
         # Log request structure (safely - top-level keys only)
         logger.info(f"📦 Request payload keys: {list(request_data.keys())}")
+        logger.info(f"⏱️ Request parsing: {parsing_elapsed_ms:.1f}ms")
         
-        # Log the event type for debugging (safely)
+        # Log the event type and OData types
         event_type = request_data.get('type', 'unknown')
         logger.info(f"📋 Event type: {event_type}")
         
@@ -432,6 +455,7 @@ def verify_resident_signup():
         data = request_data.get('data', {})
         if data:
             logger.info(f"📋 Data payload keys: {list(data.keys())}")
+            logger.info(f"📋 Incoming @odata.type: {data.get('@odata.type', 'N/A')}")
             logger.info(f"📋 Tenant ID: {data.get('tenantId', 'N/A')[:20]}...")
             logger.info(f"📋 Extension ID: {data.get('customAuthenticationExtensionId', 'N/A')[:20]}...")
         
@@ -477,10 +501,7 @@ def verify_resident_signup():
             )), 200
         
         # ========================================================================
-        # SHAREPOINT VERIFICATION
-        # ========================================================================
-        # Verify the resident exists in our Credit Boost Verification SharePoint list
-        # List contains authorized residents with: Email, FirstName, LastName, DOB
+        # SHAREPOINT VERIFICATION WITH COMPREHENSIVE DIAGNOSTICS
         # ========================================================================
         
         logger.info("="*80)
@@ -489,7 +510,7 @@ def verify_resident_signup():
         logger.info("="*80)
         
         try:
-            # Call SharePoint verification
+            # Call SharePoint verification (returns timings)
             verification_result = verify_resident_sharepoint(
                 email=email,
                 first_name=first_name,
@@ -497,48 +518,94 @@ def verify_resident_signup():
                 date_of_birth=date_of_birth
             )
             
+            # Extract timings
+            sp_timings = verification_result.get('timings', {})
+            logger.info("⏱️ SharePoint timing breakdown:")
+            for timing_key, timing_val in sp_timings.items():
+                logger.info(f"   {timing_key}: {timing_val:.1f}ms")
+            
             if verification_result['verified']:
                 logger.info("✅ Resident verification PASSED")
                 logger.info(f"   Match details: {verification_result.get('match_details', 'N/A')}")
                 
-                # Build success response - allow sign-up to continue
-                logger.info("🔨 Building success response object...")
-                success_response = build_continue_response()
-                logger.info(f"✅ Response object created successfully")
-                logger.info(f"   Type: {type(success_response)}")
-                logger.info(f"   Keys: {success_response.keys() if isinstance(success_response, dict) else 'N/A'}")
+                # ============================================================
+                # CANONICAL SUCCESS RESPONSE - EXACT SAME RESPONSE EVERY TIME
+                # ============================================================
+                logger.info("="*80)
+                logger.info("🔨 Building CANONICAL success response")
+                logger.info("="*80)
                 
+                # Get the canonical response (returns fresh copy)
+                response_build_start = time.time()
+                success_response = get_canonical_success_response()
+                response_build_ms = (time.time() - response_build_start) * 1000
+                
+                logger.info(f"✅ Response object created: {response_build_ms:.3f}ms")
+                logger.info(f"   Type: {type(success_response)}")
+                logger.info(f"   Keys: {list(success_response.keys())}")
+                
+                # Log OData types for comparison
+                logger.info(f"📋 Outgoing @odata.type (data): {success_response.get('data', {}).get('@odata.type', 'N/A')}")
+                logger.info(f"📋 Outgoing @odata.type (action): {success_response.get('data', {}).get('actions', [{}])[0].get('@odata.type', 'N/A')}")
+                
+                # Pretty-print the response structure
                 logger.info(f"📤 Response payload to External ID:")
                 logger.info(f"{json.dumps(success_response, indent=2)}")
                 
-                # Create Flask response with explicit headers
+                # Create Flask response - THIS IS THE CRITICAL SERIALIZATION STEP
                 logger.info("🔨 Creating Flask response with jsonify...")
+                flask_response_start = time.time()
+                
                 try:
                     flask_response = jsonify(success_response)
-                    logger.info(f"✅ Flask response created successfully")
+                    flask_response_ms = (time.time() - flask_response_start) * 1000
+                    
+                    logger.info(f"✅ Flask response created: {flask_response_ms:.3f}ms")
                     logger.info(f"   Response type: {type(flask_response)}")
                     logger.info(f"   Status code: 200")
                     logger.info(f"   Content-Type: {flask_response.content_type}")
                     
-                    # Log the actual data that will be sent
+                    # ========================================================
+                    # CRITICAL: Get the EXACT serialized response body
+                    # ========================================================
                     response_data = flask_response.get_data(as_text=True)
-                    logger.info(f"📡 Actual data being sent to External ID:")
+                    response_bytes = flask_response.get_data(as_text=False)
+                    
+                    # Calculate SHA-256 hash for comparison
+                    response_hash = hashlib.sha256(response_bytes).hexdigest()
+                    
+                    logger.info(f"📡 ACTUAL DATA being sent to External ID:")
                     logger.info(f"{response_data}")
+                    logger.info(f"")
+                    logger.info(f"🔐 Response SHA-256 hash: {response_hash}")
+                    logger.info(f"📏 Response size: {len(response_bytes)} bytes")
                     
                     # Log response headers
                     logger.info(f"📋 Response headers:")
                     for header, value in flask_response.headers:
                         logger.info(f"   {header}: {value}")
                     
+                    # Calculate total elapsed time with breakdown
+                    total_elapsed_ms = (time.time() - start_time) * 1000
+                    logger.info(f"")
+                    logger.info(f"⏱️ TIMING SUMMARY:")
+                    logger.info(f"   Request parsing: {parsing_elapsed_ms:.1f}ms")
+                    if 'token_acquisition_ms' in sp_timings:
+                        logger.info(f"   SharePoint token: {sp_timings['token_acquisition_ms']:.1f}ms")
+                    if 'site_resolution_ms' in sp_timings:
+                        logger.info(f"   Site resolution: {sp_timings['site_resolution_ms']:.1f}ms")
+                    if 'list_query_ms' in sp_timings:
+                        logger.info(f"   List query: {sp_timings['list_query_ms']:.1f}ms")
+                    logger.info(f"   Response building: {response_build_ms:.1f}ms")
+                    logger.info(f"   Response serialization: {flask_response_ms:.1f}ms")
+                    logger.info(f"   TOTAL: {total_elapsed_ms:.1f}ms")
+                    logger.info("="*80)
+                    
+                    return flask_response, 200
+                
                 except Exception as jsonify_error:
                     logger.error(f"❌ Error creating Flask response: {jsonify_error}", exc_info=True)
                     raise
-                
-                elapsed = time.time() - start_time
-                logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
-                logger.info("="*80)
-                
-                return flask_response, 200
             
             else:
                 # Verification failed
