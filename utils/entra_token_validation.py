@@ -6,12 +6,74 @@ import os
 import logging
 import jwt
 import requests
+import time
 from functools import wraps
 from flask import request, jsonify
 from jwt import PyJWKClient
 from datetime import datetime, timedelta
+from threading import Lock
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# JWKS CACHING FOR PERFORMANCE
+# ============================================================================
+# Cache JWKS keys in memory to avoid network round-trips on every request
+# TTL: 1 hour (keys rotate infrequently)
+# ============================================================================
+
+_jwks_cache = {
+    'keys': None,
+    'expires_at': None,
+    'lock': Lock()
+}
+
+JWKS_CACHE_TTL_SECONDS = 3600  # 1 hour
+
+
+def get_cached_jwks(jwks_uri):
+    """
+    Get JWKS keys from cache or fetch from network
+    
+    Returns:
+        tuple: (jwks_data, cache_hit: bool, fetch_time_ms: float)
+    """
+    with _jwks_cache['lock']:
+        now = time.time()
+        
+        # Check cache validity
+        if _jwks_cache['keys'] is not None and _jwks_cache['expires_at'] is not None:
+            if now < _jwks_cache['expires_at']:
+                logger.info(f"✅ JWKS cache HIT (expires in {int(_jwks_cache['expires_at'] - now)}s)")
+                return _jwks_cache['keys'], True, 0.0
+        
+        # Cache miss - fetch from network
+        logger.info(f"⚠️ JWKS cache MISS - fetching from {jwks_uri}")
+        fetch_start = time.time()
+        
+        try:
+            jwks_response = requests.get(jwks_uri, timeout=5)
+            jwks_response.raise_for_status()
+            jwks_data = jwks_response.json()
+            
+            fetch_elapsed_ms = (time.time() - fetch_start) * 1000
+            
+            # Update cache
+            _jwks_cache['keys'] = jwks_data
+            _jwks_cache['expires_at'] = now + JWKS_CACHE_TTL_SECONDS
+            
+            logger.info(f"✅ JWKS fetched and cached: {fetch_elapsed_ms:.1f}ms, TTL={JWKS_CACHE_TTL_SECONDS}s")
+            
+            return jwks_data, False, fetch_elapsed_ms
+        
+        except Exception as e:
+            logger.error(f"❌ JWKS fetch failed: {e}")
+            # If we have stale cache, return it as fallback
+            if _jwks_cache['keys'] is not None:
+                logger.warning(f"⚠️ Using stale JWKS cache as fallback")
+                fetch_elapsed_ms = (time.time() - fetch_start) * 1000
+                return _jwks_cache['keys'], False, fetch_elapsed_ms
+            raise
 
 
 class EntraTokenValidator:
@@ -34,14 +96,14 @@ class EntraTokenValidator:
         # External ID tokens use simplified audience - just the client ID, not full Application ID URI
         self.audience = self.client_id
         
-        # Cache for JWKS client
+        # Cache for JWKS client (PyJWT's client has built-in caching, but we add our own layer)
         self._jwks_client = None
     
     @property
     def jwks_client(self):
         """Lazy-load JWKS client for token signature validation"""
         if self._jwks_client is None:
-            self._jwks_client = PyJWKClient(self.jwks_uri, cache_keys=True)
+            self._jwks_client = PyJWKClient(self.jwks_uri, cache_keys=True, lifespan=3600)
         return self._jwks_client
     
     def validate_token(self, token):
@@ -52,32 +114,39 @@ class EntraTokenValidator:
             token: JWT bearer token string
             
         Returns:
-            dict: Decoded token payload if valid
-            None: If validation fails
+            tuple: (decoded_payload: dict or None, metrics: dict)
         """
+        metrics = {
+            'jwks_cache_hit': False,
+            'jwks_fetch_ms': 0.0,
+            'total_validation_ms': 0.0
+        }
+        
+        validation_start = time.time()
+        
         if not self.tenant_id or not self.client_id:
             logger.error("❌ Azure tenant/client ID not configured for token validation")
-            return None
+            metrics['total_validation_ms'] = (time.time() - validation_start) * 1000
+            return None, metrics
         
         try:
-            # DIAGNOSTIC: Decode token header to see what key ID it's using
+            # Decode token header to see what key ID it's using
             unverified_header = jwt.get_unverified_header(token)
-            logger.info(f"🔍 DIAGNOSTIC: Token header - kid={unverified_header.get('kid')}, alg={unverified_header.get('alg')}")
+            kid = unverified_header.get('kid')
+            logger.info(f"🔍 Token uses signing key: kid={kid}, alg={unverified_header.get('alg')}")
             
-            # DIAGNOSTIC: Decode token payload without verification to see issuer/audience
+            # Decode token payload without verification to see issuer/audience
             unverified_payload = jwt.decode(token, options={"verify_signature": False})
-            logger.info(f"🔍 DIAGNOSTIC: Token claims (unverified):")
-            logger.info(f"   Issuer: {unverified_payload.get('iss')}")
-            logger.info(f"   Audience: {unverified_payload.get('aud')}")
-            logger.info(f"   AppID: {unverified_payload.get('appid')}")
-            logger.info(f"   Expiry: {unverified_payload.get('exp')}")
+            logger.info(f"🔍 Token claims: iss={unverified_payload.get('iss')[:50]}..., aud={unverified_payload.get('aud')}, exp={unverified_payload.get('exp')}")
             
-            # DIAGNOSTIC: Fetch and log available JWKS keys
-            logger.info(f"🔍 DIAGNOSTIC: Fetching JWKS from {self.jwks_uri}")
-            jwks_response = requests.get(self.jwks_uri)
-            jwks_data = jwks_response.json()
-            available_kids = [key.get('kid') for key in jwks_data.get('keys', [])]
-            logger.info(f"🔍 DIAGNOSTIC: Available signing key IDs in JWKS: {available_kids}")
+            # Get JWKS with caching
+            jwks_data, cache_hit, fetch_time = get_cached_jwks(self.jwks_uri)
+            metrics['jwks_cache_hit'] = cache_hit
+            metrics['jwks_fetch_ms'] = fetch_time
+            
+            if not cache_hit:
+                available_kids = [key.get('kid') for key in jwks_data.get('keys', [])]
+                logger.info(f"📊 JWKS contains {len(available_kids)} keys: {available_kids[:5]}{'...' if len(available_kids) > 5 else ''}")
             
             # Get signing key from JWKS
             signing_key = self.jwks_client.get_signing_key_from_jwt(token)
@@ -97,26 +166,32 @@ class EntraTokenValidator:
                 }
             )
             
-            logger.info(f"✅ Token validated successfully")
-            logger.debug(f"Token claims: appid={decoded.get('appid')}, oid={decoded.get('oid')}")
+            metrics['total_validation_ms'] = (time.time() - validation_start) * 1000
             
-            return decoded
+            logger.info(f"✅ Token validated: {metrics['total_validation_ms']:.1f}ms (jwks_cache={'HIT' if cache_hit else 'MISS'})")
+            
+            return decoded, metrics
         
         except jwt.ExpiredSignatureError:
+            metrics['total_validation_ms'] = (time.time() - validation_start) * 1000
             logger.warning("⚠️ Token has expired")
-            return None
+            return None, metrics
         except jwt.InvalidAudienceError:
+            metrics['total_validation_ms'] = (time.time() - validation_start) * 1000
             logger.warning(f"⚠️ Invalid audience. Expected: {self.audience}")
-            return None
+            return None, metrics
         except jwt.InvalidIssuerError:
+            metrics['total_validation_ms'] = (time.time() - validation_start) * 1000
             logger.warning(f"⚠️ Invalid issuer. Expected: {self.issuer}")
-            return None
+            return None, metrics
         except jwt.InvalidSignatureError:
+            metrics['total_validation_ms'] = (time.time() - validation_start) * 1000
             logger.warning("⚠️ Invalid token signature")
-            return None
+            return None, metrics
         except Exception as e:
+            metrics['total_validation_ms'] = (time.time() - validation_start) * 1000
             logger.error(f"❌ Token validation error: {e}")
-            return None
+            return None, metrics
 
 
 # Singleton instance
@@ -135,70 +210,59 @@ def require_bearer_token(f):
     """
     Decorator to require and validate bearer token for custom authentication extension endpoints
     
-    **DIAGNOSTIC MODE: Enhanced logging for isolation testing**
+    Adds validation metrics to request.entra_metrics for performance tracking
     
     Usage:
         @app.route('/api/verify-resident', methods=['POST'])
         @require_bearer_token
         def verify_resident():
-            # Token is already validated, proceed with logic
+            # Token is already validated
+            # Access metrics via request.entra_metrics
             pass
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Allow OPTIONS requests without token (CORS preflight)
         if request.method == 'OPTIONS':
-            logger.info("🔓 DIAGNOSTIC: OPTIONS request - bypassing token validation (CORS preflight)")
+            logger.info("🔓 OPTIONS request - bypassing token validation (CORS preflight)")
             return f(*args, **kwargs)
         
-        logger.info("🔐 DIAGNOSTIC: Starting bearer token validation")
+        logger.info("🔐 Starting bearer token validation")
         
         # Extract bearer token from Authorization header
         auth_header = request.headers.get('Authorization', '')
         
         if not auth_header.startswith('Bearer '):
-            logger.warning("❌ DIAGNOSTIC: Missing or invalid Authorization header")
-            logger.warning(f"   Header value: {auth_header[:30] if auth_header else 'None'}...")
+            logger.warning("❌ Missing or invalid Authorization header")
             return jsonify({
                 "error": "unauthorized",
                 "error_description": "Bearer token required"
             }), 401
         
         token = auth_header[7:]  # Remove "Bearer " prefix
-        logger.info(f"✅ DIAGNOSTIC: Bearer token extracted (length: {len(token)} chars)")
+        logger.info(f"✅ Bearer token extracted: {len(token)} chars")
         
-        # Validate token
+        # Validate token (returns tuple: decoded_token, metrics)
         validator = get_token_validator()
-        logger.info(f"🔍 DIAGNOSTIC: Token validation config:")
-        logger.info(f"   Expected audience: {validator.audience}")
-        logger.info(f"   Expected issuer: {validator.issuer}")
-        logger.info(f"   Tenant ID: {validator.tenant_id}")
-        logger.info(f"   Client ID: {validator.client_id}")
+        logger.info(f"🔍 Validating against audience={validator.audience[:30]}...")
         
-        decoded_token = validator.validate_token(token)
+        decoded_token, metrics = validator.validate_token(token)
         
         if decoded_token is None:
-            logger.error("❌ DIAGNOSTIC: Token validation FAILED")
-            logger.error("   Reason: See validation errors above")
+            logger.error("❌ Token validation FAILED")
             return jsonify({
                 "error": "invalid_token",
                 "error_description": "The provided token is invalid or expired"
             }), 401
         
-        # Log token claims safely
-        logger.info("✅ DIAGNOSTIC: Token validation SUCCEEDED")
-        logger.info(f"   Token claims:")
-        logger.info(f"   - aud (audience): {decoded_token.get('aud', 'N/A')}")
-        logger.info(f"   - iss (issuer): {decoded_token.get('iss', 'N/A')}")
-        logger.info(f"   - appid: {decoded_token.get('appid', 'N/A')}")
-        logger.info(f"   - azp (authorized party): {decoded_token.get('azp', 'N/A')}")
-        logger.info(f"   - oid (object ID): {decoded_token.get('oid', 'N/A')[:20]}...")
-        logger.info(f"   - exp (expires): {decoded_token.get('exp', 'N/A')}")
+        # Log key token claims
+        logger.info(f"✅ Token valid: aud={decoded_token.get('aud', 'N/A')[:30]}..., oid={decoded_token.get('oid', 'N/A')[:20]}...")
         
-        # Token is valid, store in request context for endpoint to access if needed
+        # Store token and metrics in request context for endpoint access
         request.entra_token = decoded_token
+        request.entra_metrics = metrics  # jwks_cache_hit, jwks_fetch_ms, total_validation_ms
         
-        logger.info("🎯 DIAGNOSTIC: Proceeding to endpoint handler")
+        logger.info("🎯 Proceeding to endpoint handler")
         return f(*args, **kwargs)
     
     return decorated_function

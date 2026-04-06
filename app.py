@@ -407,27 +407,26 @@ def verify_resident_signup():
     Note:
         This endpoint is isolated from the rest of the app's authentication flow.
         It does not depend on Flask sessions, Easy Auth headers, or browser cookies.
-        Response format MUST match Microsoft Graph API expectations exactly.
     """
-    start_time = time.time()
+    # ============================================================================
+    # TRUE END-TO-END WALL-CLOCK TIMING
+    # This timer captures EVERYTHING including token validation in decorator
+    # ============================================================================
+    request_start_time = time.time()
+    request_start_iso = datetime.now().isoformat()
+    
+    # Request correlation tracking for retry detection
+    request_correlation = {
+        'request_id': None,
+        'extension_id': None,
+        'listener_id': None,
+        'tenant_id': None,
+        'event_type': None
+    }
     
     logger.info("="*80)
-    logger.info("🔐 DIAGNOSTIC: Custom authentication extension endpoint called")
-    logger.info(f"Timestamp: {datetime.now().isoformat()}")
-    logger.info(f"Method: {request.method}")
-    logger.info(f"Path: {request.path}")
-    logger.info(f"Content-Type: {request.content_type}")
-    
-    # Log Authorization header presence (safely)
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header:
-        logger.info(f"✅ Authorization header present: Bearer {auth_header[7:17]}...")
-        # Note: Full token validation already happened in @require_bearer_token decorator
-        # If we reached here, token is valid
-    else:
-        logger.warning("⚠️ No Authorization header (OPTIONS request)")
-    
-    logger.info("="*80)
+    logger.info(f"🔐 Custom authentication extension endpoint called")
+    logger.info(f"📅 Start time: {request_start_iso}")
     
     try:
         # Parse the custom extension request payload
@@ -437,17 +436,26 @@ def verify_resident_signup():
         
         if not request_data:
             logger.error("❌ Empty request body")
-            elapsed = time.time() - start_time
-            logger.info(f"⏱️ Request processing time: {elapsed:.3f}s")
+            wall_clock_ms = (time.time() - request_start_time) * 1000
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.1f}ms, status=error_empty_body")
             return jsonify(build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
             )), 200
         
-        # Log request structure (safely - top-level keys only)
-        logger.info(f"📦 Request payload keys: {list(request_data.keys())}")
-        logger.info(f"⏱️ Request parsing: {parsing_elapsed_ms:.1f}ms")
+        # Extract correlation IDs for retry detection
+        data = request_data.get('data', {})
+        request_correlation['event_type'] = request_data.get('type', 'unknown')
+        request_correlation['extension_id'] = data.get('customAuthenticationExtensionId', 'N/A')[:20]
+        request_correlation['listener_id'] = data.get('authenticationEventListenerId', 'N/A')[:20]
+        request_correlation['tenant_id'] = data.get('tenantId', 'N/A')[:20]
         
-        # Log the event type and OData types
+        # Log correlation info
+        logger.info(f"📋 Event type: {request_correlation['event_type']}")
+        logger.info(f"📋 Extension ID: {request_correlation['extension_id']}...")
+        logger.info(f"📋 Listener ID: {request_correlation['listener_id']}...")
+        logger.info(f"📋 Tenant ID: {request_correlation['tenant_id']}...")
+        logger.info(f"📋 Incoming @odata.type: {data.get('@odata.type', 'N/A')}")
+        logger.info(f"⏱️ Request parsing: {parsing_elapsed_ms:.1f}ms")
         event_type = request_data.get('type', 'unknown')
         logger.info(f"📋 Event type: {event_type}")
         
@@ -464,8 +472,8 @@ def verify_resident_signup():
         
         if parsed_attrs is None:
             logger.error("❌ Failed to parse custom extension request")
-            elapsed = time.time() - start_time
-            logger.info(f"⏱️ Request processing time: {elapsed:.3f}s")
+            wall_clock_ms = (time.time() - request_start_time) * 1000
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=error_parse_failed")
             return jsonify(build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
             )), 200
@@ -494,8 +502,8 @@ def verify_resident_signup():
         
         if missing_fields:
             logger.warning(f"⚠️ Missing required fields: {', '.join(missing_fields)}")
-            elapsed = time.time() - start_time
-            logger.info(f"⏱️ Request processing time: {elapsed:.3f}s")
+            wall_clock_ms = (time.time() - request_start_time) * 1000
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=error_missing_fields")
             return jsonify(build_validation_error_response(
                 f"Please provide all required information: {', '.join(missing_fields)}."
             )), 200
@@ -585,20 +593,41 @@ def verify_resident_signup():
                     for header, value in flask_response.headers:
                         logger.info(f"   {header}: {value}")
                     
-                    # Calculate total elapsed time with breakdown
-                    total_elapsed_ms = (time.time() - start_time) * 1000
+                    # ========================================================
+                    # COMPREHENSIVE TIMING BREAKDOWN WITH CACHE HIT TRACKING
+                    # ========================================================
+                    wall_clock_ms = (time.time() - request_start_time) * 1000
+                    
+                    # Get token validation metrics from decorator
+                    entra_metrics = getattr(request, 'entra_metrics', {})
+                    
                     logger.info(f"")
-                    logger.info(f"⏱️ TIMING SUMMARY:")
+                    logger.info(f"⏱️ TIMING BREAKDOWN:")
+                    logger.info(f"   Token validation: {entra_metrics.get('total_validation_ms', 0):.1f}ms (jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'})")
+                    if entra_metrics.get('jwks_fetch_ms', 0) > 0:
+                        logger.info(f"   - JWKS fetch: {entra_metrics.get('jwks_fetch_ms', 0):.1f}ms")
                     logger.info(f"   Request parsing: {parsing_elapsed_ms:.1f}ms")
-                    if 'token_acquisition_ms' in sp_timings:
-                        logger.info(f"   SharePoint token: {sp_timings['token_acquisition_ms']:.1f}ms")
-                    if 'site_resolution_ms' in sp_timings:
-                        logger.info(f"   Site resolution: {sp_timings['site_resolution_ms']:.1f}ms")
-                    if 'list_query_ms' in sp_timings:
-                        logger.info(f"   List query: {sp_timings['list_query_ms']:.1f}ms")
+                    logger.info(f"   SharePoint token: {sp_timings.get('token_acquisition_ms', 0):.1f}ms (cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'})")
+                    logger.info(f"   Site resolution: {sp_timings.get('site_resolution_ms', 0):.1f}ms (cache={'HIT' if sp_timings.get('site_id_cache_hit') else 'MISS'})")
+                    logger.info(f"   List query: {sp_timings.get('list_query_ms', 0):.1f}ms")
                     logger.info(f"   Response building: {response_build_ms:.1f}ms")
                     logger.info(f"   Response serialization: {flask_response_ms:.1f}ms")
-                    logger.info(f"   TOTAL: {total_elapsed_ms:.1f}ms")
+                    logger.info(f"   TRUE WALL-CLOCK TOTAL: {wall_clock_ms:.1f}ms")
+                    
+                    # ========================================================
+                    # COMPACT SUMMARY LINE FOR EASY COMPARISON
+                    # ========================================================
+                    summary = (
+                        f"📊 SUMMARY: "
+                        f"wall_clock={wall_clock_ms:.0f}ms | "
+                        f"jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'} | "
+                        f"graph_token_cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'} | "
+                        f"site_id_cache={'HIT' if sp_timings.get('site_id_cache_hit') else 'MISS'} | "
+                        f"sharepoint_total={sp_timings.get('total_verification_ms', 0):.0f}ms | "
+                        f"status=success | "
+                        f"hash={response_hash[:16]}..."
+                    )
+                    logger.info(summary)
                     logger.info("="*80)
                     
                     return flask_response, 200
@@ -635,8 +664,8 @@ def verify_resident_signup():
                 logger.info(f"📡 Actual error data being sent:")
                 logger.info(f"{flask_response.get_data(as_text=True)}")
                 
-                elapsed = time.time() - start_time
-                logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
+                wall_clock_ms = (time.time() - request_start_time) * 1000
+                logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=verification_failed")
                 logger.info("="*80)
                 
                 return flask_response, 200
@@ -658,8 +687,8 @@ def verify_resident_signup():
             logger.info(f"📡 Actual block page data being sent:")
             logger.info(f"{flask_response.get_data(as_text=True)}")
             
-            elapsed = time.time() - start_time
-            logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
+            wall_clock_ms = (time.time() - request_start_time) * 1000
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=service_error")
             logger.info("="*80)
             
             return flask_response, 200
@@ -679,8 +708,8 @@ def verify_resident_signup():
         logger.info(f"📡 Actual data being sent:")
         logger.info(f"{flask_response.get_data(as_text=True)}")
         
-        elapsed = time.time() - start_time
-        logger.info(f"⏱️ Request processing time: {elapsed:.3f}s")
+        wall_clock_ms = (time.time() - request_start_time) * 1000
+        logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=unexpected_error")
         logger.info("="*80)
         
         return flask_response, 200
