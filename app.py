@@ -792,11 +792,15 @@ def verify_resident_signup():
                         
                         logger.info(f"")
                         logger.info(f"⏱️ TIMING BREAKDOWN:")
-                        logger.info(f"   Token validation: {entra_metrics.get('total_validation_ms', 0):.1f}ms (jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'})")
-                        if not entra_metrics.get('jwks_cache_hit'):
-                            logger.info(f"      - JWKS fetch: {entra_metrics.get('jwks_fetch_ms', 0):.1f}ms")
-                        else:
-                            logger.info(f"      - JWKS cache age: {entra_metrics.get('jwks_cache_age_s', 0):.0f}s, TTL remaining: {entra_metrics.get('jwks_ttl_remaining_s', 0):.0f}s")
+                        logger.info(f"   Token validation: {entra_metrics.get('total_validation_ms', 0):.1f}ms")
+                        logger.info(f"      - Header parse: {entra_metrics.get('header_parse_ms', 0):.1f}ms")
+                        logger.info(f"      - JWKS fetch: {entra_metrics.get('jwks_fetch_ms', 0):.1f}ms (cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'})")
+                        if entra_metrics.get('jwks_cache_hit'):
+                            logger.info(f"         * JWKS cache age: {entra_metrics.get('jwks_cache_age_s', 0):.0f}s, TTL: {entra_metrics.get('jwks_ttl_remaining_s', 0):.0f}s")
+                        logger.info(f"      - Key lookup: {entra_metrics.get('key_lookup_ms', 0):.1f}ms (cache={'HIT' if entra_metrics.get('key_cache_hit') else 'MISS'})")
+                        if not entra_metrics.get('key_cache_hit'):
+                            logger.info(f"         * Key construction: {entra_metrics.get('key_construction_ms', 0):.1f}ms")
+                        logger.info(f"      - Signature verify: {entra_metrics.get('signature_verify_ms', 0):.1f}ms")
                         logger.info(f"   Request parsing: {parsing_elapsed_ms:.1f}ms")
                         logger.info(f"   SharePoint token: {sp_timings.get('token_acquisition_ms', 0):.1f}ms (cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'})")
                         if sp_timings.get('graph_token_cache_hit'):
@@ -821,8 +825,9 @@ def verify_resident_signup():
                             f"📊 SUMMARY: "
                             f"wall_clock={wall_clock_ms:.0f}ms | "
                             f"token_validation={entra_metrics.get('total_validation_ms', 0):.0f}ms | "
-                            f"jwks_fetch={entra_metrics.get('jwks_fetch_ms', 0):.0f}ms | "
                             f"jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'} | "
+                            f"key_cache={'HIT' if entra_metrics.get('key_cache_hit') else 'MISS'} | "
+                            f"signature_verify={entra_metrics.get('signature_verify_ms', 0):.0f}ms | "
                             f"graph_token={sp_timings.get('token_acquisition_ms', 0):.0f}ms | "
                             f"graph_token_cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'} | "
                             f"site_resolution={sp_timings.get('site_resolution_ms', 0):.0f}ms | "
