@@ -15,8 +15,8 @@ from utils.sharepoint_data_loader import load_residents_from_sharepoint_list, lo
 from utils.excel_export import (create_resident_list_export, create_reporting_runs_export,
                                 create_disputes_export, create_audit_logs_export)
 from utils.entrata_api import get_entrata_client
-from utils.sharepoint_verification import verify_resident_sharepoint
-from utils.entra_token_validation import require_bearer_token
+from utils.sharepoint_verification import verify_resident_sharepoint, warmup_graph_token, warmup_site_id
+from utils.entra_token_validation import require_bearer_token, warmup_jwks_cache
 from utils.custom_extension_responses import (
     build_continue_response,
     build_validation_error_response,
@@ -46,6 +46,71 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# FIRST-REQUEST TRACKING FOR DIAGNOSTICS
+# ============================================================================
+# Track whether this is the first API request after app startup
+# Helps identify cold-start latency issues
+# ============================================================================
+_first_request_after_start = True
+_first_request_lock = __import__('threading').Lock()
+
+# ============================================================================
+# STARTUP WARM-UP FOR PERFORMANCE
+# ============================================================================
+# Pre-fetch expensive dependencies on app startup to eliminate cold-start latency
+# This ensures the first custom authentication extension request is fast
+# ============================================================================
+
+def warmup_caches():
+    """
+    Warm up all caches on application startup
+    Pre-fetches JWKS keys, Graph tokens, and SharePoint site IDs
+    Logs results but does not fail app startup on errors
+    """
+    logger.info("="*80)
+    logger.info("🔥 STARTUP WARM-UP: Beginning cache pre-population")
+    logger.info("="*80)
+    
+    warmup_start = time.time()
+    
+    # 1. Warm up JWKS cache
+    jwks_result = warmup_jwks_cache()
+    if jwks_result['success']:
+        logger.info(f"✅ JWKS warm-up: SUCCESS ({jwks_result['duration_ms']:.1f}ms)")
+    else:
+        logger.warning(f"⚠️ JWKS warm-up: FAILED ({jwks_result['error']})")
+    
+    # 2. Warm up Graph token cache
+    token_result = warmup_graph_token()
+    if token_result['success']:
+        logger.info(f"✅ Graph token warm-up: SUCCESS ({token_result['duration_ms']:.1f}ms, TTL={token_result['ttl_s']:.0f}s)")
+    else:
+        logger.warning(f"⚠️ Graph token warm-up: FAILED ({token_result['error']})")
+    
+    # 3. Warm up Site ID cache
+    site_result = warmup_site_id()
+    if site_result['success']:
+        logger.info(f"✅ Site ID warm-up: SUCCESS ({site_result['duration_ms']:.1f}ms, site={site_result['site_id'][:40]}...)")
+    else:
+        logger.warning(f"⚠️ Site ID warm-up: FAILED ({site_result['error']})")
+    
+    total_duration = (time.time() - warmup_start) * 1000
+    
+    logger.info("="*80)
+    logger.info(f"🔥 STARTUP WARM-UP: Complete in {total_duration:.1f}ms")
+    logger.info(f"   JWKS: {'SUCCESS' if jwks_result['success'] else 'FAILED'}")
+    logger.info(f"   Graph token: {'SUCCESS' if token_result['success'] else 'FAILED'}")
+    logger.info(f"   Site ID: {'SUCCESS' if site_result['success'] else 'FAILED'}")
+    logger.info("="*80)
+
+# Run warm-up on module load (when app starts)
+try:
+    warmup_caches()
+except Exception as warmup_error:
+    logger.error(f"❌ Startup warm-up failed with exception: {warmup_error}", exc_info=True)
+    logger.warning("⚠️ Continuing app startup despite warm-up failure. Caches will populate on first request.")
 
 # Custom Jinja filter for currency formatting with commas
 @app.template_filter('currency')
@@ -409,11 +474,24 @@ def verify_resident_signup():
         It does not depend on Flask sessions, Easy Auth headers, or browser cookies.
     """
     # ============================================================================
-    # TRUE END-TO-END WALL-CLOCK TIMING
-    # This timer captures EVERYTHING including token validation in decorator
+    # TRUE END-TO-END WALL-CLOCK TIMING (set by decorator)
+    # request.request_start_time is captured at decorator entry (before token validation)
+    # This gives us true wall-clock timing including all decorator overhead
     # ============================================================================
-    request_start_time = time.time()
+    request_start_time = getattr(request, 'request_start_time', time.time())
     request_start_iso = datetime.now().isoformat()
+    
+    # ============================================================================
+    # FIRST-REQUEST TRACKING
+    # Track whether this is the first request after app startup
+    # Helps diagnose cold-start latency vs warm performance
+    # ============================================================================
+    global _first_request_after_start
+    with _first_request_lock:
+        is_first_request = _first_request_after_start
+        if _first_request_after_start:
+            _first_request_after_start = False
+            logger.info("🆕 FIRST REQUEST AFTER STARTUP")
     
     # Request correlation tracking for retry detection
     request_correlation = {
@@ -425,7 +503,7 @@ def verify_resident_signup():
     }
     
     logger.info("="*80)
-    logger.info(f"🔐 Custom authentication extension endpoint called")
+    logger.info(f"🔐 Custom authentication extension endpoint called (first_request={is_first_request})")
     logger.info(f"📅 Start time: {request_start_iso}")
     
     try:
@@ -437,7 +515,7 @@ def verify_resident_signup():
         if not request_data:
             logger.error("❌ Empty request body")
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.1f}ms, status=error_empty_body")
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.1f}ms | first_request={is_first_request} | status=error_empty_body")
             return jsonify(build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
             )), 200
@@ -473,7 +551,7 @@ def verify_resident_signup():
         if parsed_attrs is None:
             logger.error("❌ Failed to parse custom extension request")
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=error_parse_failed")
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=error_parse_failed")
             return jsonify(build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
             )), 200
@@ -503,7 +581,7 @@ def verify_resident_signup():
         if missing_fields:
             logger.warning(f"⚠️ Missing required fields: {', '.join(missing_fields)}")
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=error_missing_fields")
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=error_missing_fields")
             return jsonify(build_validation_error_response(
                 f"Please provide all required information: {', '.join(missing_fields)}."
             )), 200
@@ -604,15 +682,21 @@ def verify_resident_signup():
                     logger.info(f"")
                     logger.info(f"⏱️ TIMING BREAKDOWN:")
                     logger.info(f"   Token validation: {entra_metrics.get('total_validation_ms', 0):.1f}ms (jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'})")
-                    if entra_metrics.get('jwks_fetch_ms', 0) > 0:
-                        logger.info(f"   - JWKS fetch: {entra_metrics.get('jwks_fetch_ms', 0):.1f}ms")
+                    if not entra_metrics.get('jwks_cache_hit'):
+                        logger.info(f"      - JWKS fetch: {entra_metrics.get('jwks_fetch_ms', 0):.1f}ms")
+                    else:
+                        logger.info(f"      - JWKS cache age: {entra_metrics.get('jwks_cache_age_s', 0):.0f}s, TTL remaining: {entra_metrics.get('jwks_ttl_remaining_s', 0):.0f}s")
                     logger.info(f"   Request parsing: {parsing_elapsed_ms:.1f}ms")
                     logger.info(f"   SharePoint token: {sp_timings.get('token_acquisition_ms', 0):.1f}ms (cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'})")
+                    if sp_timings.get('graph_token_cache_hit'):
+                        logger.info(f"      - Token cache age: {sp_timings.get('token_cache_age_s', 0):.0f}s, TTL remaining: {sp_timings.get('token_ttl_remaining_s', 0):.0f}s")
                     logger.info(f"   Site resolution: {sp_timings.get('site_resolution_ms', 0):.1f}ms (cache={'HIT' if sp_timings.get('site_id_cache_hit') else 'MISS'})")
+                    if sp_timings.get('site_id_cache_hit'):
+                        logger.info(f"      - Site cache age: {sp_timings.get('site_cache_age_s', 0):.0f}s")
                     logger.info(f"   List query: {sp_timings.get('list_query_ms', 0):.1f}ms")
                     logger.info(f"   Response building: {response_build_ms:.1f}ms")
                     logger.info(f"   Response serialization: {flask_response_ms:.1f}ms")
-                    logger.info(f"   TRUE WALL-CLOCK TOTAL: {wall_clock_ms:.1f}ms")
+                    logger.info(f"   TRUE WALL-CLOCK TOTAL: {wall_clock_ms:.1f}ms (includes decorator overhead)")
                     
                     # ========================================================
                     # COMPACT SUMMARY LINE FOR EASY COMPARISON
@@ -620,10 +704,16 @@ def verify_resident_signup():
                     summary = (
                         f"📊 SUMMARY: "
                         f"wall_clock={wall_clock_ms:.0f}ms | "
+                        f"token_validation={entra_metrics.get('total_validation_ms', 0):.0f}ms | "
+                        f"jwks_fetch={entra_metrics.get('jwks_fetch_ms', 0):.0f}ms | "
                         f"jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'} | "
+                        f"graph_token={sp_timings.get('token_acquisition_ms', 0):.0f}ms | "
                         f"graph_token_cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'} | "
+                        f"site_resolution={sp_timings.get('site_resolution_ms', 0):.0f}ms | "
                         f"site_id_cache={'HIT' if sp_timings.get('site_id_cache_hit') else 'MISS'} | "
+                        f"list_query={sp_timings.get('list_query_ms', 0):.0f}ms | "
                         f"sharepoint_total={sp_timings.get('total_verification_ms', 0):.0f}ms | "
+                        f"first_request={is_first_request} | "
                         f"status=success | "
                         f"hash={response_hash[:16]}..."
                     )
@@ -665,7 +755,7 @@ def verify_resident_signup():
                 logger.info(f"{flask_response.get_data(as_text=True)}")
                 
                 wall_clock_ms = (time.time() - request_start_time) * 1000
-                logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=verification_failed")
+                logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=verification_failed")
                 logger.info("="*80)
                 
                 return flask_response, 200
@@ -688,7 +778,7 @@ def verify_resident_signup():
             logger.info(f"{flask_response.get_data(as_text=True)}")
             
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=service_error")
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=service_error")
             logger.info("="*80)
             
             return flask_response, 200
@@ -709,7 +799,7 @@ def verify_resident_signup():
         logger.info(f"{flask_response.get_data(as_text=True)}")
         
         wall_clock_ms = (time.time() - request_start_time) * 1000
-        logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms, status=unexpected_error")
+        logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=unexpected_error")
         logger.info("="*80)
         
         return flask_response, 200

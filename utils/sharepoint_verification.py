@@ -35,8 +35,146 @@ _graph_token_cache = {
 _sharepoint_site_cache = {
     'site_id': None,
     'site_key': None,  # Cache key: hostname:path
+    'cached_at': None,
     'lock': Lock()
 }
+
+
+def warmup_graph_token():
+    """
+    Warm up Graph access token cache on application startup
+    Pre-acquires and caches token to eliminate cold-start latency
+    
+    Returns:
+        dict with warmup results: success (bool), duration_ms (float), ttl_s (float), error (str or None)
+    """
+    logger.info("🔥 graph_token_warmup_started")
+    warmup_start = time.time()
+    
+    try:
+        token, metrics = get_sharepoint_access_token()
+        
+        duration_ms = (time.time() - warmup_start) * 1000
+        
+        if token:
+            logger.info(f"✅ graph_token_warmup_succeeded: duration={duration_ms:.1f}ms, ttl={metrics['token_ttl_remaining_s']:.0f}s")
+            return {
+                'success': True,
+                'duration_ms': duration_ms,
+                'ttl_s': metrics['token_ttl_remaining_s'],
+                'error': None
+            }
+        else:
+            logger.warning(f"⚠️ graph_token_warmup_failed: token acquisition returned None, duration={duration_ms:.1f}ms")
+            return {
+                'success': False,
+                'duration_ms': duration_ms,
+                'ttl_s': 0,
+                'error': 'Token acquisition returned None'
+            }
+    
+    except Exception as e:
+        duration_ms = (time.time() - warmup_start) * 1000
+        error_msg = str(e)
+        logger.warning(f"⚠️ graph_token_warmup_failed: {error_msg}, duration={duration_ms:.1f}ms")
+        return {
+            'success': False,
+            'duration_ms': duration_ms,
+            'ttl_s': 0,
+            'error': error_msg
+        }
+
+
+def warmup_site_id():
+    """
+    Warm up SharePoint site ID cache on application startup
+    Pre-resolves and caches site ID to eliminate cold-start latency
+    
+    Returns:
+        dict with warmup results: success (bool), duration_ms (float), site_id (str or None), error (str or None)
+    """
+    logger.info("🔥 site_id_warmup_started")
+    warmup_start = time.time()
+    
+    try:
+        # Get Graph token first
+        token, token_metrics = get_sharepoint_access_token()
+        
+        if not token:
+            error_msg = "Failed to acquire Graph token"
+            logger.warning(f"⚠️ site_id_warmup_failed: {error_msg}")
+            return {
+                'success': False,
+                'duration_ms': 0,
+                'site_id': None,
+                'error': error_msg
+            }
+        
+        # Get SharePoint site configuration from environment
+        sharepoint_site_url = os.environ.get('SHAREPOINT_SITE_URL', '')
+        
+        if not sharepoint_site_url:
+            error_msg = "SHAREPOINT_SITE_URL not configured"
+            logger.warning(f"⚠️ site_id_warmup_failed: {error_msg}")
+            return {
+                'success': False,
+                'duration_ms': 0,
+                'site_id': None,
+                'error': error_msg
+            }
+        
+        # Parse hostname and path from URL
+        # Expected format: https://peakmade.sharepoint.com/sites/CreditBoostDev
+        if '://' in sharepoint_site_url:
+            url_parts = sharepoint_site_url.split('://', 1)[1]
+            if '/' in url_parts:
+                site_hostname = url_parts.split('/', 1)[0]
+                site_path = '/' + url_parts.split('/', 1)[1]
+            else:
+                site_hostname = url_parts
+                site_path = '/'
+        else:
+            error_msg = f"Invalid SHAREPOINT_SITE_URL format: {sharepoint_site_url}"
+            logger.warning(f"⚠️ site_id_warmup_failed: {error_msg}")
+            return {
+                'success': False,
+                'duration_ms': 0,
+                'site_id': None,
+                'error': error_msg
+            }
+        
+        # Resolve and cache site ID
+        site_id, cache_hit, resolution_ms, cache_age = get_cached_site_id(site_hostname, site_path, token)
+        
+        duration_ms = (time.time() - warmup_start) * 1000
+        
+        if site_id:
+            logger.info(f"✅ site_id_warmup_succeeded: duration={duration_ms:.1f}ms, site_id={site_id[:40]}...")
+            return {
+                'success': True,
+                'duration_ms': duration_ms,
+                'site_id': site_id,
+                'error': None
+            }
+        else:
+            logger.warning(f"⚠️ site_id_warmup_failed: site resolution returned None, duration={duration_ms:.1f}ms")
+            return {
+                'success': False,
+                'duration_ms': duration_ms,
+                'site_id': None,
+                'error': 'Site resolution returned None'
+            }
+    
+    except Exception as e:
+        duration_ms = (time.time() - warmup_start) * 1000
+        error_msg = str(e)
+        logger.warning(f"⚠️ site_id_warmup_failed: {error_msg}, duration={duration_ms:.1f}ms")
+        return {
+            'success': False,
+            'duration_ms': duration_ms,
+            'site_id': None,
+            'error': error_msg
+        }
 
 
 def get_sharepoint_access_token():
@@ -48,7 +186,9 @@ def get_sharepoint_access_token():
     """
     metrics = {
         'graph_token_cache_hit': False,
-        'token_acquisition_ms': 0.0
+        'token_acquisition_ms': 0.0,
+        'token_cache_age_s': 0.0,
+        'token_ttl_remaining_s': 0.0
     }
     
     with _graph_token_cache['lock']:
@@ -57,8 +197,12 @@ def get_sharepoint_access_token():
         # Check cache validity (with 5-minute safety margin)
         if _graph_token_cache['token'] is not None and _graph_token_cache['expires_at'] is not None:
             if now < (_graph_token_cache['expires_at'] - 300):  # Refresh 5 min before expiry
-                logger.info(f"✅ Graph token cache HIT (expires in {int(_graph_token_cache['expires_at'] - now)}s)")
+                cache_age = now - (_graph_token_cache['expires_at'] - _graph_token_cache.get('lifetime', 3600))
+                ttl_remaining = _graph_token_cache['expires_at'] - now
+                logger.info(f"✅ Graph token cache HIT (age={cache_age:.0f}s, ttl_remaining={ttl_remaining:.0f}s)")
                 metrics['graph_token_cache_hit'] = True
+                metrics['token_cache_age_s'] = cache_age
+                metrics['token_ttl_remaining_s'] = ttl_remaining
                 return _graph_token_cache['token'], metrics
         
         # Cache miss - acquire new token
@@ -97,8 +241,11 @@ def get_sharepoint_access_token():
             expires_in = result.get("expires_in", 3600)  # Default 1 hour
             _graph_token_cache['token'] = access_token
             _graph_token_cache['expires_at'] = now + expires_in
+            _graph_token_cache['lifetime'] = expires_in
             
             logger.info(f"✅ Graph token acquired: {metrics['token_acquisition_ms']:.1f}ms, TTL={expires_in}s")
+            
+            metrics['token_ttl_remaining_s'] = expires_in
             
             return access_token, metrics
         
@@ -113,15 +260,16 @@ def get_cached_site_id(site_hostname, site_path, access_token):
     Get SharePoint site ID with caching
     
     Returns:
-        tuple: (site_id: str or None, cache_hit: bool, resolution_ms: float)
+        tuple: (site_id: str or None, cache_hit: bool, resolution_ms: float, cache_age_s: float)
     """
     cache_key = f"{site_hostname}:{site_path}"
     
     with _sharepoint_site_cache['lock']:
         # Check cache
         if _sharepoint_site_cache['site_id'] is not None and _sharepoint_site_cache['site_key'] == cache_key:
-            logger.info(f"✅ Site ID cache HIT for {cache_key}")
-            return _sharepoint_site_cache['site_id'], True, 0.0
+            cache_age = time.time() - _sharepoint_site_cache.get('cached_at', time.time())
+            logger.info(f"✅ Site ID cache HIT for {cache_key} (age={cache_age:.0f}s)")
+            return _sharepoint_site_cache['site_id'], True, 0.0, cache_age
         
         # Cache miss - resolve site
         logger.info(f"⚠️ Site ID cache MISS - resolving {cache_key}")
@@ -151,15 +299,16 @@ def get_cached_site_id(site_hostname, site_path, access_token):
             # Update cache
             _sharepoint_site_cache['site_id'] = site_id
             _sharepoint_site_cache['site_key'] = cache_key
+            _sharepoint_site_cache['cached_at'] = time.time()
             
             logger.info(f"✅ Site ID cached: {site_id}")
             
-            return site_id, False, resolution_ms
+            return site_id, False, resolution_ms, 0.0
         
         except Exception as e:
             resolution_ms = (time.time() - site_start) * 1000
             logger.error(f"❌ Site resolution error: {e}")
-            return None, False, resolution_ms
+            return None, False, resolution_ms, 0.0
 
 
 def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
@@ -227,9 +376,10 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
         site_path = os.environ.get('SHAREPOINT_VERIFICATION_SITE_PATH', '/personal/pbatson_peakmade_com')
         
         # Get site ID with caching
-        site_id, site_cache_hit, site_resolution_ms = get_cached_site_id(site_hostname, site_path, access_token)
+        site_id, site_cache_hit, site_resolution_ms, site_cache_age = get_cached_site_id(site_hostname, site_path, access_token)
         timings['site_id_cache_hit'] = site_cache_hit
         timings['site_resolution_ms'] = site_resolution_ms
+        timings['site_cache_age_s'] = site_cache_age
         
         if not site_id:
             overall_elapsed = (time.time() - overall_start) * 1000

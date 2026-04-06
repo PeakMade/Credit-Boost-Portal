@@ -31,12 +31,48 @@ _jwks_cache = {
 JWKS_CACHE_TTL_SECONDS = 3600  # 1 hour
 
 
+def warmup_jwks_cache():
+    """
+    Warm up JWKS cache on application startup
+    Pre-fetches and caches JWKS keys to eliminate cold-start latency
+    
+    Returns:
+        dict with warmup results: success (bool), duration_ms (float), error (str or None)
+    """
+    logger.info("🔥 jwks_warmup_started")
+    warmup_start = time.time()
+    
+    try:
+        # Get JWKS URI from environment
+        tenant_id = os.environ.get('EXTERNAL_OIDC_TENANT_ID', '')
+        if not tenant_id:
+            error_msg = "EXTERNAL_OIDC_TENANT_ID not configured"
+            logger.warning(f"⚠️ jwks_warmup_failed: {error_msg}")
+            return {'success': False, 'duration_ms': 0, 'error': error_msg}
+        
+        jwks_uri = f"https://{tenant_id}.ciamlogin.com/{tenant_id}/discovery/v2.0/keys"
+        
+        # Fetch and cache JWKS
+        jwks_data, cache_hit, fetch_ms, _, ttl = get_cached_jwks(jwks_uri)
+        
+        duration_ms = (time.time() - warmup_start) * 1000
+        logger.info(f"✅ jwks_warmup_succeeded: duration={duration_ms:.1f}ms, keys_cached={len(jwks_data.get('keys', []))}, ttl={ttl:.0f}s")
+        
+        return {'success': True, 'duration_ms': duration_ms, 'error': None}
+    
+    except Exception as e:
+        duration_ms = (time.time() - warmup_start) * 1000
+        error_msg = str(e)
+        logger.warning(f"⚠️ jwks_warmup_failed: {error_msg}, duration={duration_ms:.1f}ms")
+        return {'success': False, 'duration_ms': duration_ms, 'error': error_msg}
+
+
 def get_cached_jwks(jwks_uri):
     """
     Get JWKS keys from cache or fetch from network
     
     Returns:
-        tuple: (jwks_data, cache_hit: bool, fetch_time_ms: float)
+        tuple: (jwks_data, cache_hit: bool, fetch_time_ms: float, cache_age_s: float, ttl_remaining_s: float)
     """
     with _jwks_cache['lock']:
         now = time.time()
@@ -44,8 +80,10 @@ def get_cached_jwks(jwks_uri):
         # Check cache validity
         if _jwks_cache['keys'] is not None and _jwks_cache['expires_at'] is not None:
             if now < _jwks_cache['expires_at']:
-                logger.info(f"✅ JWKS cache HIT (expires in {int(_jwks_cache['expires_at'] - now)}s)")
-                return _jwks_cache['keys'], True, 0.0
+                cache_age = now - (_jwks_cache['expires_at'] - JWKS_CACHE_TTL_SECONDS)
+                ttl_remaining = _jwks_cache['expires_at'] - now
+                logger.info(f"✅ JWKS cache HIT (age={cache_age:.0f}s, ttl_remaining={ttl_remaining:.0f}s)")
+                return _jwks_cache['keys'], True, 0.0, cache_age, ttl_remaining
         
         # Cache miss - fetch from network
         logger.info(f"⚠️ JWKS cache MISS - fetching from {jwks_uri}")
@@ -64,7 +102,7 @@ def get_cached_jwks(jwks_uri):
             
             logger.info(f"✅ JWKS fetched and cached: {fetch_elapsed_ms:.1f}ms, TTL={JWKS_CACHE_TTL_SECONDS}s")
             
-            return jwks_data, False, fetch_elapsed_ms
+            return jwks_data, False, fetch_elapsed_ms, 0.0, JWKS_CACHE_TTL_SECONDS
         
         except Exception as e:
             logger.error(f"❌ JWKS fetch failed: {e}")
@@ -72,7 +110,8 @@ def get_cached_jwks(jwks_uri):
             if _jwks_cache['keys'] is not None:
                 logger.warning(f"⚠️ Using stale JWKS cache as fallback")
                 fetch_elapsed_ms = (time.time() - fetch_start) * 1000
-                return _jwks_cache['keys'], False, fetch_elapsed_ms
+                cache_age = now - (_jwks_cache['expires_at'] - JWKS_CACHE_TTL_SECONDS) if _jwks_cache['expires_at'] else 0
+                return _jwks_cache['keys'], False, fetch_elapsed_ms, cache_age, 0.0
             raise
 
 
@@ -140,9 +179,11 @@ class EntraTokenValidator:
             logger.info(f"🔍 Token claims: iss={unverified_payload.get('iss')[:50]}..., aud={unverified_payload.get('aud')}, exp={unverified_payload.get('exp')}")
             
             # Get JWKS with caching
-            jwks_data, cache_hit, fetch_time = get_cached_jwks(self.jwks_uri)
+            jwks_data, cache_hit, fetch_time, cache_age, ttl_remaining = get_cached_jwks(self.jwks_uri)
             metrics['jwks_cache_hit'] = cache_hit
             metrics['jwks_fetch_ms'] = fetch_time
+            metrics['jwks_cache_age_s'] = cache_age
+            metrics['jwks_ttl_remaining_s'] = ttl_remaining
             
             if not cache_hit:
                 available_kids = [key.get('kid') for key in jwks_data.get('keys', [])]
@@ -211,6 +252,7 @@ def require_bearer_token(f):
     Decorator to require and validate bearer token for custom authentication extension endpoints
     
     Adds validation metrics to request.entra_metrics for performance tracking
+    Captures request start time for true end-to-end wall-clock measurement
     
     Usage:
         @app.route('/api/verify-resident', methods=['POST'])
@@ -218,10 +260,15 @@ def require_bearer_token(f):
         def verify_resident():
             # Token is already validated
             # Access metrics via request.entra_metrics
+            # Access true start time via request.request_start_time
             pass
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Capture TRUE request start time (before any processing)
+        request_start_time = time.time()
+        request.request_start_time = request_start_time
+        
         # Allow OPTIONS requests without token (CORS preflight)
         if request.method == 'OPTIONS':
             logger.info("🔓 OPTIONS request - bypassing token validation (CORS preflight)")
