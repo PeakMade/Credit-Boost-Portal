@@ -32,7 +32,7 @@ class EntraTokenValidator:
         
         # Audience should match the Application ID URI from the app registration
         # Azure uses the format: api://{hostname}/{client_id}
-        self.audience = f"api://creditboostportal.azurewebsites.net/{self.client_id}"
+        self.audience = f"api://creditboostportal-hde4crgcc2hyajh4.eastus-01.azurewebsites.net/{self.client_id}"
         
         # Cache for JWKS client
         self._jwks_client = None
