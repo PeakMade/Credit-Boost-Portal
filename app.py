@@ -15,7 +15,7 @@ from utils.sharepoint_data_loader import load_residents_from_sharepoint_list, lo
 from utils.excel_export import (create_resident_list_export, create_reporting_runs_export,
                                 create_disputes_export, create_audit_logs_export)
 from utils.entrata_api import get_entrata_client
-from utils.sharepoint_verification import verify_resident_sharepoint, warmup_graph_token, warmup_site_id, get_graph_token_cache_state, get_site_id_cache_state
+from utils.sharepoint_verification import verify_resident_sharepoint, warmup_graph_token, warmup_site_id, get_graph_token_cache_state, get_site_id_cache_state, get_verification_site_config
 from utils.entra_token_validation import require_bearer_token, warmup_jwks_cache, log_auth_config_diagnostics, get_jwks_cache_state
 from utils.custom_extension_responses import (
     build_continue_response,
@@ -46,6 +46,60 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# SAFE DIAGNOSTIC LOGGING HELPERS
+# ============================================================================
+# Diagnostics must never break the verification flow
+# These helpers ensure logging failures don't alter endpoint results
+# ============================================================================
+
+def safe_log_timing_value(key, value):
+    """
+    Safely log a timing value - handles numeric and non-numeric values
+    Never raises exceptions that could break verification flow
+    
+    Args:
+        key: timing key name
+        value: timing value (could be numeric, boolean, string, etc.)
+    
+    Returns:
+        formatted string for logging
+    """
+    try:
+        if isinstance(value, (int, float)):
+            return f"{key}: {value:.1f}ms"
+        elif isinstance(value, bool):
+            return f"{key}: {value}"
+        elif value is None:
+            return f"{key}: None"
+        else:
+            return f"{key}: {value}"
+    except Exception as e:
+        # Fallback: just convert to string
+        return f"{key}: {str(value)}"
+
+
+def safe_log_timings_dict(timings_dict, prefix=""):
+    """
+    Safely log all entries in a timings dictionary
+    Never raises exceptions that could break verification flow
+    
+    Args:
+        timings_dict: dictionary with timing/metrics data
+        prefix: optional prefix for log lines
+    """
+    try:
+        for key, value in timings_dict.items():
+            try:
+                log_line = safe_log_timing_value(key, value)
+                logger.info(f"{prefix}{log_line}")
+            except Exception as inner_e:
+                # Even the safe logger failed - just log key
+                logger.warning(f"{prefix}{key}: <logging error: {inner_e}>")
+    except Exception as e:
+        logger.warning(f"⚠️ Diagnostics: Failed to log timings dict: {e}")
+
 
 # ============================================================================
 # FIRST-REQUEST TRACKING FOR DIAGNOSTICS
@@ -563,7 +617,7 @@ def verify_resident_signup():
         if not request_data:
             logger.error("❌ Empty request body")
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.1f}ms | first_request={is_first_request} | status=error_empty_body")
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.1f}ms | first_request={is_first_request} | verification_result=error_empty_body | diagnostic_error=false | status=error_empty_body")
             return jsonify(build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
             )), 200
@@ -599,7 +653,7 @@ def verify_resident_signup():
         if parsed_attrs is None:
             logger.error("❌ Failed to parse custom extension request")
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=error_parse_failed")
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | verification_result=error_parse_failed | diagnostic_error=false | status=error_parse_failed")
             return jsonify(build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
             )), 200
@@ -629,7 +683,7 @@ def verify_resident_signup():
         if missing_fields:
             logger.warning(f"⚠️ Missing required fields: {', '.join(missing_fields)}")
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=error_missing_fields")
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | verification_result=error_missing_fields | diagnostic_error=false | status=error_missing_fields")
             return jsonify(build_validation_error_response(
                 f"Please provide all required information: {', '.join(missing_fields)}."
             )), 200
@@ -652,11 +706,18 @@ def verify_resident_signup():
                 date_of_birth=date_of_birth
             )
             
-            # Extract timings
-            sp_timings = verification_result.get('timings', {})
-            logger.info("⏱️ SharePoint timing breakdown:")
-            for timing_key, timing_val in sp_timings.items():
-                logger.info(f"   {timing_key}: {timing_val:.1f}ms")
+            # ============================================================
+            # SAFE DIAGNOSTIC LOGGING - MUST NOT BREAK VERIFICATION FLOW
+            # ============================================================
+            diagnostic_error = False
+            try:
+                # Extract timings
+                sp_timings = verification_result.get('timings', {})
+                logger.info("⏱️ SharePoint timing breakdown:")
+                safe_log_timings_dict(sp_timings, prefix="   ")
+            except Exception as diagnostic_ex:
+                diagnostic_error = True
+                logger.error(f"❌ Diagnostics error (non-fatal): {diagnostic_ex}", exc_info=True)
             
             if verification_result['verified']:
                 logger.info("✅ Resident verification PASSED")
@@ -721,51 +782,66 @@ def verify_resident_signup():
                     
                     # ========================================================
                     # COMPREHENSIVE TIMING BREAKDOWN WITH CACHE HIT TRACKING
+                    # WRAPPED IN TRY-EXCEPT TO PREVENT DIAGNOSTIC EXCEPTIONS
                     # ========================================================
-                    wall_clock_ms = (time.time() - request_start_time) * 1000
-                    
-                    # Get token validation metrics from decorator
-                    entra_metrics = getattr(request, 'entra_metrics', {})
-                    
-                    logger.info(f"")
-                    logger.info(f"⏱️ TIMING BREAKDOWN:")
-                    logger.info(f"   Token validation: {entra_metrics.get('total_validation_ms', 0):.1f}ms (jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'})")
-                    if not entra_metrics.get('jwks_cache_hit'):
-                        logger.info(f"      - JWKS fetch: {entra_metrics.get('jwks_fetch_ms', 0):.1f}ms")
-                    else:
-                        logger.info(f"      - JWKS cache age: {entra_metrics.get('jwks_cache_age_s', 0):.0f}s, TTL remaining: {entra_metrics.get('jwks_ttl_remaining_s', 0):.0f}s")
-                    logger.info(f"   Request parsing: {parsing_elapsed_ms:.1f}ms")
-                    logger.info(f"   SharePoint token: {sp_timings.get('token_acquisition_ms', 0):.1f}ms (cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'})")
-                    if sp_timings.get('graph_token_cache_hit'):
-                        logger.info(f"      - Token cache age: {sp_timings.get('token_cache_age_s', 0):.0f}s, TTL remaining: {sp_timings.get('token_ttl_remaining_s', 0):.0f}s")
-                    logger.info(f"   Site resolution: {sp_timings.get('site_resolution_ms', 0):.1f}ms (cache={'HIT' if sp_timings.get('site_id_cache_hit') else 'MISS'})")
-                    if sp_timings.get('site_id_cache_hit'):
-                        logger.info(f"      - Site cache age: {sp_timings.get('site_cache_age_s', 0):.0f}s")
-                    logger.info(f"   List query: {sp_timings.get('list_query_ms', 0):.1f}ms")
-                    logger.info(f"   Response building: {response_build_ms:.1f}ms")
-                    logger.info(f"   Response serialization: {flask_response_ms:.1f}ms")
-                    logger.info(f"   TRUE WALL-CLOCK TOTAL: {wall_clock_ms:.1f}ms (includes decorator overhead)")
+                    try:
+                        wall_clock_ms = (time.time() - request_start_time) * 1000
+                        
+                        # Get token validation metrics from decorator
+                        entra_metrics = getattr(request, 'entra_metrics', {})
+                        
+                        logger.info(f"")
+                        logger.info(f"⏱️ TIMING BREAKDOWN:")
+                        logger.info(f"   Token validation: {entra_metrics.get('total_validation_ms', 0):.1f}ms (jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'})")
+                        if not entra_metrics.get('jwks_cache_hit'):
+                            logger.info(f"      - JWKS fetch: {entra_metrics.get('jwks_fetch_ms', 0):.1f}ms")
+                        else:
+                            logger.info(f"      - JWKS cache age: {entra_metrics.get('jwks_cache_age_s', 0):.0f}s, TTL remaining: {entra_metrics.get('jwks_ttl_remaining_s', 0):.0f}s")
+                        logger.info(f"   Request parsing: {parsing_elapsed_ms:.1f}ms")
+                        logger.info(f"   SharePoint token: {sp_timings.get('token_acquisition_ms', 0):.1f}ms (cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'})")
+                        if sp_timings.get('graph_token_cache_hit'):
+                            logger.info(f"      - Token cache age: {sp_timings.get('token_cache_age_s', 0):.0f}s, TTL remaining: {sp_timings.get('token_ttl_remaining_s', 0):.0f}s")
+                        logger.info(f"   Site resolution: {sp_timings.get('site_resolution_ms', 0):.1f}ms (cache={'HIT' if sp_timings.get('site_id_cache_hit') else 'MISS'})")
+                        if sp_timings.get('site_id_cache_hit'):
+                            logger.info(f"      - Site cache age: {sp_timings.get('site_cache_age_s', 0):.0f}s")
+                        logger.info(f"   List query: {sp_timings.get('list_query_ms', 0):.1f}ms")
+                        logger.info(f"   Response building: {response_build_ms:.1f}ms")
+                        logger.info(f"   Response serialization: {flask_response_ms:.1f}ms")
+                        logger.info(f"   TRUE WALL-CLOCK TOTAL: {wall_clock_ms:.1f}ms (includes decorator overhead)")
+                    except Exception as timing_ex:
+                        diagnostic_error = True
+                        logger.error(f"❌ Timing breakdown diagnostics failed (non-fatal): {timing_ex}", exc_info=True)
                     
                     # ========================================================
                     # COMPACT SUMMARY LINE FOR EASY COMPARISON
+                    # WRAPPED IN TRY-EXCEPT TO PREVENT DIAGNOSTIC EXCEPTIONS
                     # ========================================================
-                    summary = (
-                        f"📊 SUMMARY: "
-                        f"wall_clock={wall_clock_ms:.0f}ms | "
-                        f"token_validation={entra_metrics.get('total_validation_ms', 0):.0f}ms | "
-                        f"jwks_fetch={entra_metrics.get('jwks_fetch_ms', 0):.0f}ms | "
-                        f"jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'} | "
-                        f"graph_token={sp_timings.get('token_acquisition_ms', 0):.0f}ms | "
-                        f"graph_token_cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'} | "
-                        f"site_resolution={sp_timings.get('site_resolution_ms', 0):.0f}ms | "
-                        f"site_id_cache={'HIT' if sp_timings.get('site_id_cache_hit') else 'MISS'} | "
-                        f"list_query={sp_timings.get('list_query_ms', 0):.0f}ms | "
-                        f"sharepoint_total={sp_timings.get('total_verification_ms', 0):.0f}ms | "
-                        f"first_request={is_first_request} | "
-                        f"status=success | "
-                        f"hash={response_hash[:16]}..."
-                    )
-                    logger.info(summary)
+                    try:
+                        summary = (
+                            f"📊 SUMMARY: "
+                            f"wall_clock={wall_clock_ms:.0f}ms | "
+                            f"token_validation={entra_metrics.get('total_validation_ms', 0):.0f}ms | "
+                            f"jwks_fetch={entra_metrics.get('jwks_fetch_ms', 0):.0f}ms | "
+                            f"jwks_cache={'HIT' if entra_metrics.get('jwks_cache_hit') else 'MISS'} | "
+                            f"graph_token={sp_timings.get('token_acquisition_ms', 0):.0f}ms | "
+                            f"graph_token_cache={'HIT' if sp_timings.get('graph_token_cache_hit') else 'MISS'} | "
+                            f"site_resolution={sp_timings.get('site_resolution_ms', 0):.0f}ms | "
+                            f"site_id_cache={'HIT' if sp_timings.get('site_id_cache_hit') else 'MISS'} | "
+                            f"list_query={sp_timings.get('list_query_ms', 0):.0f}ms | "
+                            f"sharepoint_total={sp_timings.get('total_verification_ms', 0):.0f}ms | "
+                            f"first_request={is_first_request} | "
+                            f"verification_result=success | "
+                            f"diagnostic_error={diagnostic_error} | "
+                            f"status=success | "
+                            f"hash={response_hash[:16]}..."
+                        )
+                        logger.info(summary)
+                    except Exception as summary_ex:
+                        diagnostic_error = True
+                        logger.error(f"❌ Summary logging failed (non-fatal): {summary_ex}", exc_info=True)
+                        # Minimal fallback summary
+                        logger.info(f"📊 SUMMARY: verification_result=success | diagnostic_error=true | status=success")
+                    
                     logger.info("="*80)
                     
                     return flask_response, 200
@@ -803,7 +879,7 @@ def verify_resident_signup():
                 logger.info(f"{flask_response.get_data(as_text=True)}")
                 
                 wall_clock_ms = (time.time() - request_start_time) * 1000
-                logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=verification_failed")
+                logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | verification_result=failed | diagnostic_error={diagnostic_error} | status=verification_failed")
                 logger.info("="*80)
                 
                 return flask_response, 200
@@ -826,7 +902,7 @@ def verify_resident_signup():
             logger.info(f"{flask_response.get_data(as_text=True)}")
             
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=service_error")
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | verification_result=service_error | diagnostic_error=false | status=service_error")
             logger.info("="*80)
             
             return flask_response, 200
@@ -847,7 +923,7 @@ def verify_resident_signup():
         logger.info(f"{flask_response.get_data(as_text=True)}")
         
         wall_clock_ms = (time.time() - request_start_time) * 1000
-        logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | status=unexpected_error")
+        logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | verification_result=unexpected_error | diagnostic_error=false | status=unexpected_error")
         logger.info("="*80)
         
         return flask_response, 200

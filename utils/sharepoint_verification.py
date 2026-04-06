@@ -149,6 +149,26 @@ def warmup_graph_token():
         }
 
 
+def get_verification_site_config():
+    """
+    Get SharePoint site configuration for resident verification
+    Shared by both startup warm-up and runtime verification
+    Ensures consistency between warm-up target and actual verification site
+    
+    Returns:
+        dict with hostname, path, and formatted URL
+    """
+    site_hostname = os.environ.get('SHAREPOINT_VERIFICATION_SITE_HOSTNAME', 'peakcampus-my.sharepoint.com')
+    site_path = os.environ.get('SHAREPOINT_VERIFICATION_SITE_PATH', '/personal/pbatson_peakmade_com')
+    
+    return {
+        'hostname': site_hostname,
+        'path': site_path,
+        'url': f"https://{site_hostname}{site_path}",
+        'cache_key': f"{site_hostname}:{site_path}"
+    }
+
+
 def warmup_site_id():
     """
     Warm up SharePoint site ID cache on application startup
@@ -174,38 +194,15 @@ def warmup_site_id():
                 'error': error_msg
             }
         
-        # Get SharePoint site configuration from environment
-        sharepoint_site_url = os.environ.get('SHAREPOINT_SITE_URL', '')
+        # Get verification site config (shared with runtime)
+        site_config = get_verification_site_config()
+        site_hostname = site_config['hostname']
+        site_path = site_config['path']
         
-        if not sharepoint_site_url:
-            error_msg = "SHAREPOINT_SITE_URL not configured"
-            logger.warning(f"⚠️ site_id_warmup_failed: {error_msg}")
-            return {
-                'success': False,
-                'duration_ms': 0,
-                'site_id': None,
-                'error': error_msg
-            }
-        
-        # Parse hostname and path from URL
-        # Expected format: https://peakmade.sharepoint.com/sites/CreditBoostDev
-        if '://' in sharepoint_site_url:
-            url_parts = sharepoint_site_url.split('://', 1)[1]
-            if '/' in url_parts:
-                site_hostname = url_parts.split('/', 1)[0]
-                site_path = '/' + url_parts.split('/', 1)[1]
-            else:
-                site_hostname = url_parts
-                site_path = '/'
-        else:
-            error_msg = f"Invalid SHAREPOINT_SITE_URL format: {sharepoint_site_url}"
-            logger.warning(f"⚠️ site_id_warmup_failed: {error_msg}")
-            return {
-                'success': False,
-                'duration_ms': 0,
-                'site_id': None,
-                'error': error_msg
-            }
+        logger.info(f"🎯 Warming verification site: {site_config['url']}")
+        logger.info(f"   Site hostname: {site_hostname}")
+        logger.info(f"   Site path: {site_path}")
+        logger.info(f"   Cache key: {site_config['cache_key']}")
         
         # Resolve and cache site ID
         site_id, cache_hit, resolution_ms, cache_age = get_cached_site_id(site_hostname, site_path, token, source='startup_warmup')
@@ -454,8 +451,15 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
     
     try:
         # Get SharePoint site for verification list
-        site_hostname = os.environ.get('SHAREPOINT_VERIFICATION_SITE_HOSTNAME', 'peakcampus-my.sharepoint.com')
-        site_path = os.environ.get('SHAREPOINT_VERIFICATION_SITE_PATH', '/personal/pbatson_peakmade_com')
+        # Use shared config to ensure consistency with startup warm-up
+        site_config = get_verification_site_config()
+        site_hostname = site_config['hostname']
+        site_path = site_config['path']
+        
+        logger.info(f"🎯 Verification target site: {site_config['url']}")
+        logger.info(f"   Site hostname: {site_hostname}")
+        logger.info(f"   Site path: {site_path}")
+        logger.info(f"   Cache key: {site_config['cache_key']}")
         
         # Get site ID with caching
         site_id, site_cache_hit, site_resolution_ms, site_cache_age = get_cached_site_id(site_hostname, site_path, access_token)
