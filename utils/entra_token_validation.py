@@ -60,6 +60,25 @@ class EntraTokenValidator:
             return None
         
         try:
+            # DIAGNOSTIC: Decode token header to see what key ID it's using
+            unverified_header = jwt.get_unverified_header(token)
+            logger.info(f"🔍 DIAGNOSTIC: Token header - kid={unverified_header.get('kid')}, alg={unverified_header.get('alg')}")
+            
+            # DIAGNOSTIC: Decode token payload without verification to see issuer/audience
+            unverified_payload = jwt.decode(token, options={"verify_signature": False})
+            logger.info(f"🔍 DIAGNOSTIC: Token claims (unverified):")
+            logger.info(f"   Issuer: {unverified_payload.get('iss')}")
+            logger.info(f"   Audience: {unverified_payload.get('aud')}")
+            logger.info(f"   AppID: {unverified_payload.get('appid')}")
+            logger.info(f"   Expiry: {unverified_payload.get('exp')}")
+            
+            # DIAGNOSTIC: Fetch and log available JWKS keys
+            logger.info(f"🔍 DIAGNOSTIC: Fetching JWKS from {self.jwks_uri}")
+            jwks_response = requests.get(self.jwks_uri)
+            jwks_data = jwks_response.json()
+            available_kids = [key.get('kid') for key in jwks_data.get('keys', [])]
+            logger.info(f"🔍 DIAGNOSTIC: Available signing key IDs in JWKS: {available_kids}")
+            
             # Get signing key from JWKS
             signing_key = self.jwks_client.get_signing_key_from_jwt(token)
             
