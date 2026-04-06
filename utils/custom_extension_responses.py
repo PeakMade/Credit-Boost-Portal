@@ -173,17 +173,21 @@ def parse_custom_extension_request(request_data):
         logger.info(f"Extension ID: {extension_id[:20]}...")
         logger.info(f"Tenant ID: {tenant_id[:20]}...")
         
+        # Extract user signup info (External ID specific)
+        user_signup_info = data.get('userSignUpInfo', {})
+        if user_signup_info:
+            logger.info(f"📋 userSignUpInfo keys: {list(user_signup_info.keys())}")
+        
         # Extract user attributes
         # External ID format: attributes may be under data.userSignUpInfo.attributes
         # Standard format: attributes may be directly under data.attributes
         attributes = data.get('attributes', {})
+        user_signup_info = data.get('userSignUpInfo', {})
         
         # Try External ID format if standard format is empty
-        if not attributes:
-            user_signup_info = data.get('userSignUpInfo', {})
-            if user_signup_info:
-                attributes = user_signup_info.get('attributes', {})
-                logger.info("📋 Using External ID format (data.userSignUpInfo.attributes)")
+        if not attributes and user_signup_info:
+            attributes = user_signup_info.get('attributes', {})
+            logger.info("📋 Using External ID format (data.userSignUpInfo.attributes)")
         
         if not attributes:
             logger.error("❌ Missing 'attributes' in custom extension request")
@@ -193,10 +197,25 @@ def parse_custom_extension_request(request_data):
         # Log received attributes (safely, without full values)
         logger.info(f"📋 Received attributes: {list(attributes.keys())}")
         
+        # Helper function to safely extract string values
+        def safe_str(value, default=''):
+            """Convert value to string safely, handling None, dicts, etc."""
+            if value is None:
+                return default
+            if isinstance(value, dict):
+                # If it's a dict, try to get a reasonable string representation
+                return str(value.get('value', default)).strip()
+            return str(value).strip()
+        
         # Extract standard attributes
-        email = attributes.get('email', '').strip()
-        given_name = attributes.get('givenName', '').strip()
-        surname = attributes.get('surname', '').strip()
+        # In External ID, email is at userSignUpInfo.userPrincipalName or userSignUpInfo.email
+        email = attributes.get('email')
+        if not email and user_signup_info:
+            email = user_signup_info.get('userPrincipalName') or user_signup_info.get('email')
+        email = safe_str(email)
+        
+        given_name = safe_str(attributes.get('givenName'))
+        surname = safe_str(attributes.get('surname'))
         
         # Extract custom attributes
         # Custom attributes may be named like:
@@ -209,7 +228,7 @@ def parse_custom_extension_request(request_data):
         for key, value in attributes.items():
             key_lower = key.lower()
             if 'dateofbirth' in key_lower or 'dob' in key_lower:
-                date_of_birth = str(value).strip()
+                date_of_birth = safe_str(value)
                 logger.info(f"Found DOB attribute: {key}")
                 break
         
@@ -218,7 +237,7 @@ def parse_custom_extension_request(request_data):
         for key, value in attributes.items():
             key_lower = key.lower()
             if 'property' in key_lower or 'unit' in key_lower or 'building' in key_lower:
-                property_name = str(value).strip()
+                property_name = safe_str(value)
                 logger.info(f"Found property attribute: {key}")
                 break
         
