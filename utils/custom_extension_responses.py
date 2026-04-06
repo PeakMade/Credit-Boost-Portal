@@ -174,10 +174,20 @@ def parse_custom_extension_request(request_data):
         logger.info(f"Tenant ID: {tenant_id[:20]}...")
         
         # Extract user attributes
+        # External ID format: attributes may be under data.userSignUpInfo.attributes
+        # Standard format: attributes may be directly under data.attributes
         attributes = data.get('attributes', {})
+        
+        # Try External ID format if standard format is empty
+        if not attributes:
+            user_signup_info = data.get('userSignUpInfo', {})
+            if user_signup_info:
+                attributes = user_signup_info.get('attributes', {})
+                logger.info("📋 Using External ID format (data.userSignUpInfo.attributes)")
         
         if not attributes:
             logger.error("❌ Missing 'attributes' in custom extension request")
+            logger.error(f"❌ Available data keys: {list(data.keys())}")
             return None
         
         # Log received attributes (safely, without full values)

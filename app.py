@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from flask_cors import CORS, cross_origin
 from werkzeug.exceptions import HTTPException
 from datetime import datetime
