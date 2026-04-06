@@ -116,6 +116,8 @@ def require_bearer_token(f):
     """
     Decorator to require and validate bearer token for custom authentication extension endpoints
     
+    **DIAGNOSTIC MODE: Enhanced logging for isolation testing**
+    
     Usage:
         @app.route('/api/verify-resident', methods=['POST'])
         @require_bearer_token
@@ -127,34 +129,57 @@ def require_bearer_token(f):
     def decorated_function(*args, **kwargs):
         # Allow OPTIONS requests without token (CORS preflight)
         if request.method == 'OPTIONS':
+            logger.info("🔓 DIAGNOSTIC: OPTIONS request - bypassing token validation (CORS preflight)")
             return f(*args, **kwargs)
+        
+        logger.info("🔐 DIAGNOSTIC: Starting bearer token validation")
         
         # Extract bearer token from Authorization header
         auth_header = request.headers.get('Authorization', '')
         
         if not auth_header.startswith('Bearer '):
-            logger.warning("⚠️ Missing or invalid Authorization header")
+            logger.warning("❌ DIAGNOSTIC: Missing or invalid Authorization header")
+            logger.warning(f"   Header value: {auth_header[:30] if auth_header else 'None'}...")
             return jsonify({
                 "error": "unauthorized",
                 "error_description": "Bearer token required"
             }), 401
         
         token = auth_header[7:]  # Remove "Bearer " prefix
+        logger.info(f"✅ DIAGNOSTIC: Bearer token extracted (length: {len(token)} chars)")
         
         # Validate token
         validator = get_token_validator()
+        logger.info(f"🔍 DIAGNOSTIC: Token validation config:")
+        logger.info(f"   Expected audience: {validator.audience}")
+        logger.info(f"   Expected issuer: {validator.issuer}")
+        logger.info(f"   Tenant ID: {validator.tenant_id}")
+        logger.info(f"   Client ID: {validator.client_id}")
+        
         decoded_token = validator.validate_token(token)
         
         if decoded_token is None:
-            logger.warning("⚠️ Token validation failed")
+            logger.error("❌ DIAGNOSTIC: Token validation FAILED")
+            logger.error("   Reason: See validation errors above")
             return jsonify({
                 "error": "invalid_token",
                 "error_description": "The provided token is invalid or expired"
             }), 401
         
+        # Log token claims safely
+        logger.info("✅ DIAGNOSTIC: Token validation SUCCEEDED")
+        logger.info(f"   Token claims:")
+        logger.info(f"   - aud (audience): {decoded_token.get('aud', 'N/A')}")
+        logger.info(f"   - iss (issuer): {decoded_token.get('iss', 'N/A')}")
+        logger.info(f"   - appid: {decoded_token.get('appid', 'N/A')}")
+        logger.info(f"   - azp (authorized party): {decoded_token.get('azp', 'N/A')}")
+        logger.info(f"   - oid (object ID): {decoded_token.get('oid', 'N/A')[:20]}...")
+        logger.info(f"   - exp (expires): {decoded_token.get('exp', 'N/A')}")
+        
         # Token is valid, store in request context for endpoint to access if needed
         request.entra_token = decoded_token
         
+        logger.info("🎯 DIAGNOSTIC: Proceeding to endpoint handler")
         return f(*args, **kwargs)
     
     return decorated_function

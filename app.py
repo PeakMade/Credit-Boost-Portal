@@ -361,8 +361,14 @@ def verify_resident_signup():
     """
     API endpoint called by Azure Entra External ID custom authentication extension.
     
-    This endpoint is invoked during the OnAttributeCollectionSubmit event.
-    It validates resident data against our business system before allowing account creation.
+    **DIAGNOSTIC MODE ACTIVE - MINIMAL IMPLEMENTATION FOR ISOLATION TESTING**
+    
+    This temporary version:
+    - Logs extensively to confirm request reaches Flask
+    - Skips all SharePoint/Graph API calls
+    - Skips all resident verification logic
+    - Returns hard-coded success response
+    - Goal: Isolate whether issue is extension plumbing or downstream logic
     
     Authentication:
         - Bearer token (OAuth 2.0 client credentials)
@@ -382,9 +388,26 @@ def verify_resident_signup():
         This endpoint is isolated from the rest of the app's authentication flow.
         It does not depend on Flask sessions, Easy Auth headers, or browser cookies.
     """
-    logger.info("="*60)
-    logger.info("🔐 Custom authentication extension endpoint called")
-    logger.info("="*60)
+    import time
+    start_time = time.time()
+    
+    logger.info("="*80)
+    logger.info("🔐 DIAGNOSTIC: Custom authentication extension endpoint called")
+    logger.info(f"Timestamp: {datetime.now().isoformat()}")
+    logger.info(f"Method: {request.method}")
+    logger.info(f"Path: {request.path}")
+    logger.info(f"Content-Type: {request.content_type}")
+    
+    # Log Authorization header presence (safely)
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header:
+        logger.info(f"✅ Authorization header present: Bearer {auth_header[7:17]}...")
+        # Note: Full token validation already happened in @require_bearer_token decorator
+        # If we reached here, token is valid
+    else:
+        logger.warning("⚠️ No Authorization header (OPTIONS request)")
+    
+    logger.info("="*80)
     
     try:
         # Parse the custom extension request payload
@@ -392,19 +415,33 @@ def verify_resident_signup():
         
         if not request_data:
             logger.error("❌ Empty request body")
+            elapsed = time.time() - start_time
+            logger.info(f"⏱️ Request processing time: {elapsed:.3f}s")
             return jsonify(build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
             )), 200
         
+        # Log request structure (safely - top-level keys only)
+        logger.info(f"📦 Request payload keys: {list(request_data.keys())}")
+        
         # Log the event type for debugging (safely)
         event_type = request_data.get('type', 'unknown')
         logger.info(f"📋 Event type: {event_type}")
+        
+        # Log data structure if present
+        data = request_data.get('data', {})
+        if data:
+            logger.info(f"📋 Data payload keys: {list(data.keys())}")
+            logger.info(f"📋 Tenant ID: {data.get('tenantId', 'N/A')[:20]}...")
+            logger.info(f"📋 Extension ID: {data.get('customAuthenticationExtensionId', 'N/A')[:20]}...")
         
         # Parse attributes from the custom extension payload
         parsed_attrs = parse_custom_extension_request(request_data)
         
         if parsed_attrs is None:
             logger.error("❌ Failed to parse custom extension request")
+            elapsed = time.time() - start_time
+            logger.info(f"⏱️ Request processing time: {elapsed:.3f}s")
             return jsonify(build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
             )), 200
@@ -415,7 +452,10 @@ def verify_resident_signup():
         last_name = parsed_attrs.get('surname', '')
         date_of_birth = parsed_attrs.get('date_of_birth', '')
         
-        logger.info(f"🔍 Verifying resident sign-up: {email} ({first_name} {last_name})")
+        logger.info(f"👤 User data received:")
+        logger.info(f"   Email: {email}")
+        logger.info(f"   Name: {first_name} {last_name}")
+        logger.info(f"   DOB: {'***' if date_of_birth else 'missing'}")
         
         # Validate required fields
         missing_fields = []
@@ -430,55 +470,52 @@ def verify_resident_signup():
         
         if missing_fields:
             logger.warning(f"⚠️ Missing required fields: {', '.join(missing_fields)}")
+            elapsed = time.time() - start_time
+            logger.info(f"⏱️ Request processing time: {elapsed:.3f}s")
             return jsonify(build_validation_error_response(
                 f"Please provide all required information: {', '.join(missing_fields)}."
             )), 200
         
-        # Determine verification method: SharePoint (testing) or Entrata (production)
-        use_sharepoint = os.environ.get('USE_SHAREPOINT_VERIFICATION', 'true').lower() == 'true'
+        # ========================================================================
+        # DIAGNOSTIC MODE: SKIP ALL VERIFICATION LOGIC
+        # ========================================================================
+        # Normally, we would:
+        # - Call SharePoint verification: verify_resident_sharepoint(...)
+        # - Or call Entrata API: entrata_client.verify_resident(...)
+        # - Check if resident exists in our system
+        # - Validate DOB, name, email match
+        # - Return validation errors if verification fails
+        #
+        # For this diagnostic test, we SKIP all of that and return success
+        # to isolate whether the extension plumbing itself works.
+        # ========================================================================
         
-        if use_sharepoint:
-            logger.info("📊 Using SharePoint for verification (test mode)")
-            verification_result = verify_resident_sharepoint(
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                date_of_birth=date_of_birth
-            )
-        else:
-            logger.info("🏢 Using Entrata API for verification (production mode)")
-            entrata_client = get_entrata_client()
-            verification_result = entrata_client.verify_resident(
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                date_of_birth=date_of_birth
-            )
+        logger.info("="*80)
+        logger.info("🧪 DIAGNOSTIC MODE: Skipping all verification logic")
+        logger.info("🧪 SharePoint/Graph API calls: BYPASSED")
+        logger.info("🧪 Entrata API calls: BYPASSED")
+        logger.info("🧪 Resident data validation: BYPASSED")
+        logger.info("🧪 Returning hard-coded SUCCESS response")
+        logger.info("="*80)
         
-        # Process verification result
-        if verification_result['verified']:
-            # Resident verified - allow account creation
-            logger.info(f"✅ Resident verified for sign-up: {email}")
-            logger.info(f"Action: ContinueWithDefaultBehavior")
-            return jsonify(build_continue_response()), 200
-        else:
-            # Verification failed - show validation error
-            error_message = verification_result.get('message', 'The data you provided could not be verified.')
-            logger.warning(f"❌ Resident verification failed: {email}")
-            logger.info(f"Action: ShowValidationError")
-            
-            # Return validation error with attribute-specific errors
-            # Map the error to the email field as that's the primary identifier
-            return jsonify(build_validation_error_response(
-                "The data you provided could not be verified. Please contact property management to enroll in the Credit Boost Program or verify your information is correct.",
-                attribute_errors={
-                    "email": "Unable to verify your information in our system."
-                }
-            )), 200
+        # Build the success response
+        success_response = build_continue_response()
+        
+        logger.info(f"✅ DIAGNOSTIC: Returning ContinueWithDefaultBehavior")
+        logger.info(f"📤 Response payload: {success_response}")
+        
+        elapsed = time.time() - start_time
+        logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
+        logger.info("="*80)
+        
+        return jsonify(success_response), 200
     
     except Exception as e:
         # Catch-all for unexpected errors
         logger.error(f"❌ Unexpected error in verification endpoint: {e}", exc_info=True)
+        elapsed = time.time() - start_time
+        logger.info(f"⏱️ Request processing time: {elapsed:.3f}s")
+        logger.info("="*80)
         return jsonify(build_block_page_response(
             "Service temporarily unavailable. Please try again later."
         )), 200
