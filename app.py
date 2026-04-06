@@ -477,38 +477,79 @@ def verify_resident_signup():
             )), 200
         
         # ========================================================================
-        # DIAGNOSTIC MODE: SKIP ALL VERIFICATION LOGIC
+        # SHAREPOINT VERIFICATION
         # ========================================================================
-        # Normally, we would:
-        # - Call SharePoint verification: verify_resident_sharepoint(...)
-        # - Or call Entrata API: entrata_client.verify_resident(...)
-        # - Check if resident exists in our system
-        # - Validate DOB, name, email match
-        # - Return validation errors if verification fails
-        #
-        # For this diagnostic test, we SKIP all of that and return success
-        # to isolate whether the extension plumbing itself works.
+        # Verify the resident exists in our Credit Boost Verification SharePoint list
+        # List contains authorized residents with: Email, FirstName, LastName, DOB
         # ========================================================================
         
         logger.info("="*80)
-        logger.info("🧪 DIAGNOSTIC MODE: Skipping all verification logic")
-        logger.info("🧪 SharePoint/Graph API calls: BYPASSED")
-        logger.info("🧪 Entrata API calls: BYPASSED")
-        logger.info("🧪 Resident data validation: BYPASSED")
-        logger.info("🧪 Returning hard-coded SUCCESS response")
+        logger.info("🔍 Starting SharePoint resident verification")
+        logger.info(f"   Looking for: {first_name} {last_name} ({email})")
         logger.info("="*80)
         
-        # Build the success response
-        success_response = build_continue_response()
+        try:
+            # Call SharePoint verification
+            verification_result = verify_resident_sharepoint(
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                date_of_birth=date_of_birth
+            )
+            
+            if verification_result['verified']:
+                logger.info("✅ Resident verification PASSED")
+                logger.info(f"   Match details: {verification_result.get('match_details', 'N/A')}")
+                
+                # Build success response - allow sign-up to continue
+                success_response = build_continue_response()
+                
+                elapsed = time.time() - start_time
+                logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
+                logger.info("="*80)
+                
+                return jsonify(success_response), 200
+            
+            else:
+                # Verification failed
+                logger.warning("❌ Resident verification FAILED")
+                logger.warning(f"   Reason: {verification_result.get('reason', 'Unknown')}")
+                
+                # Build validation error response
+                error_message = "We couldn't verify your information. Please check that your details match our records or contact support."
+                
+                # Provide specific error if available
+                if 'reason' in verification_result:
+                    reason = verification_result['reason']
+                    if 'not found' in reason.lower():
+                        error_message = "We couldn't find your information in our system. Please contact support to enroll in rent reporting."
+                    elif 'date of birth' in reason.lower():
+                        error_message = "The date of birth doesn't match our records. Please verify and try again."
+                    elif 'name' in reason.lower():
+                        error_message = "The name doesn't match our records. Please verify your first and last name."
+                
+                error_response = build_validation_error_response(error_message)
+                
+                elapsed = time.time() - start_time
+                logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
+                logger.info("="*80)
+                
+                return jsonify(error_response), 200
         
-        logger.info(f"✅ DIAGNOSTIC: Returning ContinueWithDefaultBehavior")
-        logger.info(f"📤 Response payload: {success_response}")
-        
-        elapsed = time.time() - start_time
-        logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
-        logger.info("="*80)
-        
-        return jsonify(success_response), 200
+        except Exception as verify_error:
+            # SharePoint verification failed (service error, not verification failure)
+            logger.error(f"❌ SharePoint verification service error: {verify_error}", exc_info=True)
+            
+            # Return block page for service errors
+            error_response = build_block_page_response(
+                "Our verification service is temporarily unavailable. Please try again later."
+            )
+            
+            elapsed = time.time() - start_time
+            logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
+            logger.info("="*80)
+            
+            return jsonify(error_response), 200
     
     except Exception as e:
         # Catch-all for unexpected errors
