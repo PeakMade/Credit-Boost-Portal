@@ -208,12 +208,26 @@ def parse_custom_extension_request(request_data):
             return str(value).strip()
         
         # Extract standard attributes
-        # In External ID, email is at userSignUpInfo.userPrincipalName or userSignUpInfo.email
+        # In External ID, email is typically in userSignUpInfo.identities array
         email = attributes.get('email')
+        
+        # Try userSignUpInfo fields if not in attributes
         if not email and user_signup_info:
             email = user_signup_info.get('userPrincipalName') or user_signup_info.get('email')
-        email = safe_str(email)
         
+        # Try identities array (External ID format)
+        if not email and user_signup_info:
+            identities = user_signup_info.get('identities', [])
+            logger.info(f"📧 Searching for email in {len(identities)} identities")
+            for identity in identities:
+                if isinstance(identity, dict):
+                    sign_in_type = identity.get('signInType', '').lower()
+                    if 'email' in sign_in_type:
+                        email = identity.get('issuerAssignedId')
+                        logger.info(f"📧 Found email in identities: {email[:5]}...@{email.split('@')[1] if '@' in str(email) else '?'}")
+                        break
+        
+        email = safe_str(email)
         given_name = safe_str(attributes.get('givenName'))
         surname = safe_str(attributes.get('surname'))
         
