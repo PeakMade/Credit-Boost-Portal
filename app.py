@@ -15,8 +15,8 @@ from utils.sharepoint_data_loader import load_residents_from_sharepoint_list, lo
 from utils.excel_export import (create_resident_list_export, create_reporting_runs_export,
                                 create_disputes_export, create_audit_logs_export)
 from utils.entrata_api import get_entrata_client
-from utils.sharepoint_verification import verify_resident_sharepoint, warmup_graph_token, warmup_site_id
-from utils.entra_token_validation import require_bearer_token, warmup_jwks_cache
+from utils.sharepoint_verification import verify_resident_sharepoint, warmup_graph_token, warmup_site_id, get_graph_token_cache_state, get_site_id_cache_state
+from utils.entra_token_validation import require_bearer_token, warmup_jwks_cache, log_auth_config_diagnostics, get_jwks_cache_state
 from utils.custom_extension_responses import (
     build_continue_response,
     build_validation_error_response,
@@ -69,9 +69,22 @@ def warmup_caches():
     Pre-fetches JWKS keys, Graph tokens, and SharePoint site IDs
     Logs results but does not fail app startup on errors
     """
+    import socket
+    
+    # Log worker/process identity
+    worker_pid = os.getpid()
+    hostname = socket.gethostname()
+    startup_timestamp = datetime.now().isoformat()
+    
     logger.info("="*80)
     logger.info("🔥 STARTUP WARM-UP: Beginning cache pre-population")
+    logger.info(f"   Worker PID: {worker_pid}")
+    logger.info(f"   Hostname: {hostname}")
+    logger.info(f"   Startup time: {startup_timestamp}")
     logger.info("="*80)
+    
+    # Log auth config diagnostics
+    log_auth_config_diagnostics()
     
     warmup_start = time.time()
     
@@ -103,6 +116,19 @@ def warmup_caches():
     logger.info(f"   JWKS: {'SUCCESS' if jwks_result['success'] else 'FAILED'}")
     logger.info(f"   Graph token: {'SUCCESS' if token_result['success'] else 'FAILED'}")
     logger.info(f"   Site ID: {'SUCCESS' if site_result['success'] else 'FAILED'}")
+    logger.info("="*80)
+    
+    # Concise one-line summary
+    summary = (
+        f"📊 STARTUP SUMMARY: "
+        f"worker_pid={worker_pid} | "
+        f"hostname={hostname} | "
+        f"jwks_warmup={'success' if jwks_result['success'] else 'fail'} | "
+        f"graph_token_warmup={'success' if token_result['success'] else 'fail'} | "
+        f"site_id_warmup={'success' if site_result['success'] else 'fail'} | "
+        f"total_startup_warmup_ms={total_duration:.0f}"
+    )
+    logger.info(summary)
     logger.info("="*80)
 
 # Run warm-up on module load (when app starts)
@@ -505,6 +531,28 @@ def verify_resident_signup():
     logger.info("="*80)
     logger.info(f"🔐 Custom authentication extension endpoint called (first_request={is_first_request})")
     logger.info(f"📅 Start time: {request_start_iso}")
+    
+    # ============================================================================
+    # WORKER/PROCESS IDENTITY
+    # Confirm same process handling warmup and requests
+    # ============================================================================
+    import socket
+    worker_pid = os.getpid()
+    hostname = socket.gethostname()
+    logger.info(f"🔧 Worker PID: {worker_pid}, Hostname: {hostname}")
+    
+    # ============================================================================
+    # CACHE STATE DIAGNOSTICS
+    # Check if caches were populated by startup warm-up
+    # ============================================================================
+    jwks_cache_state = get_jwks_cache_state()
+    graph_cache_state = get_graph_token_cache_state()
+    site_cache_state = get_site_id_cache_state()
+    
+    logger.info("📦 CACHE STATE AT REQUEST START:")
+    logger.info(f"   JWKS cache: present={jwks_cache_state['present']}, source={jwks_cache_state.get('source', 'N/A')}, age={jwks_cache_state['age_s']:.0f}s, expired={jwks_cache_state['expired']}")
+    logger.info(f"   Graph token cache: present={graph_cache_state['present']}, source={graph_cache_state.get('source', 'N/A')}, age={graph_cache_state['age_s']:.0f}s, expired={graph_cache_state['expired']}")
+    logger.info(f"   Site ID cache: present={site_cache_state['present']}, source={site_cache_state.get('source', 'N/A')}, age={site_cache_state['age_s']:.0f}s")
     
     try:
         # Parse the custom extension request payload

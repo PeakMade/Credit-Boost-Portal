@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 _graph_token_cache = {
     'token': None,
     'expires_at': None,
+    'cached_at': None,
+    'source': None,  # 'startup_warmup' or 'request_path'
     'lock': Lock()
 }
 
@@ -36,8 +38,70 @@ _sharepoint_site_cache = {
     'site_id': None,
     'site_key': None,  # Cache key: hostname:path
     'cached_at': None,
+    'source': None,  # 'startup_warmup' or 'request_path'
     'lock': Lock()
 }
+
+
+def get_graph_token_cache_state():
+    """
+    Get current Graph token cache state for diagnostics
+    Call at request start to see if warm-up populated cache
+    
+    Returns:
+        dict with cache state information
+    """
+    with _graph_token_cache['lock']:
+        now = time.time()
+        
+        if _graph_token_cache['token'] is None:
+            return {
+                'present': False,
+                'source': None,
+                'age_s': 0,
+                'ttl_remaining_s': 0,
+                'expired': False
+            }
+        
+        cached_at = _graph_token_cache.get('cached_at', 0)
+        expires_at = _graph_token_cache.get('expires_at', 0)
+        
+        return {
+            'present': True,
+            'source': _graph_token_cache.get('source', 'unknown'),
+            'age_s': now - cached_at if cached_at else 0,
+            'ttl_remaining_s': max(0, expires_at - now) if expires_at else 0,
+            'expired': now >= expires_at if expires_at else True
+        }
+
+
+def get_site_id_cache_state():
+    """
+    Get current Site ID cache state for diagnostics
+    Call at request start to see if warm-up populated cache
+    
+    Returns:
+        dict with cache state information
+    """
+    with _sharepoint_site_cache['lock']:
+        now = time.time()
+        
+        if _sharepoint_site_cache['site_id'] is None:
+            return {
+                'present': False,
+                'source': None,
+                'site_key': None,
+                'age_s': 0
+            }
+        
+        cached_at = _sharepoint_site_cache.get('cached_at', 0)
+        
+        return {
+            'present': True,
+            'source': _sharepoint_site_cache.get('source', 'unknown'),
+            'site_key': _sharepoint_site_cache.get('site_key'),
+            'age_s': now - cached_at if cached_at else 0
+        }
 
 
 def warmup_graph_token():
@@ -52,7 +116,7 @@ def warmup_graph_token():
     warmup_start = time.time()
     
     try:
-        token, metrics = get_sharepoint_access_token()
+        token, metrics = get_sharepoint_access_token(source='startup_warmup')
         
         duration_ms = (time.time() - warmup_start) * 1000
         
@@ -98,7 +162,7 @@ def warmup_site_id():
     
     try:
         # Get Graph token first
-        token, token_metrics = get_sharepoint_access_token()
+        token, token_metrics = get_sharepoint_access_token(source='startup_warmup')
         
         if not token:
             error_msg = "Failed to acquire Graph token"
@@ -144,7 +208,7 @@ def warmup_site_id():
             }
         
         # Resolve and cache site ID
-        site_id, cache_hit, resolution_ms, cache_age = get_cached_site_id(site_hostname, site_path, token)
+        site_id, cache_hit, resolution_ms, cache_age = get_cached_site_id(site_hostname, site_path, token, source='startup_warmup')
         
         duration_ms = (time.time() - warmup_start) * 1000
         
@@ -177,9 +241,12 @@ def warmup_site_id():
         }
 
 
-def get_sharepoint_access_token():
+def get_sharepoint_access_token(source='request_path'):
     """
     Get access token for SharePoint/Microsoft Graph API with caching
+    
+    Args:
+        source: 'startup_warmup' or 'request_path' - tracks where cache was populated
     
     Returns:
         tuple: (access_token: str or None, metrics: dict)
@@ -188,7 +255,8 @@ def get_sharepoint_access_token():
         'graph_token_cache_hit': False,
         'token_acquisition_ms': 0.0,
         'token_cache_age_s': 0.0,
-        'token_ttl_remaining_s': 0.0
+        'token_ttl_remaining_s': 0.0,
+        'token_cache_source': None
     }
     
     with _graph_token_cache['lock']:
@@ -197,12 +265,15 @@ def get_sharepoint_access_token():
         # Check cache validity (with 5-minute safety margin)
         if _graph_token_cache['token'] is not None and _graph_token_cache['expires_at'] is not None:
             if now < (_graph_token_cache['expires_at'] - 300):  # Refresh 5 min before expiry
-                cache_age = now - (_graph_token_cache['expires_at'] - _graph_token_cache.get('lifetime', 3600))
+                cached_at = _graph_token_cache.get('cached_at', now)
+                cache_age = now - cached_at
                 ttl_remaining = _graph_token_cache['expires_at'] - now
-                logger.info(f"✅ Graph token cache HIT (age={cache_age:.0f}s, ttl_remaining={ttl_remaining:.0f}s)")
+                cache_source = _graph_token_cache.get('source', 'unknown')
+                logger.info(f"✅ Graph token cache HIT (source={cache_source}, age={cache_age:.0f}s, ttl_remaining={ttl_remaining:.0f}s)")
                 metrics['graph_token_cache_hit'] = True
                 metrics['token_cache_age_s'] = cache_age
                 metrics['token_ttl_remaining_s'] = ttl_remaining
+                metrics['token_cache_source'] = cache_source
                 return _graph_token_cache['token'], metrics
         
         # Cache miss - acquire new token
@@ -241,11 +312,14 @@ def get_sharepoint_access_token():
             expires_in = result.get("expires_in", 3600)  # Default 1 hour
             _graph_token_cache['token'] = access_token
             _graph_token_cache['expires_at'] = now + expires_in
+            _graph_token_cache['cached_at'] = now
             _graph_token_cache['lifetime'] = expires_in
+            _graph_token_cache['source'] = source
             
-            logger.info(f"✅ Graph token acquired: {metrics['token_acquisition_ms']:.1f}ms, TTL={expires_in}s")
+            logger.info(f"✅ Graph token acquired: {metrics['token_acquisition_ms']:.1f}ms, TTL={expires_in}s, source={source}")
             
             metrics['token_ttl_remaining_s'] = expires_in
+            metrics['token_cache_source'] = source
             
             return access_token, metrics
         
@@ -255,9 +329,15 @@ def get_sharepoint_access_token():
             return None, metrics
 
 
-def get_cached_site_id(site_hostname, site_path, access_token):
+def get_cached_site_id(site_hostname, site_path, access_token, source='request_path'):
     """
     Get SharePoint site ID with caching
+    
+    Args:
+        site_hostname: SharePoint site hostname
+        site_path: SharePoint site path
+        access_token: Graph API access token
+        source: 'startup_warmup' or 'request_path' - tracks where cache was populated
     
     Returns:
         tuple: (site_id: str or None, cache_hit: bool, resolution_ms: float, cache_age_s: float)
@@ -268,7 +348,8 @@ def get_cached_site_id(site_hostname, site_path, access_token):
         # Check cache
         if _sharepoint_site_cache['site_id'] is not None and _sharepoint_site_cache['site_key'] == cache_key:
             cache_age = time.time() - _sharepoint_site_cache.get('cached_at', time.time())
-            logger.info(f"✅ Site ID cache HIT for {cache_key} (age={cache_age:.0f}s)")
+            cache_source = _sharepoint_site_cache.get('source', 'unknown')
+            logger.info(f"✅ Site ID cache HIT for {cache_key} (source={cache_source}, age={cache_age:.0f}s)")
             return _sharepoint_site_cache['site_id'], True, 0.0, cache_age
         
         # Cache miss - resolve site
@@ -300,8 +381,9 @@ def get_cached_site_id(site_hostname, site_path, access_token):
             _sharepoint_site_cache['site_id'] = site_id
             _sharepoint_site_cache['site_key'] = cache_key
             _sharepoint_site_cache['cached_at'] = time.time()
+            _sharepoint_site_cache['source'] = source
             
-            logger.info(f"✅ Site ID cached: {site_id}")
+            logger.info(f"✅ Site ID cached: {site_id}, source={source}")
             
             return site_id, False, resolution_ms, 0.0
         

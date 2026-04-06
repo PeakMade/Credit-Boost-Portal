@@ -16,6 +16,77 @@ from threading import Lock
 logger = logging.getLogger(__name__)
 
 # ============================================================================
+# SHARED AUTH CONFIGURATION HELPER
+# ============================================================================
+# Centralized configuration source for both startup warm-up and runtime validation
+# Ensures consistency between warm-up and request handling
+# ============================================================================
+
+def get_auth_config():
+    """
+    Get authentication configuration from environment
+    Used by both startup warm-up and runtime token validation
+    
+    Returns:
+        dict with config values and presence flags
+    """
+    tenant_id = os.environ.get('AUTH_EXTENSION_TENANT_ID')
+    client_id = os.environ.get('AUTH_EXTENSION_API_CLIENT_ID')
+    
+    config = {
+        'tenant_id': tenant_id,
+        'client_id': client_id,
+        'tenant_id_present': tenant_id is not None and tenant_id != '',
+        'client_id_present': client_id is not None and client_id != ''
+    }
+    
+    # Derive URLs from tenant ID if present
+    if config['tenant_id_present']:
+        config['issuer'] = f"https://{tenant_id}.ciamlogin.com/{tenant_id}/v2.0"
+        config['jwks_uri'] = f"https://{tenant_id}.ciamlogin.com/{tenant_id}/discovery/v2.0/keys"
+        config['metadata_url'] = f"https://{tenant_id}.ciamlogin.com/{tenant_id}/v2.0/.well-known/openid-configuration"
+        config['issuer_present'] = True
+        config['jwks_uri_present'] = True
+        config['metadata_url_present'] = True
+    else:
+        config['issuer'] = None
+        config['jwks_uri'] = None
+        config['metadata_url'] = None
+        config['issuer_present'] = False
+        config['jwks_uri_present'] = False
+        config['metadata_url_present'] = False
+    
+    # Audience is the client ID
+    config['audience'] = client_id
+    config['audience_present'] = config['client_id_present']
+    
+    return config
+
+
+def log_auth_config_diagnostics():
+    """
+    Log authentication configuration diagnostics at startup
+    Shows which config values are present without exposing secrets
+    """
+    config = get_auth_config()
+    
+    logger.info("="*80)
+    logger.info("🔑 AUTH CONFIG DIAGNOSTICS")
+    logger.info(f"   tenant_id_present: {config['tenant_id_present']}")
+    logger.info(f"   client_id_present: {config['client_id_present']}")
+    logger.info(f"   issuer_present: {config['issuer_present']}")
+    logger.info(f"   jwks_uri_present: {config['jwks_uri_present']}")
+    logger.info(f"   metadata_url_present: {config['metadata_url_present']}")
+    logger.info(f"   audience_present: {config['audience_present']}")
+    if config['tenant_id_present']:
+        logger.info(f"   tenant_id: {config['tenant_id'][:20]}...")
+    if config['jwks_uri_present']:
+        logger.info(f"   jwks_uri: {config['jwks_uri'][:60]}...")
+    logger.info(f"   config_source: AUTH_EXTENSION_TENANT_ID, AUTH_EXTENSION_API_CLIENT_ID")
+    logger.info("="*80)
+
+
+# ============================================================================
 # JWKS CACHING FOR PERFORMANCE
 # ============================================================================
 # Cache JWKS keys in memory to avoid network round-trips on every request
@@ -25,16 +96,51 @@ logger = logging.getLogger(__name__)
 _jwks_cache = {
     'keys': None,
     'expires_at': None,
+    'cached_at': None,
+    'source': None,  # 'startup_warmup' or 'request_path'
     'lock': Lock()
 }
 
 JWKS_CACHE_TTL_SECONDS = 3600  # 1 hour
 
 
+def get_jwks_cache_state():
+    """
+    Get current JWKS cache state for diagnostics
+    Call at request start to see if warm-up populated cache
+    
+    Returns:
+        dict with cache state information
+    """
+    with _jwks_cache['lock']:
+        now = time.time()
+        
+        if _jwks_cache['keys'] is None:
+            return {
+                'present': False,
+                'source': None,
+                'age_s': 0,
+                'ttl_remaining_s': 0,
+                'expired': False
+            }
+        
+        cached_at = _jwks_cache.get('cached_at', 0)
+        expires_at = _jwks_cache.get('expires_at', 0)
+        
+        return {
+            'present': True,
+            'source': _jwks_cache.get('source', 'unknown'),
+            'age_s': now - cached_at if cached_at else 0,
+            'ttl_remaining_s': max(0, expires_at - now) if expires_at else 0,
+            'expired': now >= expires_at if expires_at else True
+        }
+
+
 def warmup_jwks_cache():
     """
     Warm up JWKS cache on application startup
     Pre-fetches and caches JWKS keys to eliminate cold-start latency
+    Uses shared auth config helper to ensure consistency with runtime validation
     
     Returns:
         dict with warmup results: success (bool), duration_ms (float), error (str or None)
@@ -43,17 +149,19 @@ def warmup_jwks_cache():
     warmup_start = time.time()
     
     try:
-        # Get JWKS URI from environment
-        tenant_id = os.environ.get('EXTERNAL_OIDC_TENANT_ID', '')
-        if not tenant_id:
-            error_msg = "EXTERNAL_OIDC_TENANT_ID not configured"
+        # Get config from shared helper (same source as runtime validation)
+        config = get_auth_config()
+        
+        if not config['jwks_uri_present']:
+            error_msg = "AUTH_EXTENSION_TENANT_ID not configured (required for JWKS URI)"
             logger.warning(f"⚠️ jwks_warmup_failed: {error_msg}")
             return {'success': False, 'duration_ms': 0, 'error': error_msg}
         
-        jwks_uri = f"https://{tenant_id}.ciamlogin.com/{tenant_id}/discovery/v2.0/keys"
+        jwks_uri = config['jwks_uri']
+        logger.info(f"🔑 Using JWKS URI from shared config: {jwks_uri[:60]}...")
         
         # Fetch and cache JWKS
-        jwks_data, cache_hit, fetch_ms, _, ttl = get_cached_jwks(jwks_uri)
+        jwks_data, cache_hit, fetch_ms, _, ttl = get_cached_jwks(jwks_uri, source='startup_warmup')
         
         duration_ms = (time.time() - warmup_start) * 1000
         logger.info(f"✅ jwks_warmup_succeeded: duration={duration_ms:.1f}ms, keys_cached={len(jwks_data.get('keys', []))}, ttl={ttl:.0f}s")
@@ -67,9 +175,13 @@ def warmup_jwks_cache():
         return {'success': False, 'duration_ms': duration_ms, 'error': error_msg}
 
 
-def get_cached_jwks(jwks_uri):
+def get_cached_jwks(jwks_uri, source='request_path'):
     """
     Get JWKS keys from cache or fetch from network
+    
+    Args:
+        jwks_uri: JWKS endpoint URL
+        source: 'startup_warmup' or 'request_path' - tracks where cache was populated
     
     Returns:
         tuple: (jwks_data, cache_hit: bool, fetch_time_ms: float, cache_age_s: float, ttl_remaining_s: float)
@@ -80,9 +192,9 @@ def get_cached_jwks(jwks_uri):
         # Check cache validity
         if _jwks_cache['keys'] is not None and _jwks_cache['expires_at'] is not None:
             if now < _jwks_cache['expires_at']:
-                cache_age = now - (_jwks_cache['expires_at'] - JWKS_CACHE_TTL_SECONDS)
+                cache_age = now - _jwks_cache['cached_at'] if _jwks_cache['cached_at'] else 0
                 ttl_remaining = _jwks_cache['expires_at'] - now
-                logger.info(f"✅ JWKS cache HIT (age={cache_age:.0f}s, ttl_remaining={ttl_remaining:.0f}s)")
+                logger.info(f"✅ JWKS cache HIT (source={_jwks_cache.get('source', 'unknown')}, age={cache_age:.0f}s, ttl_remaining={ttl_remaining:.0f}s)")
                 return _jwks_cache['keys'], True, 0.0, cache_age, ttl_remaining
         
         # Cache miss - fetch from network
@@ -99,8 +211,10 @@ def get_cached_jwks(jwks_uri):
             # Update cache
             _jwks_cache['keys'] = jwks_data
             _jwks_cache['expires_at'] = now + JWKS_CACHE_TTL_SECONDS
+            _jwks_cache['cached_at'] = now
+            _jwks_cache['source'] = source
             
-            logger.info(f"✅ JWKS fetched and cached: {fetch_elapsed_ms:.1f}ms, TTL={JWKS_CACHE_TTL_SECONDS}s")
+            logger.info(f"✅ JWKS fetched and cached: {fetch_elapsed_ms:.1f}ms, TTL={JWKS_CACHE_TTL_SECONDS}s, source={source}")
             
             return jwks_data, False, fetch_elapsed_ms, 0.0, JWKS_CACHE_TTL_SECONDS
         
@@ -108,9 +222,9 @@ def get_cached_jwks(jwks_uri):
             logger.error(f"❌ JWKS fetch failed: {e}")
             # If we have stale cache, return it as fallback
             if _jwks_cache['keys'] is not None:
-                logger.warning(f"⚠️ Using stale JWKS cache as fallback")
+                logger.warning(f"⚠️ Using stale JWKS cache as fallback (source={_jwks_cache.get('source', 'unknown')})")
                 fetch_elapsed_ms = (time.time() - fetch_start) * 1000
-                cache_age = now - (_jwks_cache['expires_at'] - JWKS_CACHE_TTL_SECONDS) if _jwks_cache['expires_at'] else 0
+                cache_age = now - _jwks_cache['cached_at'] if _jwks_cache['cached_at'] else 0
                 return _jwks_cache['keys'], False, fetch_elapsed_ms, cache_age, 0.0
             raise
 
@@ -119,21 +233,14 @@ class EntraTokenValidator:
     """Validates bearer tokens from Microsoft Entra External ID custom authentication extensions"""
     
     def __init__(self):
-        # Use the External ID tenant for token validation (where custom auth extension is configured)
-        self.tenant_id = os.environ.get('AUTH_EXTENSION_TENANT_ID')
-        # Use the custom authentication extension API client ID for token validation
-        # This is the App ID that Azure uses as the target resource/audience
-        self.client_id = os.environ.get('AUTH_EXTENSION_API_CLIENT_ID')
+        # Use shared config helper (same source as startup warm-up)
+        config = get_auth_config()
         
-        # External ID (CIAM) uses ciamlogin.com domain, not login.microsoftonline.com
-        # Token issuer format: https://{tenant}.ciamlogin.com/{tenant}/v2.0
-        self.issuer = f"https://{self.tenant_id}.ciamlogin.com/{self.tenant_id}/v2.0"
-        
-        # JWKS endpoint for External ID (CIAM) uses ciamlogin.com domain
-        self.jwks_uri = f"https://{self.tenant_id}.ciamlogin.com/{self.tenant_id}/discovery/v2.0/keys"
-        
-        # External ID tokens use simplified audience - just the client ID, not full Application ID URI
-        self.audience = self.client_id
+        self.tenant_id = config['tenant_id']
+        self.client_id = config['client_id']
+        self.issuer = config['issuer']
+        self.jwks_uri = config['jwks_uri']
+        self.audience = config['audience']
         
         # Cache for JWKS client (PyJWT's client has built-in caching, but we add our own layer)
         self._jwks_client = None
@@ -178,12 +285,13 @@ class EntraTokenValidator:
             unverified_payload = jwt.decode(token, options={"verify_signature": False})
             logger.info(f"🔍 Token claims: iss={unverified_payload.get('iss')[:50]}..., aud={unverified_payload.get('aud')}, exp={unverified_payload.get('exp')}")
             
-            # Get JWKS with caching
-            jwks_data, cache_hit, fetch_time, cache_age, ttl_remaining = get_cached_jwks(self.jwks_uri)
+            # Get JWKS with caching (mark source as request_path)
+            jwks_data, cache_hit, fetch_time, cache_age, ttl_remaining = get_cached_jwks(self.jwks_uri, source='request_path')
             metrics['jwks_cache_hit'] = cache_hit
             metrics['jwks_fetch_ms'] = fetch_time
             metrics['jwks_cache_age_s'] = cache_age
             metrics['jwks_ttl_remaining_s'] = ttl_remaining
+            metrics['jwks_cache_source'] = _jwks_cache.get('source', 'unknown')
             
             if not cache_hit:
                 available_kids = [key.get('kid') for key in jwks_data.get('keys', [])]
