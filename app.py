@@ -504,6 +504,10 @@ def verify_resident_signup():
                 # Build success response - allow sign-up to continue
                 success_response = build_continue_response()
                 
+                logger.info(f"📤 Returning success response to External ID:")
+                logger.info(f"   Response type: ContinueWithDefaultBehavior")
+                logger.info(f"   Response payload: {json.dumps(success_response, indent=2)}")
+                
                 elapsed = time.time() - start_time
                 logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
                 logger.info("="*80)

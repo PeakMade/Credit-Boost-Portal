@@ -21,7 +21,7 @@ def build_continue_response():
             "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
             "actions": [
                 {
-                    "@odata.type": "microsoft.graph.attributeCollectionSubmit.continueWithDefaultBehavior"
+                    "@odata.type": "#microsoft.graph.attributeCollectionSubmit.continueWithDefaultBehavior"
                 }
             ]
         }
@@ -47,7 +47,7 @@ def build_validation_error_response(message, attribute_errors=None):
             "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
             "actions": [
                 {
-                    "@odata.type": "microsoft.graph.attributeCollectionSubmit.showValidationError",
+                    "@odata.type": "#microsoft.graph.attributeCollectionSubmit.showValidationError",
                     "message": message
                 }
             ]
@@ -84,7 +84,7 @@ def build_block_page_response(message):
             "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
             "actions": [
                 {
-                    "@odata.type": "microsoft.graph.attributeCollectionSubmit.showBlockPage",
+                    "@odata.type": "#microsoft.graph.attributeCollectionSubmit.showBlockPage",
                     "message": message
                 }
             ]
@@ -110,7 +110,7 @@ def build_modify_attributes_response(attribute_modifications):
             "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
             "actions": [
                 {
-                    "@odata.type": "microsoft.graph.attributeCollectionSubmit.modifyAttributeValues",
+                    "@odata.type": "#microsoft.graph.attributeCollectionSubmit.modifyAttributeValues",
                     "attributes": attribute_modifications
                 }
             ]
