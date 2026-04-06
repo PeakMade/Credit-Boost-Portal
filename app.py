@@ -502,17 +502,43 @@ def verify_resident_signup():
                 logger.info(f"   Match details: {verification_result.get('match_details', 'N/A')}")
                 
                 # Build success response - allow sign-up to continue
+                logger.info("🔨 Building success response object...")
                 success_response = build_continue_response()
+                logger.info(f"✅ Response object created successfully")
+                logger.info(f"   Type: {type(success_response)}")
+                logger.info(f"   Keys: {success_response.keys() if isinstance(success_response, dict) else 'N/A'}")
                 
-                logger.info(f"📤 Returning success response to External ID:")
-                logger.info(f"   Response type: ContinueWithDefaultBehavior")
-                logger.info(f"   Response payload: {json.dumps(success_response, indent=2)}")
+                logger.info(f"📤 Response payload to External ID:")
+                logger.info(f"{json.dumps(success_response, indent=2)}")
+                
+                # Create Flask response with explicit headers
+                logger.info("🔨 Creating Flask response with jsonify...")
+                try:
+                    flask_response = jsonify(success_response)
+                    logger.info(f"✅ Flask response created successfully")
+                    logger.info(f"   Response type: {type(flask_response)}")
+                    logger.info(f"   Status code: 200")
+                    logger.info(f"   Content-Type: {flask_response.content_type}")
+                    
+                    # Log the actual data that will be sent
+                    response_data = flask_response.get_data(as_text=True)
+                    logger.info(f"📡 Actual data being sent to External ID:")
+                    logger.info(f"{response_data}")
+                    
+                    # Log response headers
+                    logger.info(f"📋 Response headers:")
+                    for header, value in flask_response.headers:
+                        logger.info(f"   {header}: {value}")
+                    
+                except Exception as jsonify_error:
+                    logger.error(f"❌ Error creating Flask response: {jsonify_error}", exc_info=True)
+                    raise
                 
                 elapsed = time.time() - start_time
                 logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
                 logger.info("="*80)
                 
-                return jsonify(success_response), 200
+                return flask_response, 200
             
             else:
                 # Verification failed
@@ -532,38 +558,65 @@ def verify_resident_signup():
                     elif 'name' in reason.lower():
                         error_message = "The name doesn't match our records. Please verify your first and last name."
                 
+                logger.info("🔨 Building validation error response...")
                 error_response = build_validation_error_response(error_message)
+                logger.info(f"📤 Validation error response payload:")
+                logger.info(f"{json.dumps(error_response, indent=2)}")
+                
+                logger.info("🔨 Creating Flask error response...")
+                flask_response = jsonify(error_response)
+                logger.info(f"📡 Actual error data being sent:")
+                logger.info(f"{flask_response.get_data(as_text=True)}")
                 
                 elapsed = time.time() - start_time
                 logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
                 logger.info("="*80)
                 
-                return jsonify(error_response), 200
+                return flask_response, 200
         
         except Exception as verify_error:
             # SharePoint verification failed (service error, not verification failure)
             logger.error(f"❌ SharePoint verification service error: {verify_error}", exc_info=True)
             
             # Return block page for service errors
+            logger.info("🔨 Building block page response (service error)...")
             error_response = build_block_page_response(
                 "Our verification service is temporarily unavailable. Please try again later."
             )
+            logger.info(f"📤 Block page response payload:")
+            logger.info(f"{json.dumps(error_response, indent=2)}")
+            
+            logger.info("🔨 Creating Flask block response...")
+            flask_response = jsonify(error_response)
+            logger.info(f"📡 Actual block page data being sent:")
+            logger.info(f"{flask_response.get_data(as_text=True)}")
             
             elapsed = time.time() - start_time
             logger.info(f"⏱️ Total request processing time: {elapsed:.3f}s")
             logger.info("="*80)
             
-            return jsonify(error_response), 200
+            return flask_response, 200
     
     except Exception as e:
         # Catch-all for unexpected errors
         logger.error(f"❌ Unexpected error in verification endpoint: {e}", exc_info=True)
+        
+        logger.info("🔨 Building block page response (unexpected error)...")
+        error_response = build_block_page_response(
+            "Service temporarily unavailable. Please try again later."
+        )
+        logger.info(f"📤 Block page response payload:")
+        logger.info(f"{json.dumps(error_response, indent=2)}")
+        
+        flask_response = jsonify(error_response)
+        logger.info(f"📡 Actual data being sent:")
+        logger.info(f"{flask_response.get_data(as_text=True)}")
+        
         elapsed = time.time() - start_time
         logger.info(f"⏱️ Request processing time: {elapsed:.3f}s")
         logger.info("="*80)
-        return jsonify(build_block_page_response(
-            "Service temporarily unavailable. Please try again later."
-        )), 200
+        
+        return flask_response, 200
 
 
 # ============= DIAGNOSTIC ROUTES =============
