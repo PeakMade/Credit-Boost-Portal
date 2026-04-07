@@ -20,7 +20,7 @@ CANONICAL_SUCCESS_RESPONSE = {
         "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
         "actions": [
             {
-                "@odata.type": "#microsoft.graph.attributeCollectionSubmit.continueWithDefaultBehavior"
+                "@odata.type": "microsoft.graph.attributeCollectionSubmit.continueWithDefaultBehavior"
             }
         ]
     }
@@ -72,7 +72,7 @@ def build_validation_error_response(message, attribute_errors=None):
             "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
             "actions": [
                 {
-                    "@odata.type": "#microsoft.graph.attributeCollectionSubmit.showValidationError",
+                    "@odata.type": "microsoft.graph.attributeCollectionSubmit.showValidationError",
                     "message": message
                 }
             ]
@@ -109,7 +109,7 @@ def build_block_page_response(message):
             "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
             "actions": [
                 {
-                    "@odata.type": "#microsoft.graph.attributeCollectionSubmit.showBlockPage",
+                    "@odata.type": "microsoft.graph.attributeCollectionSubmit.showBlockPage",
                     "message": message
                 }
             ]
@@ -135,7 +135,7 @@ def build_modify_attributes_response(attribute_modifications):
             "@odata.type": "microsoft.graph.onAttributeCollectionSubmitResponseData",
             "actions": [
                 {
-                    "@odata.type": "#microsoft.graph.attributeCollectionSubmit.modifyAttributeValues",
+                    "@odata.type": "microsoft.graph.attributeCollectionSubmit.modifyAttributeValues",
                     "attributes": attribute_modifications
                 }
             ]
@@ -143,6 +143,132 @@ def build_modify_attributes_response(attribute_modifications):
     }
     
     return response
+
+
+# ============================================================================
+# RESPONSE SCHEMA VALIDATOR (DIAGNOSTIC MODE)
+# ============================================================================
+# Validates outbound response bodies match Microsoft's OnAttributeCollectionSubmit schema
+# Helps catch schema regressions before Entra rejects them with error 1003003
+# ============================================================================
+
+# Valid action types for OnAttributeCollectionSubmit event (without leading #)
+VALID_ACTION_TYPES = {
+    "microsoft.graph.attributeCollectionSubmit.continueWithDefaultBehavior",
+    "microsoft.graph.attributeCollectionSubmit.showValidationError",
+    "microsoft.graph.attributeCollectionSubmit.showBlockPage",
+    "microsoft.graph.attributeCollectionSubmit.modifyAttributeValues"
+}
+
+def validate_response_schema(response_body, diagnostic_mode=True):
+    """
+    Validate response body matches Microsoft's OnAttributeCollectionSubmit schema
+    
+    Checks performed:
+    - Top-level 'data' key exists
+    - data.@odata.type is correct
+    - actions array exists and has at least one action
+    - action @odata.type is valid (no leading #)
+    - For continue response: exactly one action with no additional fields
+    
+    Args:
+        response_body: Response dict to validate
+        diagnostic_mode: If True, log warnings but don't raise exceptions
+    
+    Returns:
+        dict: Validation result with 'valid' (bool), 'errors' (list), 'warnings' (list)
+    """
+    result = {
+        'valid': True,
+        'errors': [],
+        'warnings': []
+    }
+    
+    # Check top-level structure
+    if 'data' not in response_body:
+        result['valid'] = False
+        result['errors'].append("Missing top-level 'data' key")
+        return result
+    
+    data = response_body['data']
+    
+    # Check data.@odata.type
+    data_odata_type = data.get('@odata.type')
+    if not data_odata_type:
+        result['valid'] = False
+        result['errors'].append("Missing data.@odata.type")
+    elif data_odata_type != "microsoft.graph.onAttributeCollectionSubmitResponseData":
+        result['valid'] = False
+        result['errors'].append(f"Invalid data.@odata.type: {data_odata_type}")
+    
+    # Check actions array
+    if 'actions' not in data:
+        result['valid'] = False
+        result['errors'].append("Missing data.actions array")
+        return result
+    
+    actions = data['actions']
+    if not isinstance(actions, list):
+        result['valid'] = False
+        result['errors'].append("data.actions must be an array")
+        return result
+    
+    if len(actions) == 0:
+        result['valid'] = False
+        result['errors'].append("data.actions array is empty")
+        return result
+    
+    # Validate each action
+    for idx, action in enumerate(actions):
+        if not isinstance(action, dict):
+            result['valid'] = False
+            result['errors'].append(f"Action {idx} is not a dictionary")
+            continue
+        
+        # Check action @odata.type
+        action_odata_type = action.get('@odata.type')
+        if not action_odata_type:
+            result['valid'] = False
+            result['errors'].append(f"Action {idx} missing @odata.type")
+            continue
+        
+        # Check for leading # (WRONG format that causes error 1003003)
+        if action_odata_type.startswith('#'):
+            result['valid'] = False
+            result['errors'].append(
+                f"Action {idx} @odata.type has leading '#': {action_odata_type}. "
+                f"Should be: {action_odata_type[1:]}"
+            )
+            continue
+        
+        # Check if action type is valid
+        if action_odata_type not in VALID_ACTION_TYPES:
+            result['warnings'].append(
+                f"Action {idx} has unexpected @odata.type: {action_odata_type}"
+            )
+    
+    # For continue response, validate it has exactly one action with no extra fields
+    if len(actions) == 1:
+        action = actions[0]
+        action_type = action.get('@odata.type', '')
+        if 'continueWithDefaultBehavior' in action_type:
+            # Continue action should only have @odata.type
+            extra_keys = [k for k in action.keys() if k != '@odata.type']
+            if extra_keys:
+                result['warnings'].append(
+                    f"continueWithDefaultBehavior action has extra keys: {extra_keys}"
+                )
+    
+    # Log results in diagnostic mode
+    if diagnostic_mode:
+        if result['errors']:
+            logger.error(f"❌ Response schema validation FAILED: {result['errors']}")
+        if result['warnings']:
+            logger.warning(f"⚠️ Response schema validation warnings: {result['warnings']}")
+        if result['valid'] and not result['warnings']:
+            logger.info("✅ Response schema validation passed")
+    
+    return result
 
 
 def parse_custom_extension_request(request_data):

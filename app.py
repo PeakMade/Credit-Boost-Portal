@@ -23,7 +23,8 @@ from utils.custom_extension_responses import (
     build_block_page_response,
     parse_custom_extension_request,
     get_canonical_success_response,
-    CANONICAL_SUCCESS_RESPONSE
+    CANONICAL_SUCCESS_RESPONSE,
+    validate_response_schema
 )
 
 # Load environment variables from .env file (for local development)
@@ -617,10 +618,14 @@ def verify_resident_signup():
         if not request_data:
             logger.error("❌ Empty request body")
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.1f}ms | first_request={is_first_request} | verification_result=error_empty_body | diagnostic_error=false | status=error_empty_body")
-            return jsonify(build_block_page_response(
+            
+            error_response = build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
-            )), 200
+            )
+            validate_response_schema(error_response, diagnostic_mode=True)
+            
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.1f}ms | first_request={is_first_request} | verification_result=error_empty_body | diagnostic_error=false | status=error_empty_body")
+            return jsonify(error_response), 200
         
         # Extract correlation IDs for retry detection
         data = request_data.get('data', {})
@@ -653,10 +658,14 @@ def verify_resident_signup():
         if parsed_attrs is None:
             logger.error("❌ Failed to parse custom extension request")
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | verification_result=error_parse_failed | diagnostic_error=false | status=error_parse_failed")
-            return jsonify(build_block_page_response(
+            
+            error_response = build_block_page_response(
                 "Service temporarily unavailable. Please try again later."
-            )), 200
+            )
+            validate_response_schema(error_response, diagnostic_mode=True)
+            
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | verification_result=error_parse_failed | diagnostic_error=false | status=error_parse_failed")
+            return jsonify(error_response), 200
         
         # Extract user-submitted data
         email = parsed_attrs.get('email', '')
@@ -683,10 +692,14 @@ def verify_resident_signup():
         if missing_fields:
             logger.warning(f"⚠️ Missing required fields: {', '.join(missing_fields)}")
             wall_clock_ms = (time.time() - request_start_time) * 1000
-            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | verification_result=error_missing_fields | diagnostic_error=false | status=error_missing_fields")
-            return jsonify(build_validation_error_response(
+            
+            error_response = build_validation_error_response(
                 f"Please provide all required information: {', '.join(missing_fields)}."
-            )), 200
+            )
+            validate_response_schema(error_response, diagnostic_mode=True)
+            
+            logger.info(f"⚠️ SUMMARY: wall_clock={wall_clock_ms:.0f}ms | first_request={is_first_request} | verification_result=error_missing_fields | diagnostic_error=false | status=error_missing_fields")
+            return jsonify(error_response), 200
         
         # ========================================================================
         # SHAREPOINT VERIFICATION WITH COMPREHENSIVE DIAGNOSTICS
@@ -738,6 +751,18 @@ def verify_resident_signup():
                 logger.info(f"✅ Response object created: {response_build_ms:.3f}ms")
                 logger.info(f"   Type: {type(success_response)}")
                 logger.info(f"   Keys: {list(success_response.keys())}")
+                
+                # ========================================================
+                # VALIDATE RESPONSE SCHEMA (DIAGNOSTIC)
+                # ========================================================
+                # Catches schema regressions before Entra rejects with error 1003003
+                logger.info("🔍 Validating response schema...")
+                validation_result = validate_response_schema(success_response, diagnostic_mode=True)
+                if not validation_result['valid']:
+                    logger.error(f"❌ RESPONSE SCHEMA INVALID - This will cause Entra error 1003003!")
+                    logger.error(f"   Errors: {validation_result['errors']}")
+                else:
+                    logger.info("✅ Response schema is valid")
                 
                 # Log OData types for comparison
                 logger.info(f"📋 Outgoing @odata.type (data): {success_response.get('data', {}).get('@odata.type', 'N/A')}")
@@ -875,6 +900,11 @@ def verify_resident_signup():
                 
                 logger.info("🔨 Building validation error response...")
                 error_response = build_validation_error_response(error_message)
+                
+                # Validate schema before returning
+                logger.info("🔍 Validating error response schema...")
+                validation_result = validate_response_schema(error_response, diagnostic_mode=True)
+                
                 logger.info(f"📤 Validation error response payload:")
                 logger.info(f"{json.dumps(error_response, indent=2)}")
                 
@@ -898,6 +928,11 @@ def verify_resident_signup():
             error_response = build_block_page_response(
                 "Our verification service is temporarily unavailable. Please try again later."
             )
+            
+            # Validate schema before returning
+            logger.info("🔍 Validating block page response schema...")
+            validation_result = validate_response_schema(error_response, diagnostic_mode=True)
+            
             logger.info(f"📤 Block page response payload:")
             logger.info(f"{json.dumps(error_response, indent=2)}")
             
@@ -920,6 +955,11 @@ def verify_resident_signup():
         error_response = build_block_page_response(
             "Service temporarily unavailable. Please try again later."
         )
+        
+        # Validate schema before returning
+        logger.info("🔍 Validating block page response schema...")
+        validation_result = validate_response_schema(error_response, diagnostic_mode=True)
+        
         logger.info(f"📤 Block page response payload:")
         logger.info(f"{json.dumps(error_response, indent=2)}")
         
