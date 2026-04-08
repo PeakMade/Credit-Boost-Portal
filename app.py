@@ -1184,15 +1184,14 @@ def logout():
     """
     Logout route - clears Flask session and redirects to Easy Auth logout.
     """
+    user_email = session.get('user_email', 'unknown')
     session.clear()
-    logger.info(f"User logged out: {session.get('user_email', 'unknown')}")
+    logger.info(f"User logged out: {user_email}")
     
-    # Easy Auth logout endpoint
-    # This will clear the Easy Auth session and redirect to post-logout URL
-    logout_url = '/.auth/logout'
-    
-    # Optional: specify post-logout redirect (uncomment to use)
-    # logout_url = '/.auth/logout?post_logout_redirect_uri=https://creditboostportal-hde4crgcc2hyajh4.eastus-01.azurewebsites.net'
+    # Easy Auth logout endpoint with redirect back to landing page
+    # Build the post-logout redirect URL dynamically
+    post_logout_url = request.host_url.rstrip('/')  # Get base URL (works for both local and production)
+    logout_url = f'/.auth/logout?post_logout_redirect_uri={post_logout_url}'
     
     return redirect(logout_url)
 

@@ -266,7 +266,7 @@
       <li><a class="dropdown-item" href="{{ url_for('resident_profile') }}"><i class="bi bi-person"></i> Profile</a></li>
       <li><a class="dropdown-item" href="{{ url_for('resident_settings') }}"><i class="bi bi-gear"></i> Settings</a></li>
       <li><hr class="dropdown-divider"></li>
-      <li><a class="dropdown-item" href="{{ url_for('landing') }}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+      <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
     </ul>
   </div>
 </div>
@@ -452,7 +452,6 @@
 </div>
 
 <div id="creditAlertContent" style="display: none;">
-  {% if resident.name == "Alexander Kelly" %}
   <style>
     .credit-alert-page {
       background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%);
@@ -624,17 +623,9 @@
       </div>
     </div>
   </div>
-  {% else %}
-  <div class="coming-soon-content">
-    <i class="bi bi-hourglass-split"></i>
-    <h3>Coming Soon</h3>
-    <p>This function will be added soon!</p>
-  </div>
-  {% endif %}
 </div>
 
 <div id="moneyCoachContent" style="display: none;">
-  {% if resident.name == "Alexander Kelly" %}
   <style>
     .coach-page { background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%); border-radius: 20px; padding: 1.5rem; margin-top: 0.75rem; }
     @media (max-width: 1400px) {
@@ -714,13 +705,9 @@
       </div>
     </div>
   </div>
-  {% else %}
-  <div class="coming-soon-content"><i class="bi bi-hourglass-split"></i><h3>Coming Soon</h3><p>This function will be added soon!</p></div>
-  {% endif %}
 </div>
 
 <div id="moneySkillsContent" style="display: none;">
-  {% if resident.name == "Alexander Kelly" %}
   <style>
     .skills-page { background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%); border-radius: 20px; padding: 0.75rem; margin-top: 0.5rem; }
 
@@ -790,13 +777,9 @@
       <div class="feature-item"><div class="feature-icon" style="background: rgba(234, 179, 8, 0.1);"><i class="bi bi-trophy-fill" style="font-size: 1.75rem; color: #eab308;"></i></div><div class="feature-text"><h4>Earn Rewards</h4><p>Level Up Your Skills</p></div></div>
     </div>
   </div>
-  {% else %}
-  <div class="coming-soon-content"><i class="bi bi-hourglass-split"></i><h3>Coming Soon</h3><p>This function will be added soon!</p></div>
-  {% endif %}
 </div>
 
 <div id="idProtectContent" style="display: none;">
-  {% if resident.name == "Alexander Kelly" %}
   <style>
     .idprotect-page { background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%); border-radius: 20px; padding: 1rem; margin-top: 0.75rem; }
     .idprotect-inner-grid { display: grid; gap: 1.5rem; }
@@ -865,13 +848,9 @@
       </div>
     </div>
   </div>
-  {% else %}
-  <div class="coming-soon-content"><i class="bi bi-hourglass-split"></i><h3>Coming Soon</h3><p>This function will be added soon!</p></div>
-  {% endif %}
 </div>
 
 <div id="idAlertContent" style="display: none;">
-  {% if resident.name == "Alexander Kelly" %}
   <style>
     .idalert-page { background: linear-gradient(to bottom, #f7f8ff 0%, #eceeff 42%, #e5e8fb 100%); border-radius: 20px; padding: 1.5rem; margin-top: 0.75rem; }
     @media (max-width: 1400px) {
@@ -952,9 +931,6 @@
       </div>
     </div>
   </div>
-  {% else %}
-  <div class="coming-soon-content"><i class="bi bi-hourglass-split"></i><h3>Coming Soon</h3><p>This function will be added soon!</p></div>
-  {% endif %}
 </div>
 
 <script>
