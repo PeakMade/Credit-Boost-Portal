@@ -415,25 +415,34 @@ def verify_resident_sharepoint(email, first_name, last_name, date_of_birth):
     # Parse DOB if string - support multiple formats
     if isinstance(date_of_birth, str):
         dob = None
+        dob_input = date_of_birth.strip()
+        
         # Try MM-DD-YYYY format (user input from sign-up form)
         try:
-            dob = datetime.strptime(date_of_birth, '%m-%d-%Y')
+            dob = datetime.strptime(dob_input, '%m-%d-%Y')
         except ValueError:
             # Try YYYY-MM-DD format (ISO standard)
             try:
-                dob = datetime.strptime(date_of_birth, '%Y-%m-%d')
+                dob = datetime.strptime(dob_input, '%Y-%m-%d')
             except ValueError:
                 # Try MM/DD/YYYY format (possible SharePoint format)
                 try:
-                    dob = datetime.strptime(date_of_birth, '%m/%d/%Y')
+                    dob = datetime.strptime(dob_input, '%m/%d/%Y')
                 except ValueError:
-                    logger.error(f"❌ Invalid date format: {date_of_birth}")
-                    return {
-                        'verified': False,
-                        'resident_id': None,
-                        'message': 'Invalid date of birth format. Please use MM-DD-YYYY.',
-                        'timings': timings
-                    }
+                    # Try MMDDYYYY format (no separators - 8 digits)
+                    try:
+                        if len(dob_input) == 8 and dob_input.isdigit():
+                            dob = datetime.strptime(dob_input, '%m%d%Y')
+                        else:
+                            raise ValueError("Not 8-digit format")
+                    except ValueError:
+                        logger.error(f"❌ Invalid date format: {date_of_birth}")
+                        return {
+                            'verified': False,
+                            'resident_id': None,
+                            'message': 'Invalid date of birth format. Please use MM-DD-YYYY or MMDDYYYY.',
+                            'timings': timings
+                        }
     else:
         dob = date_of_birth
     

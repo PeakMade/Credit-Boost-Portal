@@ -426,9 +426,12 @@ def setup_session_from_easy_auth_middleware():
         if request.path.startswith('/static/'):
             return
         
-        # Skip if session is already set (performance optimization)
+        # Skip if session is already fully set (performance optimization)
+        # But re-run if resident_id is missing (to fix missing matches)
         if 'user_email' in session and 'role' in session:
-            return
+            if session.get('role') == 'admin' or 'resident_id' in session:
+                return
+            # If role is resident but no resident_id, continue to try matching again
         
         # Get Easy Auth claims
         claims = get_easy_auth_claims()
@@ -460,11 +463,18 @@ def setup_session_from_easy_auth_middleware():
         
         # All other authenticated users are residents
         session['role'] = 'resident'
+        
         # Look up resident ID from data if available
         resident_id = None
+        logger.info(f"🔍 Looking up resident by email: {user_email}")
+        logger.info(f"🔍 Checking against {len(list(residents))} residents in cache")
+        
         for resident in residents:
-            if resident.get('email', '').lower() == user_email.lower():
+            resident_email = resident.get('email', '').lower()
+            if resident_email == user_email.lower():
                 resident_id = resident['id']
+                resident_name = resident.get('name', 'Unknown')
+                logger.info(f"✅ MATCH FOUND: {user_email} → {resident_name} (ID: {resident_id})")
                 break
         
         if resident_id:
@@ -472,7 +482,9 @@ def setup_session_from_easy_auth_middleware():
             logger.info(f"✅ Easy Auth: Resident user {user_email} (ID: {resident_id})")
         else:
             # New resident from External ID sign-up - no resident_id yet
-            logger.info(f"✅ Easy Auth: New resident user {user_email} (no resident_id)")
+            logger.info(f"⚠️ NO MATCH: {user_email} not found in resident data")
+            logger.info(f"⚠️ Sample emails in cache: {[r.get('email', '') for r in list(residents)[:5]]}")
+            logger.info(f"✅ Easy Auth: New resident user {user_email} (no resident_id - will default to ID 1)")
 
     
     except Exception as e:
