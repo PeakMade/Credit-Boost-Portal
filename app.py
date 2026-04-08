@@ -384,6 +384,11 @@ def get_easy_auth_claims():
         all_claim_types = [claim.get('typ') for claim in claims.get('claims', [])]
         logger.info(f"🔍 Easy Auth claims received: {all_claim_types[:10]}")  # Show first 10 claim types
         
+        # DEBUG: Log ALL claim type-value pairs to diagnose email claim issue
+        logger.info(f"🔍 ALL CLAIMS DEBUG:")
+        for claim in claims.get('claims', []):
+            logger.info(f"   {claim.get('typ')}: {claim.get('val')}")
+        
         # Look for email claim (varies by provider)
         for claim in claims.get('claims', []):
             claim_type = claim.get('typ')
