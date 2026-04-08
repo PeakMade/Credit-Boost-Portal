@@ -380,16 +380,31 @@ def get_easy_auth_claims():
         user_email = None
         user_name = None
         
+        # Log all claims for debugging (first time only per session)
+        all_claim_types = [claim.get('typ') for claim in claims.get('claims', [])]
+        logger.info(f"🔍 Easy Auth claims received: {all_claim_types[:10]}")  # Show first 10 claim types
+        
         # Look for email claim (varies by provider)
         for claim in claims.get('claims', []):
-            if claim.get('typ') in ['emails', 'email', 'preferred_username']:
-                user_email = claim.get('val')
-            if claim.get('typ') == 'name':
-                user_name = claim.get('val')
+            claim_type = claim.get('typ')
+            claim_value = claim.get('val')
+            
+            # Check for email-related claims
+            if claim_type in ['emails', 'email', 'preferred_username', 'upn', 'signInNames.emailAddress']:
+                if not user_email:  # Take first email found
+                    user_email = claim_value
+                    logger.info(f"✅ Found email in claim type '{claim_type}': {user_email}")
+            
+            # Check for name claim
+            if claim_type == 'name':
+                user_name = claim_value
         
         # Fallback to simple headers if claims parsing fails
         if not user_email:
+            logger.warning(f"⚠️ No email found in claims, trying fallback headers")
             user_email = request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME')
+            if user_email:
+                logger.info(f"✅ Found email in X-MS-CLIENT-PRINCIPAL-NAME header: {user_email}")
         
         return {
             'email': user_email,
@@ -444,8 +459,12 @@ def setup_session_from_easy_auth_middleware():
             return
         
         user_email = claims.get('email')
+        logger.info(f"🔍 Extracted email from claims: {user_email}")
+        
         if not user_email:
             logger.error("❌ Easy Auth claims present but no email found")
+            logger.error(f"❌ Claims identity_provider: {claims.get('identity_provider')}")
+            logger.error(f"❌ Claims name: {claims.get('name')}")
             return
         
         # Set session data (store only serializable data)
