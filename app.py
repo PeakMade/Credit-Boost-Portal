@@ -15,7 +15,7 @@ from utils.sharepoint_data_loader import load_residents_from_sharepoint_list, lo
 from utils.excel_export import (create_resident_list_export, create_reporting_runs_export,
                                 create_disputes_export, create_audit_logs_export)
 from utils.entrata_api import get_entrata_client
-from utils.sharepoint_verification import verify_resident_sharepoint, warmup_graph_token, warmup_site_id, get_graph_token_cache_state, get_site_id_cache_state, get_verification_site_config
+from utils.sharepoint_verification import verify_resident_sharepoint, warmup_graph_token, warmup_site_id, get_graph_token_cache_state, get_site_id_cache_state, get_verification_site_config, get_user_email_from_graph
 from utils.entra_token_validation import require_bearer_token, warmup_jwks_cache, log_auth_config_diagnostics, get_jwks_cache_state
 from utils.custom_extension_responses import (
     build_continue_response,
@@ -379,6 +379,7 @@ def get_easy_auth_claims():
         # Extract useful information
         user_email = None
         user_name = None
+        object_id = None
         
         # Log all claims for debugging (first time only per session)
         all_claim_types = [claim.get('typ') for claim in claims.get('claims', [])]
@@ -389,7 +390,7 @@ def get_easy_auth_claims():
         for claim in claims.get('claims', []):
             logger.info(f"   {claim.get('typ')}: {claim.get('val')}")
         
-        # Look for email claim (varies by provider)
+        # Look for email claim and object identifier (varies by provider)
         for claim in claims.get('claims', []):
             claim_type = claim.get('typ')
             claim_value = claim.get('val')
@@ -403,6 +404,10 @@ def get_easy_auth_claims():
             # Check for name claim
             if claim_type == 'name':
                 user_name = claim_value
+            
+            # Extract object identifier for Graph API lookup
+            if claim_type == 'http://schemas.microsoft.com/identity/claims/objectidentifier':
+                object_id = claim_value
         
         # Fallback to simple headers if claims parsing fails
         if not user_email:
@@ -410,6 +415,19 @@ def get_easy_auth_claims():
             user_email = request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME')
             if user_email:
                 logger.info(f"✅ Found email in X-MS-CLIENT-PRINCIPAL-NAME header: {user_email}")
+        
+        # Final fallback: Query Microsoft Graph API using object identifier
+        # This is needed for External ID local accounts where email is stored as an identity
+        if not user_email or user_email == 'unknown':
+            if object_id:
+                logger.info(f"🔍 No email in claims, querying Graph API for user {object_id[:8]}...")
+                user_email = get_user_email_from_graph(object_id)
+                if user_email:
+                    logger.info(f"✅ Retrieved email from Graph API: {user_email}")
+                else:
+                    logger.warning(f"⚠️ Graph API lookup returned no email for {object_id[:8]}...")
+            else:
+                logger.warning(f"⚠️ No object identifier found in claims, cannot query Graph API")
         
         return {
             'email': user_email,

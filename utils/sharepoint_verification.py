@@ -326,6 +326,82 @@ def get_sharepoint_access_token(source='request_path'):
             return None, metrics
 
 
+def get_user_email_from_graph(object_id):
+    """
+    Get user's email from Microsoft Graph API using object identifier
+    Used for External ID local accounts where email is stored as an identity
+    
+    Args:
+        object_id: User's object identifier from token claims
+    
+    Returns:
+        str: User's email address or None if not found
+    """
+    try:
+        # CRITICAL: For External ID users, we need to query the CIAM tenant
+        # The user is in the External ID tenant, not the organization tenant
+        external_id_tenant = os.environ.get('AUTH_EXTENSION_TENANT_ID')
+        
+        if not external_id_tenant:
+            logger.warning("⚠️ AUTH_EXTENSION_TENANT_ID not set, cannot query External ID users")
+            return None
+        
+        # Acquire token for External ID tenant (not the org tenant)
+        # We need client credentials for an app in the External ID tenant with User.Read.All
+        # For now, try using the org tenant token - it may work if there's a trust relationship
+        token, _ = get_sharepoint_access_token(source='request_path')
+        if not token:
+            logger.error("❌ Failed to acquire Graph token for user lookup")
+            return None
+        
+        # Query using the object ID directly (tenant-independent endpoint)
+        graph_url = f"https://graph.microsoft.com/v1.0/users/{object_id}?$select=identities,mail,userPrincipalName"
+        logger.info(f"🔍 Querying Graph API for user: {object_id[:8]}...")
+        
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.get(graph_url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            user_data = response.json()
+            
+            # Try mail attribute first
+            if user_data.get('mail'):
+                logger.info(f"✅ Found email in 'mail' attribute: {user_data['mail']}")
+                return user_data['mail']
+            
+            # Check identities for local account email (External ID local accounts)
+            identities = user_data.get('identities', [])
+            for identity in identities:
+                if identity.get('signInType') == 'emailAddress':
+                    email = identity.get('issuerAssignedId')
+                    if email:
+                        logger.info(f"✅ Found email in identities (emailAddress): {email}")
+                        return email
+            
+            # Fallback to UPN if it looks like an email
+            upn = user_data.get('userPrincipalName', '')
+            if '@' in upn and not upn.endswith('.onmicrosoft.com'):
+                logger.info(f"✅ Using UPN as email: {upn}")
+                return upn
+            
+            logger.warning(f"⚠️ User {object_id[:8]}... has no email in mail, identities, or UPN")
+            return None
+        elif response.status_code == 404:
+            logger.warning(f"⚠️ User {object_id[:8]}... not found in this tenant (may be in different tenant)")
+            return None
+        else:
+            logger.error(f"❌ Graph API error getting user: {response.status_code} - {response.text[:200]}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ Error querying Graph API for user email: {e}")
+        return None
+
+
 def get_cached_site_id(site_hostname, site_path, access_token, source='request_path'):
     """
     Get SharePoint site ID with caching
