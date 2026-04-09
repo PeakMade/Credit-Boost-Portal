@@ -7,6 +7,8 @@ import logging
 import msal
 import requests
 import time
+import base64
+import json
 from datetime import datetime
 from threading import Lock
 
@@ -24,6 +26,16 @@ _graph_token_cache = {
     'expires_at': None,
     'cached_at': None,
     'source': None,  # 'startup_warmup' or 'request_path'
+    'lock': Lock()
+}
+
+# Separate token cache for External ID tenant Graph API calls
+_external_id_graph_token_cache = {
+    'token': None,
+    'expires_at': None,
+    'cached_at': None,
+    'lifetime': None,
+    'source': None,
     'lock': Lock()
 }
 
@@ -326,37 +338,177 @@ def get_sharepoint_access_token(source='request_path'):
             return None, metrics
 
 
+def get_external_id_graph_token(source='request_path'):
+    """
+    Acquire Microsoft Graph token for External ID tenant user lookups.
+    This is separate from the workforce tenant Graph token.
+    
+    Returns:
+        tuple: (access_token, metrics_dict)
+    """
+    metrics = {
+        'cache_hit': False,
+        'acquisition_ms': 0.0,
+        'cache_age_s': 0.0,
+        'ttl_remaining_s': 0.0
+    }
+    
+    with _external_id_graph_token_cache['lock']:
+        now = time.time()
+        
+        # Check cache
+        if _external_id_graph_token_cache['token'] and _external_id_graph_token_cache['expires_at']:
+            if now < (_external_id_graph_token_cache['expires_at'] - 300):
+                cached_at = _external_id_graph_token_cache.get('cached_at', now)
+                cache_age = now - cached_at
+                ttl_remaining = _external_id_graph_token_cache['expires_at'] - now
+                logger.info(f"✅ External ID Graph token cache HIT (age={cache_age:.0f}s, ttl={ttl_remaining:.0f}s)")
+                metrics['cache_hit'] = True
+                metrics['cache_age_s'] = cache_age
+                metrics['ttl_remaining_s'] = ttl_remaining
+                return _external_id_graph_token_cache['token'], metrics
+        
+        # Cache miss - acquire new token
+        logger.info(f"⚠️ External ID Graph token cache MISS - acquiring new token")
+        token_start = time.time()
+        
+        # Check for External ID Graph app registration credentials
+        # Priority 1: Dedicated Graph app in External ID tenant
+        client_id = os.environ.get('EXTERNAL_ID_GRAPH_CLIENT_ID') or os.environ.get('AZURE_CLIENT_ID')
+        client_secret = os.environ.get('EXTERNAL_ID_GRAPH_CLIENT_SECRET') or os.environ.get('AZURE_CLIENT_SECRET')
+        tenant_id = os.environ.get('AUTH_EXTENSION_TENANT_ID')
+        
+        logger.info(f"🔍 GRAPH TOKEN ACQUISITION CONTEXT:")
+        logger.info(f"   Tenant ID: {tenant_id[:16] if tenant_id else 'NOT SET'}...")
+        logger.info(f"   Client ID: {client_id[:16] if client_id else 'NOT SET'}...")
+        logger.info(f"   Client Secret: {'SET' if client_secret else 'NOT SET'}")
+        logger.info(f"   Tenant Type: External ID (CIAM)")
+        logger.info(f"   Target API: Microsoft Graph (https://graph.microsoft.com)")
+        
+        if not all([client_id, client_secret, tenant_id]):
+            logger.error("❌ External ID Graph credentials not configured")
+            logger.error("   Required: EXTERNAL_ID_GRAPH_CLIENT_ID + EXTERNAL_ID_GRAPH_CLIENT_SECRET")
+            logger.error("   Or fallback: AZURE_CLIENT_ID + AZURE_CLIENT_SECRET")
+            logger.error("   Plus: AUTH_EXTENSION_TENANT_ID")
+            metrics['acquisition_ms'] = (time.time() - token_start) * 1000
+            return None, metrics
+        
+        try:
+            authority = f"https://login.microsoftonline.com/{tenant_id}"
+            scope = ["https://graph.microsoft.com/.default"]
+            
+            logger.info(f"   Authority URL: {authority}")
+            logger.info(f"   Scopes: {scope}")
+            logger.info(f"   Flow: Client Credentials (application permissions)")
+            
+            app = msal.ConfidentialClientApplication(
+                client_id,
+                authority=authority,
+                client_credential=client_secret
+            )
+            
+            result = app.acquire_token_for_client(scopes=scope)
+            
+            metrics['acquisition_ms'] = (time.time() - token_start) * 1000
+            
+            if "access_token" not in result:
+                logger.error(f"❌ Token acquisition failed: {result.get('error')} - {result.get('error_description', '')}")
+                return None, metrics
+            
+            access_token = result["access_token"]
+            expires_in = result.get("expires_in", 3600)
+            
+            # Decode token for diagnostics (without verification)
+            try:
+                # Split token (header.payload.signature)
+                parts = access_token.split('.')
+                if len(parts) == 3:
+                    # Decode payload (add padding if needed)
+                    payload_base64 = parts[1]
+                    padding = len(payload_base64) % 4
+                    if padding:
+                        payload_base64 += '=' * (4 - padding)
+                    payload = json.loads(base64.urlsafe_b64decode(payload_base64))
+                    
+                    logger.info(f"🔍 TOKEN DIAGNOSTICS (decoded payload):")
+                    logger.info(f"   tid (tenant): {payload.get('tid', 'N/A')[:16]}...")
+                    logger.info(f"   aud (audience): {payload.get('aud', 'N/A')}")
+                    logger.info(f"   appid: {payload.get('appid', 'N/A')[:16]}...")
+                    logger.info(f"   iss (issuer): {payload.get('iss', 'N/A')}")
+                    logger.info(f"   roles: {payload.get('roles', [])}")
+                    logger.info(f"   scp (scopes): {payload.get('scp', 'N/A')}")
+                    
+                    # Check for User.Read.All permission
+                    roles = payload.get('roles', [])
+                    if 'User.Read.All' in roles:
+                        logger.info(f"   ✅ User.Read.All permission PRESENT")
+                    else:
+                        logger.warning(f"   ⚠️ User.Read.All permission NOT FOUND in roles")
+                        logger.warning(f"   Available roles: {roles}")
+            except Exception as decode_error:
+                logger.warning(f"⚠️ Could not decode token for diagnostics: {decode_error}")
+            
+            # Cache the token
+            _external_id_graph_token_cache['token'] = access_token
+            _external_id_graph_token_cache['expires_at'] = now + expires_in
+            _external_id_graph_token_cache['cached_at'] = now
+            _external_id_graph_token_cache['lifetime'] = expires_in
+            _external_id_graph_token_cache['source'] = source
+            
+            logger.info(f"✅ External ID Graph token acquired: {metrics['acquisition_ms']:.1f}ms, TTL={expires_in}s")
+            
+            metrics['ttl_remaining_s'] = expires_in
+            
+            return access_token, metrics
+            
+        except Exception as e:
+            metrics['acquisition_ms'] = (time.time() - token_start) * 1000
+            logger.error(f"❌ External ID Graph token acquisition error: {e}")
+            return None, metrics
+
+
 def get_user_email_from_graph(object_id):
     """
-    Get user's email from Microsoft Graph API using object identifier
-    Used for External ID local accounts where email is stored as an identity
+    Get user's email from Microsoft Graph API using object identifier.
+    Queries the External ID (CIAM) tenant to retrieve email from user identities.
     
     Args:
-        object_id: User's object identifier from token claims
+        object_id: User's object identifier from Easy Auth token claims
     
     Returns:
         str: User's email address or None if not found
     """
     try:
-        # CRITICAL: For External ID users, we need to query the CIAM tenant
-        # The user is in the External ID tenant, not the organization tenant
+        # Validate input
+        if not object_id or object_id == 'unknown':
+            logger.warning("⚠️ Invalid object_id for Graph lookup")
+            return None
+        
+        logger.info(f"🔍 GRAPH EMAIL LOOKUP: Starting for OID {object_id[:8]}...")
+        
+        # Get External ID tenant
         external_id_tenant = os.environ.get('AUTH_EXTENSION_TENANT_ID')
-        
         if not external_id_tenant:
-            logger.warning("⚠️ AUTH_EXTENSION_TENANT_ID not set, cannot query External ID users")
+            logger.error("❌ AUTH_EXTENSION_TENANT_ID not set - cannot query External ID users")
             return None
         
-        # Acquire token for External ID tenant (not the org tenant)
-        # We need client credentials for an app in the External ID tenant with User.Read.All
-        # For now, try using the org tenant token - it may work if there's a trust relationship
-        token, _ = get_sharepoint_access_token(source='request_path')
+        logger.info(f"   Target tenant: {external_id_tenant[:16]}... (External ID/CIAM)")
+        
+        # Acquire Graph token for External ID tenant
+        token, metrics = get_external_id_graph_token(source='email_lookup')
         if not token:
-            logger.error("❌ Failed to acquire Graph token for user lookup")
+            logger.error("❌ Failed to acquire External ID Graph token")
             return None
         
-        # Query using the object ID directly (tenant-independent endpoint)
-        graph_url = f"https://graph.microsoft.com/v1.0/users/{object_id}?$select=identities,mail,userPrincipalName"
-        logger.info(f"🔍 Querying Graph API for user: {object_id[:8]}...")
+        # Build Graph API request
+        # Request specific fields to optimize response
+        select_fields = "id,mail,userPrincipalName,otherMails,identities"
+        graph_url = f"https://graph.microsoft.com/v1.0/users/{object_id}?$select={select_fields}"
+        
+        logger.info(f"🌐 GRAPH API REQUEST:")
+        logger.info(f"   Method: GET")
+        logger.info(f"   URL: {graph_url}")
+        logger.info(f"   Headers: Authorization: Bearer [token], Content-Type: application/json")
         
         headers = {
             "Authorization": f"Bearer {token}",
@@ -365,36 +517,66 @@ def get_user_email_from_graph(object_id):
         
         response = requests.get(graph_url, headers=headers, timeout=10)
         
+        logger.info(f"📥 GRAPH API RESPONSE: {response.status_code}")
+        
         if response.status_code == 200:
             user_data = response.json()
+            logger.info(f"   Response body keys: {list(user_data.keys())}")
             
-            # Try mail attribute first
-            if user_data.get('mail'):
-                logger.info(f"✅ Found email in 'mail' attribute: {user_data['mail']}")
-                return user_data['mail']
+            # Priority 1: mail attribute
+            email = user_data.get('mail')
+            if email and email != 'unknown' and '@' in email:
+                logger.info(f"✅ Found email in 'mail': {email}")
+                return email
             
-            # Check identities for local account email (External ID local accounts)
+            # Priority 2: Check identities for emailAddress (External ID local accounts)
             identities = user_data.get('identities', [])
+            logger.info(f"   Identities count: {len(identities)}")
             for identity in identities:
-                if identity.get('signInType') == 'emailAddress':
-                    email = identity.get('issuerAssignedId')
-                    if email:
-                        logger.info(f"✅ Found email in identities (emailAddress): {email}")
-                        return email
+                sign_in_type = identity.get('signInType')
+                issuer_assigned_id = identity.get('issuerAssignedId')
+                logger.info(f"   Identity: signInType={sign_in_type}, issuer={issuer_assigned_id}")
+                
+                if sign_in_type == 'emailAddress' and issuer_assigned_id:
+                    if issuer_assigned_id != 'unknown' and '@' in issuer_assigned_id:
+                        logger.info(f"✅ Found email in identities (emailAddress): {issuer_assigned_id}")
+                        return issuer_assigned_id
             
-            # Fallback to UPN if it looks like an email
+            # Priority 3: otherMails
+            other_mails = user_data.get('otherMails', [])
+            if other_mails and len(other_mails) > 0:
+                email = other_mails[0]
+                if email and email != 'unknown' and '@' in email:
+                    logger.info(f"✅ Found email in otherMails: {email}")
+                    return email
+            
+            # Priority 4: userPrincipalName (if it looks like an email)
             upn = user_data.get('userPrincipalName', '')
-            if '@' in upn and not upn.endswith('.onmicrosoft.com'):
-                logger.info(f"✅ Using UPN as email: {upn}")
-                return upn
+            logger.info(f"   UPN: {upn}")
+            # Reject synthetic UPNs like xxx@tenant.onmicrosoft.com
+            if upn and upn != 'unknown' and '@' in upn:
+                if not upn.endswith('.onmicrosoft.com'):
+                    logger.info(f"✅ Using UPN as email: {upn}")
+                    return upn
+                else:
+                    logger.info(f"   ℹ️ Skipping synthetic UPN: {upn}")
             
-            logger.warning(f"⚠️ User {object_id[:8]}... has no email in mail, identities, or UPN")
+            logger.warning(f"⚠️ No valid email found for user {object_id[:8]}... in any field")
+            logger.warning(f"   Checked: mail, identities, otherMails, userPrincipalName")
             return None
+            
         elif response.status_code == 404:
-            logger.warning(f"⚠️ User {object_id[:8]}... not found in this tenant (may be in different tenant)")
+            logger.warning(f"⚠️ User {object_id[:8]}... not found in External ID tenant")
+            return None
+        elif response.status_code == 403:
+            logger.error(f"❌ Graph API authorization error (403)")
+            logger.error(f"   Error: {response.text[:300]}")
+            logger.error(f"   Likely cause: App registration lacks User.Read.All permission")
+            logger.error(f"   Check: External ID tenant app permissions")
             return None
         else:
-            logger.error(f"❌ Graph API error getting user: {response.status_code} - {response.text[:200]}")
+            logger.error(f"❌ Graph API error: {response.status_code}")
+            logger.error(f"   Response: {response.text[:300]}")
             return None
             
     except Exception as e:

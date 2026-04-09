@@ -422,20 +422,24 @@ def get_easy_auth_claims():
         # Fallback to simple headers if claims parsing fails
         if not user_email:
             logger.warning(f"⚠️ No email found in claims, trying fallback headers")
-            user_email = request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME')
-            if user_email:
+            fallback_email = request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME')
+            # Reject invalid fallback values
+            if fallback_email and fallback_email != 'unknown' and '@' in fallback_email:
+                user_email = fallback_email
                 logger.info(f"✅ Found email in X-MS-CLIENT-PRINCIPAL-NAME header: {user_email}")
+            else:
+                logger.info(f"⚠️ X-MS-CLIENT-PRINCIPAL-NAME is invalid: {fallback_email}")
         
         # Final fallback: Query Microsoft Graph API using object identifier
         # This is needed for External ID local accounts where email is stored as an identity
         if not user_email or user_email == 'unknown':
             if object_id:
-                logger.info(f"🔍 No email in claims, querying Graph API for user {object_id[:8]}...")
+                logger.info(f"🔍 No valid email in claims, querying Graph API for user {object_id[:8]}...")
                 user_email = get_user_email_from_graph(object_id)
-                if user_email:
+                if user_email and user_email != 'unknown':
                     logger.info(f"✅ Retrieved email from Graph API: {user_email}")
                 else:
-                    logger.warning(f"⚠️ Graph API lookup returned no email for {object_id[:8]}...")
+                    logger.warning(f"⚠️ Graph API lookup returned no valid email for {object_id[:8]}...")
             else:
                 logger.warning(f"⚠️ No object identifier found in claims, cannot query Graph API")
         
@@ -496,6 +500,11 @@ def setup_session_from_easy_auth_middleware():
         user_email = claims.get('email')
         object_id = claims.get('object_id')
         tenant_id = claims.get('tenant_id')
+        
+        # Reject invalid email values
+        if user_email and user_email == 'unknown':
+            logger.warning(f"⚠️ Email claim is 'unknown' - treating as missing")
+            user_email = None
         
         logger.info(f"🔍 Extracted from claims: email={user_email}, oid={object_id[:16] if object_id else None}...")
         
