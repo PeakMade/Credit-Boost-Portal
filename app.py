@@ -380,6 +380,7 @@ def get_easy_auth_claims():
         user_email = None
         user_name = None
         object_id = None
+        tenant_id = None
         
         # Log all claims for debugging (first time only per session)
         all_claim_types = [claim.get('typ') for claim in claims.get('claims', [])]
@@ -390,7 +391,20 @@ def get_easy_auth_claims():
         for claim in claims.get('claims', []):
             logger.info(f"   {claim.get('typ')}: {claim.get('val')}")
         
-        # Look for email claim and object identifier (varies by provider)
+        # Extract OID and Tenant ID first (primary identity)
+        for claim in claims.get('claims', []):
+            claim_type = claim.get('typ')
+            claim_value = claim.get('val')
+            
+            if claim_type == 'http://schemas.microsoft.com/identity/claims/objectidentifier':
+                object_id = claim_value
+                logger.info(f"🔑 Extracted OID: {object_id[:16]}...")
+            
+            if claim_type == 'http://schemas.microsoft.com/identity/claims/tenantid':
+                tenant_id = claim_value
+                logger.info(f"🔑 Extracted Tenant ID: {tenant_id[:16]}...")
+        
+        # Look for email claim and other user info
         for claim in claims.get('claims', []):
             claim_type = claim.get('typ')
             claim_value = claim.get('val')
@@ -404,10 +418,6 @@ def get_easy_auth_claims():
             # Check for name claim
             if claim_type == 'name':
                 user_name = claim_value
-            
-            # Extract object identifier for Graph API lookup
-            if claim_type == 'http://schemas.microsoft.com/identity/claims/objectidentifier':
-                object_id = claim_value
         
         # Fallback to simple headers if claims parsing fails
         if not user_email:
@@ -432,6 +442,8 @@ def get_easy_auth_claims():
         return {
             'email': user_email,
             'name': user_name or user_email,
+            'object_id': object_id,
+            'tenant_id': tenant_id,
             'identity_provider': claims.get('identity_provider', 'aad'),
             'raw_claims': claims
         }
@@ -482,51 +494,99 @@ def setup_session_from_easy_auth_middleware():
             return
         
         user_email = claims.get('email')
-        logger.info(f"🔍 Extracted email from claims: {user_email}")
+        object_id = claims.get('object_id')
+        tenant_id = claims.get('tenant_id')
         
-        if not user_email:
-            logger.error("❌ Easy Auth claims present but no email found")
-            logger.error(f"❌ Claims identity_provider: {claims.get('identity_provider')}")
-            logger.error(f"❌ Claims name: {claims.get('name')}")
-            return
+        logger.info(f"🔍 Extracted from claims: email={user_email}, oid={object_id[:16] if object_id else None}...")
         
         # Set session data (store only serializable data)
-        session['user_email'] = user_email
-        session['user_name'] = claims.get('name', user_email)
+        session['user_name'] = claims.get('name', user_email or 'Unknown User')
         session['identity_provider'] = claims.get('identity_provider', 'unknown')
+        if user_email:
+            session['user_email'] = user_email
+        if object_id:
+            session['object_id'] = object_id
+        if tenant_id:
+            session['tenant_id'] = tenant_id
         
-        # Determine role based on email/resident lookup
-        # Check if admin via SharePoint admin list
-        from utils.sharepoint_verification import check_admin_authorization
-        if check_admin_authorization(user_email):
-            session['role'] = 'admin'
-            logger.info(f"✅ Easy Auth: Admin user {user_email}")
-            return
-        
-        # All other authenticated users are residents
-        session['role'] = 'resident'
-        
-        # Look up resident ID from data if available
+        # === STEP 1: Try OID-based lookup first (primary identity) ===
         resident_id = None
-        logger.info(f"🔍 Looking up resident by email: {user_email}")
-        logger.info(f"🔍 Checking against {len(list(residents))} residents in cache")
+        resident = None
+        resolution_path = None
         
-        for resident in residents:
-            resident_email = resident.get('email', '').lower()
-            if resident_email == user_email.lower():
-                resident_id = resident['id']
-                resident_name = resident.get('name', 'Unknown')
-                logger.info(f"✅ MATCH FOUND: {user_email} → {resident_name} (ID: {resident_id})")
-                break
-        
-        if resident_id:
-            session['resident_id'] = resident_id
-            logger.info(f"✅ Easy Auth: Resident user {user_email} (ID: {resident_id})")
+        if object_id:
+            logger.info(f"🔍 STEP 1: Looking up resident by OID: {object_id[:16]}...")
+            for r in residents:
+                r_oid = r.get('external_oid')
+                if r_oid and r_oid == object_id:
+                    resident = r
+                    resident_id = r['id']
+                    resolution_path = 'resolved_by_oid'
+                    logger.info(f"✅ OID MATCH: {object_id[:16]}... → {r.get('name')} (ID: {resident_id})")
+                    break
+            
+            if not resident:
+                logger.info(f"⚠️ No resident found with OID {object_id[:16]}...")
         else:
-            # New resident from External ID sign-up - no resident_id yet
-            logger.info(f"⚠️ NO MATCH: {user_email} not found in resident data")
-            logger.info(f"⚠️ Sample emails in cache: {[r.get('email', '') for r in list(residents)[:5]]}")
-            logger.info(f"✅ Easy Auth: New resident user {user_email} (no resident_id - will default to ID 1)")
+            logger.warning(f"⚠️ No OID in claims - cannot use OID-based lookup")
+        
+        # === STEP 2: If not found by OID, try email fallback ===
+        if not resident and user_email and user_email != 'unknown':
+            logger.info(f"🔍 STEP 2: Looking up resident by email: {user_email}")
+            logger.info(f"🔍 Checking against {len(list(residents))} residents in cache")
+            
+            for r in residents:
+                r_email = r.get('email', '').lower()
+                if r_email == user_email.lower():
+                    resident = r
+                    resident_id = r['id']
+                    logger.info(f"✅ EMAIL MATCH: {user_email} → {r.get('name')} (ID: {resident_id})")
+                    
+                    # === STEP 3: Link OID if this is first login with OID ===
+                    if object_id and not r.get('external_oid'):
+                        logger.info(f"🔗 LINKING OID: Resident {resident_id} ({r.get('name')}) has no OID - linking now")
+                        from utils.data_loader import link_resident_external_oid
+                        if link_resident_external_oid(resident_id, object_id, tenant_id):
+                            # Update in-memory cache
+                            r['external_oid'] = object_id
+                            r['external_tenant_id'] = tenant_id
+                            resolution_path = 'resolved_by_email_then_linked_oid'
+                            logger.info(f"✅ OID LINKED: Future logins will resolve directly by OID")
+                        else:
+                            logger.error(f"❌ Failed to link OID to resident {resident_id}")
+                            resolution_path = 'resolved_by_email_only'
+                    elif r.get('external_oid'):
+                        logger.info(f"ℹ️ Resident already has OID: {r.get('external_oid')[:16]}...")
+                        resolution_path = 'resolved_by_email_existing_oid'
+                    else:
+                        resolution_path = 'resolved_by_email_no_oid'
+                    
+                    break
+            
+            if not resident:
+                logger.info(f"⚠️ NO EMAIL MATCH: {user_email} not found in resident data")
+                logger.info(f"⚠️ Sample emails in cache: {[r.get('email', '') for r in list(residents)[:5]]}")
+        
+        # === FINAL: Set session and determine role ===
+        if resident:
+            # Check if admin via SharePoint admin list
+            if user_email:
+                from utils.sharepoint_verification import check_admin_authorization
+                if check_admin_authorization(user_email):
+                    session['role'] = 'admin'
+                    logger.info(f"✅ RESOLUTION: path={resolution_path} | role=admin | email={user_email}")
+                    return
+            
+            # Regular resident user
+            session['role'] = 'resident'
+            session['resident_id'] = resident_id
+            logger.info(f"✅ RESOLUTION: path={resolution_path} | role=resident | resident_id={resident_id} | name={resident.get('name')}")
+        else:
+            # No match found - unresolved user
+            resolution_path = 'unresolved_no_match'
+            session['role'] = 'resident'  # Default to resident role
+            logger.warning(f"⚠️ RESOLUTION: path={resolution_path} | No resident record found for oid={object_id[:16] if object_id else None}... email={user_email}")
+            logger.info(f"ℹ️ User will default to resident ID 1 for demo purposes")
 
     
     except Exception as e:

@@ -97,6 +97,10 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
                 'move_in_date': str(row.get('Lease Start', '')),  # Alias for template compatibility
                 'monthly_rent': monthly_rent,
                 
+                # External identity linking (for Entra External ID)
+                'external_oid': str(row.get('External_OID', '')) if pd.notna(row.get('External_OID', '')) else None,
+                'external_tenant_id': str(row.get('External_Tenant_ID', '')) if pd.notna(row.get('External_Tenant_ID', '')) else None,
+                
                 # Account status fields
                 'enrolled': True,
                 'enrollment_status': 'enrolled',
@@ -138,6 +142,57 @@ def load_residents_from_excel(file_path='Resident PII Test.xlsx'):
         import traceback
         traceback.print_exc()
         return []
+
+
+def link_resident_external_oid(resident_id, external_oid, external_tenant_id, file_path='Resident PII Test.xlsx'):
+    """
+    Link an External ID OID to an existing resident in the Excel file.
+    This enables OID-based authentication for future logins.
+    
+    Args:
+        resident_id: The resident's ID (row index + 1)
+        external_oid: The Entra External ID object identifier
+        external_tenant_id: The Entra tenant ID
+        file_path: Path to the Excel file
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), file_path)
+    
+    if not os.path.exists(full_path):
+        print(f"Error: {full_path} not found")
+        return False
+    
+    try:
+        # Read Excel file
+        df = pd.read_excel(full_path)
+        
+        # Add columns if they don't exist
+        if 'External_OID' not in df.columns:
+            df['External_OID'] = None
+        if 'External_Tenant_ID' not in df.columns:
+            df['External_Tenant_ID'] = None
+        
+        # Update the row (resident_id is 1-based, row index is 0-based)
+        row_index = resident_id - 1
+        if row_index < 0 or row_index >= len(df):
+            print(f"Error: Invalid resident_id {resident_id}")
+            return False
+        
+        df.at[row_index, 'External_OID'] = external_oid
+        df.at[row_index, 'External_Tenant_ID'] = external_tenant_id
+        
+        # Save back to Excel
+        df.to_excel(full_path, index=False)
+        print(f"🔗 Linked OID {external_oid[:8]}... to resident ID {resident_id}")
+        return True
+        
+    except Exception as e:
+        print(f"Error linking OID to resident: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 def generate_sample_payments(resident_id, monthly_rent, resident_name=''):
