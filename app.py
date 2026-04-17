@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_cors import CORS, cross_origin
 from werkzeug.exceptions import HTTPException
 from datetime import datetime
+from functools import wraps
 import json
 import base64
 import os
@@ -358,6 +359,56 @@ def get_last_reported_month(resident):
     return "N/A"
 
 
+# ============= AUTHORIZATION DECORATORS =============
+
+def require_admin(f):
+    """
+    Decorator to require admin role for a route.
+    Returns 403 error if user is not an admin.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('role') != 'admin':
+            logger.warning(f"🚨 SECURITY: Unauthorized admin access attempt")
+            logger.warning(f"   Route: {request.path}")
+            logger.warning(f"   User: {session.get('user_email', 'unknown')}")
+            logger.warning(f"   Role: {session.get('role', 'none')}")
+            return render_template('error.html',
+                                 message='Access Denied',
+                                 details='You are not authorized to access this page.'), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_resident(f):
+    """
+    Decorator to require resident role for a route.
+    Returns 403 error if user is not a resident or if resident_id is missing.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('role') != 'resident':
+            logger.warning(f"🚨 SECURITY: Unauthorized resident access attempt")
+            logger.warning(f"   Route: {request.path}")
+            logger.warning(f"   User: {session.get('user_email', 'unknown')}")
+            logger.warning(f"   Role: {session.get('role', 'none')}")
+            return render_template('error.html',
+                                 message='Access Denied',
+                                 details='You are not authorized to access this page.'), 403
+        
+        # Verify resident_id is in session
+        if not session.get('resident_id'):
+            logger.error(f"🚨 SECURITY: Resident role set but no resident_id in session")
+            logger.error(f"   Route: {request.path}")
+            logger.error(f"   User: {session.get('user_email', 'unknown')}")
+            return render_template('error.html',
+                                 message='Session Error',
+                                 details='Your session is invalid. Please log out and log in again.'), 403
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 # ============= EASY AUTH INTEGRATION =============
 
 def get_easy_auth_claims():
@@ -480,9 +531,17 @@ def setup_session_from_easy_auth_middleware():
         if request.path.startswith('/static/'):
             return
         
+        # ALWAYS re-run authentication check if path is not cached-friendly
+        # This prevents stale session data from causing authorization mismatches
+        should_recheck = False
+        
+        # For admin dashboard or admin routes, always recheck
+        if request.path.startswith('/admin'):
+            should_recheck = True
+        
         # Skip if session is already fully set (performance optimization)
         # But re-run if resident_id is missing (to fix missing matches)
-        if 'user_email' in session and 'role' in session:
+        if not should_recheck and 'user_email' in session and 'role' in session:
             if session.get('role') == 'admin' or 'resident_id' in session:
                 return
             # If role is resident but no resident_id, continue to try matching again
@@ -577,25 +636,37 @@ def setup_session_from_easy_auth_middleware():
                 logger.info(f"⚠️ Sample emails in cache: {[r.get('email', '') for r in list(residents)[:5]]}")
         
         # === FINAL: Set session and determine role ===
-        if resident:
-            # Check if admin via SharePoint admin list
-            if user_email:
-                from utils.sharepoint_verification import check_admin_authorization
-                if check_admin_authorization(user_email):
-                    session['role'] = 'admin'
-                    logger.info(f"✅ RESOLUTION: path={resolution_path} | role=admin | email={user_email}")
-                    return
+        # CRITICAL SECURITY: Check admin FIRST, before checking resident match
+        # This ensures admins are recognized even if they also have a resident record
+        is_admin = False
+        if user_email:
+            from utils.sharepoint_verification import check_admin_authorization
+            is_admin = check_admin_authorization(user_email)
             
-            # Regular resident user
+            if is_admin:
+                session['role'] = 'admin'
+                session['user_email'] = user_email
+                logger.info(f"✅ ADMIN AUTHORIZED: email={user_email}")
+                return
+        
+        # User is not admin - check if they have a valid resident record
+        if resident:
+            # Regular resident user with matched record
             session['role'] = 'resident'
             session['resident_id'] = resident_id
-            logger.info(f"✅ RESOLUTION: path={resolution_path} | role=resident | resident_id={resident_id} | name={resident.get('name')}")
+            session['user_email'] = user_email
+            logger.info(f"✅ RESIDENT AUTHORIZED: path={resolution_path} | resident_id={resident_id} | name={resident.get('name')} | email={user_email}")
         else:
-            # No match found - unresolved user
-            resolution_path = 'unresolved_no_match'
-            session['role'] = 'resident'  # Default to resident role
-            logger.warning(f"⚠️ RESOLUTION: path={resolution_path} | No resident record found for oid={object_id[:16] if object_id else None}... email={user_email}")
-            logger.info(f"ℹ️ User will default to resident ID 1 for demo purposes")
+            # CRITICAL SECURITY: No match found - DENY ACCESS
+            # Do NOT default to any resident account
+            # User is authenticated but not authorized for this application
+            session['role'] = 'unauthorized'
+            session['user_email'] = user_email
+            logger.warning(f"🚨 SECURITY: Unauthorized access attempt - authenticated user not found in system")
+            logger.warning(f"   Email: {user_email}")
+            logger.warning(f"   OID: {object_id[:16] if object_id else 'None'}...")
+            logger.warning(f"   Resolution path: {resolution_path or 'unresolved_no_match'}")
+            logger.warning(f"   Action: Access denied - redirecting to unauthorized page")
 
     
     except Exception as e:
@@ -1231,10 +1302,13 @@ def landing():
                 return redirect(url_for('admin_dashboard'))
             elif role == 'resident':
                 return redirect(url_for('resident_dashboard'))
-            elif role == 'unknown':
+            elif role == 'unauthorized':
+                # User is authenticated but not authorized
+                user_email = claims.get('email', 'Unknown')
+                logger.warning(f"🚨 Unauthorized user attempted access: {user_email}")
                 return render_template('error.html', 
-                                     message='Your account is authenticated but not authorized to access this application.',
-                                     details=f'Email: {claims.get("email", "Unknown")}')
+                                     message='Access Denied',
+                                     details=f'Your account ({user_email}) is authenticated but not authorized to access this application. Please contact your administrator.'), 403
         
         # Show landing page with login options
         return render_template('landing.html')
@@ -1308,8 +1382,14 @@ def logout():
     Logout route - clears Flask session and redirects to Easy Auth logout.
     """
     user_email = session.get('user_email', 'unknown')
+    user_role = session.get('role', 'unknown')
+    resident_id = session.get('resident_id', 'N/A')
+    
+    # Clear ALL session data
     session.clear()
-    logger.info(f"User logged out: {user_email}")
+    
+    logger.info(f"🔓 User logged out: email={user_email}, role={user_role}, resident_id={resident_id}")
+    logger.info(f"   Session cleared completely")
     
     # Easy Auth logout endpoint with redirect back to landing page
     # Build the post-logout redirect URL dynamically
@@ -1319,13 +1399,34 @@ def logout():
     return redirect(logout_url)
 
 
+@app.route('/clear-session')
+def clear_session():
+    """
+    Development/diagnostic route to force clear session without full logout.
+    Useful for debugging session caching issues.
+    """
+    user_email = session.get('user_email', 'unknown')
+    user_role = session.get('role', 'unknown')
+    
+    session.clear()
+    
+    logger.info(f"🧹 Session manually cleared: email={user_email}, role={user_role}")
+    flash('Session cleared successfully. Please log in again.', 'info')
+    return redirect(url_for('landing'))
+
+
 # ============= RESIDENT ROUTES =============
 
 @app.route('/resident/dashboard')
+@require_resident
 def resident_dashboard():
-    # Get resident from session or default to first resident
-    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident_id = session.get('resident_id')
     resident = get_resident_by_id(resident_id)
+    if not resident:
+        logger.error(f"🚨 SECURITY: Invalid resident_id in session: {resident_id}")
+        return render_template('error.html',
+                             message='Account Error',
+                             details='Your account information could not be found. Please contact support.'), 404
     
     # Calculate current reporting cycle (current month)
     current_date = datetime.now()
@@ -1394,22 +1495,25 @@ def resident_enroll_success():
 
 
 @app.route('/resident/rent-reporting')
+@require_resident
 def resident_rent_reporting():
-    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident_id = session.get('resident_id')
     resident = get_resident_by_id(resident_id)
     return render_template('resident/rent_reporting.html', resident=resident)
 
 
 @app.route('/resident/settings')
+@require_resident
 def resident_settings():
-    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident_id = session.get('resident_id')
     resident = get_resident_by_id(resident_id)
     return render_template('resident/settings.html', resident=resident)
 
 
 @app.route('/resident/profile', methods=['GET', 'POST'])
+@require_resident
 def resident_profile():
-    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident_id = session.get('resident_id')
     resident = get_resident_by_id(resident_id)
     
     if request.method == 'POST':
@@ -1425,8 +1529,9 @@ def resident_profile():
 
 
 @app.route('/resident/opt-out', methods=['GET', 'POST'])
+@require_resident
 def resident_opt_out():
-    resident_id = session.get('resident_id', CURRENT_RESIDENT_ID)
+    resident_id = session.get('resident_id')
     resident = get_resident_by_id(resident_id)
     
     if request.method == 'POST':
@@ -1446,6 +1551,7 @@ def resident_opt_out():
 # ============= ADMIN ROUTES =============
 
 @app.route('/admin/dashboard')
+@require_admin
 def admin_dashboard():
     data_source = request.args.get('data_source', 'credhub')  # Default to 'credhub', also supports 'test', 'sharepoint'
     
@@ -1537,6 +1643,7 @@ def admin_dashboard():
 
 
 @app.route('/admin/rent-reporting')
+@require_admin
 def admin_rent_reporting():
     search_query = request.args.get('search', '').lower()
     data_source = request.args.get('data_source', 'test')  # 'test', 'sharepoint', or 'credhub'
@@ -1593,6 +1700,7 @@ def admin_rent_reporting():
 
 
 @app.route('/admin/resident/<int:resident_id>')
+@require_admin
 def admin_resident_detail(resident_id):
     data_source = request.args.get('data_source', 'test')  # 'test', 'sharepoint', or 'credhub'
     
@@ -1628,6 +1736,7 @@ def admin_resident_detail(resident_id):
 
 
 @app.route('/admin/resident/<int:resident_id>/data-mismatch', methods=['GET', 'POST'])
+@require_admin
 def admin_data_mismatch(resident_id):
     resident = get_resident_by_id(resident_id)
     if not resident:
@@ -1661,6 +1770,7 @@ def admin_data_mismatch(resident_id):
 
 
 @app.route('/admin/resident/<int:resident_id>/payment-issue', methods=['GET', 'POST'])
+@require_admin
 def admin_payment_issue(resident_id):
     resident = get_resident_by_id(resident_id)
     if not resident:
@@ -1688,6 +1798,7 @@ def admin_payment_issue(resident_id):
 
 
 @app.route('/admin/reporting-runs')
+@require_admin
 def admin_reporting_runs():
     runs = [
         {
@@ -1746,6 +1857,7 @@ def admin_reporting_runs():
                           total_accounts=total_accounts)
 
 @app.route('/admin/disputes')
+@require_admin
 def admin_disputes():
     import random
     from datetime import timedelta
@@ -1812,6 +1924,7 @@ def admin_disputes():
                           resolved_disputes=resolved_disputes)
 
 @app.route('/admin/audit-logs')
+@require_admin
 def admin_audit_logs():
     audit_logs = [
         {'id': 1, 'timestamp': '2026-01-10 10:00:00', 'user': 'admin', 'action': 'Viewed resident PII', 'details': 'Jane Doe'},
@@ -1822,6 +1935,7 @@ def admin_audit_logs():
 
 # Excel Export Routes
 @app.route('/admin/export/residents', methods=['GET', 'POST'])
+@require_admin
 def export_residents():
     """Export resident list to Excel"""
     if request.method == 'POST':
@@ -1845,6 +1959,7 @@ def export_residents():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @app.route('/admin/export/reporting-runs')
+@require_admin
 def export_reporting_runs():
     """Export reporting runs to Excel"""
     # Get the same data as the reporting runs page
@@ -1860,6 +1975,7 @@ def export_reporting_runs():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @app.route('/admin/export/disputes')
+@require_admin
 def export_disputes():
     """Export disputes to Excel"""
     disputes = [
@@ -1873,6 +1989,7 @@ def export_disputes():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @app.route('/admin/export/audit-logs')
+@require_admin
 def export_audit_logs():
     """Export audit logs to Excel"""
     audit_logs = [
