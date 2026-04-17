@@ -12,11 +12,33 @@
             <div class="card-body p-5">
                 <div class="text-center mb-4">
                     <i class="bi bi-shield-lock text-primary" style="font-size: 3rem;"></i>
-                    <h5 class="mt-3">Welcome</h5>
+                    <h5 class="mt-3">Welcome{% if authenticated and user_email %}, {{ user_email }}{% endif %}</h5>
+                    {% if authenticated %}
+                    <p class="text-muted">You are already signed in. Choose where to go:</p>
+                    {% else %}
                     <p class="text-muted">Please select your login type to continue</p>
+                    {% endif %}
                 </div>
                 
-                <!-- Resident Login Button -->
+                {% if authenticated %}
+                <!-- Already authenticated - show dashboard links -->
+                <div class="d-grid gap-3 mb-3">
+                    <a href="{{ url_for('resident_dashboard') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-person"></i> Resident Dashboard
+                    </a>
+                </div>
+                <div class="d-grid gap-3 mb-3">
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-lg">
+                        <i class="bi bi-shield-check"></i> Admin Dashboard
+                    </a>
+                </div>
+                <div class="d-grid gap-3">
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-box-arrow-right"></i> Sign Out
+                    </a>
+                </div>
+                {% else %}
+                <!-- Not authenticated - show login buttons -->
                 <div class="d-grid gap-3 mb-3">
                     <a href="/.auth/login/external_oidc" class="btn btn-primary btn-lg">
                         <i class="bi bi-person"></i> Resident Login
@@ -29,6 +51,7 @@
                         <i class="bi bi-shield-check"></i> Admin Login
                     </a>
                 </div>
+                {% endif %}
                 
                 <div class="text-center mt-4">
                     <small class="text-muted">

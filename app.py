@@ -535,6 +535,16 @@ def setup_session_from_easy_auth_middleware():
         if request.path in ['/health', '/debug-ping', '/debug-auth']:
             return
         
+        # Allow anonymous access to landing page (for login selection)
+        if request.path in ['/', '/login']:
+            # Only proceed with auth if user is already authenticated
+            # This allows the landing page to be shown without forcing login
+            claims = get_easy_auth_claims()
+            if not claims:
+                # Not authenticated - allow landing page to show
+                return
+            # Authenticated - continue processing to set role
+        
         # Skip for static files
         if request.path.startswith('/static/'):
             return
@@ -1355,23 +1365,30 @@ def landing():
         # Check if user is authenticated via Easy Auth
         claims = get_easy_auth_claims()
         
+        # If authenticated AND has valid role in session, redirect automatically
         if claims and 'role' in session:
-            # User is authenticated, redirect to appropriate dashboard
             role = session.get('role')
-            if role == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            elif role == 'resident':
-                return redirect(url_for('resident_dashboard'))
-            elif role == 'unauthorized':
-                # User is authenticated but not authorized
-                user_email = claims.get('email', 'Unknown')
-                logger.warning(f"🚨 Unauthorized user attempted access: {user_email}")
-                return render_template('error.html', 
-                                     message='Access Denied',
-                                     details=f'Your account ({user_email}) is authenticated but not authorized to access this application. Please contact your administrator.'), 403
+            
+            # Only auto-redirect if explicitly requested via query param
+            # This allows users to see landing page even when authenticated
+            auto_redirect = request.args.get('auto', 'true').lower() == 'true'
+            
+            if auto_redirect:
+                if role == 'admin':
+                    return redirect(url_for('admin_dashboard'))
+                elif role == 'resident':
+                    return redirect(url_for('resident_dashboard'))
+                elif role == 'unauthorized':
+                    user_email = claims.get('email', 'Unknown')
+                    logger.warning(f"🚨 Unauthorized user attempted access: {user_email}")
+                    return render_template('error.html', 
+                                         message='Access Denied',
+                                         details=f'Your account ({user_email}) is authenticated but not authorized to access this application. Please contact your administrator.'), 403
         
         # Show landing page with login options
-        return render_template('landing.html')
+        # This allows anonymous users to choose their login method
+        # And allows authenticated users to see a welcome page if auto=false
+        return render_template('landing.html', authenticated=claims is not None, user_email=claims.get('email') if claims else None)
         
     except Exception as e:
         logger.error(f"❌ Error in landing route: {str(e)}", exc_info=True)
