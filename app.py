@@ -657,8 +657,11 @@ def setup_session_from_easy_auth_middleware():
         user_roles = claims.get('roles', [])
         if 'Admin' in user_roles:
             is_admin = True
+            session['role'] = 'admin'
+            session['user_email'] = user_email
             logger.info(f"✅ ADMIN AUTHORIZED via Azure AD app role: {user_email}")
             logger.info(f"   User roles: {user_roles}")
+            return  # Admin authorized - exit middleware
         
         # METHOD 2: Fallback to SharePoint admin list check (if not already admin)
         if not is_admin and user_email:
