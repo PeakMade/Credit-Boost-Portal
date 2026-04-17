@@ -443,6 +443,8 @@ def get_easy_auth_claims():
             logger.info(f"   {claim.get('typ')}: {claim.get('val')}")
         
         # Extract OID and Tenant ID first (primary identity)
+        roles = []  # Initialize roles list
+        
         for claim in claims.get('claims', []):
             claim_type = claim.get('typ')
             claim_value = claim.get('val')
@@ -454,6 +456,11 @@ def get_easy_auth_claims():
             if claim_type == 'http://schemas.microsoft.com/identity/claims/tenantid':
                 tenant_id = claim_value
                 logger.info(f"🔑 Extracted Tenant ID: {tenant_id[:16]}...")
+            
+            # Extract Azure AD app roles
+            if claim_type == 'roles':
+                roles.append(claim_value)
+                logger.info(f"🎭 Found role: {claim_value}")
         
         # Look for email claim and other user info
         for claim in claims.get('claims', []):
@@ -499,6 +506,7 @@ def get_easy_auth_claims():
             'name': user_name or user_email,
             'object_id': object_id,
             'tenant_id': tenant_id,
+            'roles': roles,  # Include Azure AD app roles
             'identity_provider': claims.get('identity_provider', 'aad'),
             'raw_claims': claims
         }
@@ -639,7 +647,16 @@ def setup_session_from_easy_auth_middleware():
         # CRITICAL SECURITY: Check admin FIRST, before checking resident match
         # This ensures admins are recognized even if they also have a resident record
         is_admin = False
-        if user_email:
+        
+        # METHOD 1: Check Azure AD app roles (PREFERRED)
+        user_roles = claims.get('roles', [])
+        if 'Admin' in user_roles:
+            is_admin = True
+            logger.info(f"✅ ADMIN AUTHORIZED via Azure AD app role: {user_email}")
+            logger.info(f"   User roles: {user_roles}")
+        
+        # METHOD 2: Fallback to SharePoint admin list check (if not already admin)
+        if not is_admin and user_email:
             from utils.sharepoint_verification import check_admin_authorization
             is_admin = check_admin_authorization(user_email)
             
@@ -1203,29 +1220,47 @@ def debug_ping():
 @app.route('/debug-auth')
 def debug_auth():
     """
-    Diagnostic endpoint to inspect Easy Auth state.
-    Remove or secure this in production!
+    Diagnostic endpoint to inspect Easy Auth state and Azure AD roles.
+    Shows all claims including app roles for debugging authorization.
     """
     try:
         claims = get_easy_auth_claims()
         
+        # Extract roles specifically for display
+        user_roles = claims.get('roles', []) if claims else []
+        has_admin_role = 'Admin' in user_roles if user_roles else False
+        
         return {
-            'easy_auth_claims': claims,
+            'authentication_status': 'Authenticated' if claims else 'Not Authenticated',
+            'user_info': {
+                'email': claims.get('email') if claims else 'Not available',
+                'name': claims.get('name') if claims else 'Not available',
+                'object_id': claims.get('object_id', 'Not available')[:16] + '...' if claims and claims.get('object_id') else 'Not available',
+            },
+            'azure_ad_roles': {
+                'roles_found': user_roles,
+                'has_admin_role': has_admin_role,
+                'role_count': len(user_roles),
+                'interpretation': 'Admin role assigned' if has_admin_role else 'No Admin role - only Default Access' if not user_roles else 'Other roles assigned'
+            },
             'session_data': {
                 'role': session.get('role'),
                 'user_email': session.get('user_email'),
                 'resident_id': session.get('resident_id')
             },
             'easy_auth_headers': {
-                'X-MS-CLIENT-PRINCIPAL': request.headers.get('X-MS-CLIENT-PRINCIPAL', 'Not present')[:100] if request.headers.get('X-MS-CLIENT-PRINCIPAL') else 'Not present',
+                'X-MS-CLIENT-PRINCIPAL': 'Present (base64 decoded above)' if request.headers.get('X-MS-CLIENT-PRINCIPAL') else 'Not present',
                 'X-MS-CLIENT-PRINCIPAL-NAME': request.headers.get('X-MS-CLIENT-PRINCIPAL-NAME', 'Not present'),
                 'X-MS-CLIENT-PRINCIPAL-ID': request.headers.get('X-MS-CLIENT-PRINCIPAL-ID', 'Not present'),
                 'X-MS-CLIENT-PRINCIPAL-IDP': request.headers.get('X-MS-CLIENT-PRINCIPAL-IDP', 'Not present')
             },
+            'raw_claims_summary': {
+                'claim_count': len(claims.get('raw_claims', {}).get('claims', [])) if claims and claims.get('raw_claims') else 0,
+                'claim_types': [c.get('typ') for c in claims.get('raw_claims', {}).get('claims', [])][:20] if claims and claims.get('raw_claims') else []
+            },
+            'full_claims': claims,
             'request_path': request.path,
-            'debug_mode': app.debug,
-            'residents_loaded': len(get_residents()) if _residents_cache is not None else 0,
-            'residents_cache_initialized': _residents_cache is not None
+            'debug_mode': app.debug
         }, 200
     except Exception as e:
         logger.error(f"❌ Error in debug-auth route: {str(e)}", exc_info=True)
@@ -1234,6 +1269,31 @@ def debug_auth():
             'status': 'error',
             'traceback': str(e)
         }, 500
+
+
+@app.route('/.auth/me')
+def auth_me():
+    """
+    Mirror Azure's /.auth/me endpoint for local debugging.
+    In production, Easy Auth provides this automatically.
+    """
+    try:
+        claims = get_easy_auth_claims()
+        if not claims:
+            return {'error': 'Not authenticated'}, 401
+        
+        # Format similar to Azure's /.auth/me endpoint
+        return [{
+            'provider_name': claims.get('identity_provider', 'aad'),
+            'user_id': claims.get('object_id'),
+            'user_claims': claims.get('raw_claims', {}).get('claims', []) if claims.get('raw_claims') else [],
+            'access_token': None,  # Not exposed for security
+            'expires_on': None,
+            'id_token': None,  # Not exposed for security
+        }], 200
+    except Exception as e:
+        logger.error(f"❌ Error in /.auth/me route: {str(e)}", exc_info=True)
+        return {'error': str(e)}, 500
 
 
 # ============= GLOBAL ERROR HANDLERS =============

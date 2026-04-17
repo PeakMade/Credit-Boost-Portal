@@ -919,31 +919,73 @@ def check_admin_authorization(email):
         }
         
         logger.info(f"Resolving SharePoint site for admin list: {site_hostname}{site_path}")
+        logger.info(f"Graph API URL: {graph_site_url}")
         site_response = requests.get(graph_site_url, headers=headers, timeout=10)
         
+        logger.info(f"Site resolution response status: {site_response.status_code}")
+        
         if site_response.status_code == 401:
-            logger.error(f"❌ 401 Unauthorized accessing SharePoint site - token may lack permissions")
+            logger.error(f"❌ 401 Unauthorized accessing SharePoint site")
+            logger.error(f"   Graph URL: {graph_site_url}")
+            logger.error(f"   Response: {site_response.text[:500]}")
             logger.error(f"   Required permission: Sites.Read.All or Sites.FullControl.All")
-            logger.error(f"   Check app registration in Azure AD for SharePoint tenant")
             return False
         
-        site_response.raise_for_status()
+        if site_response.status_code != 200:
+            logger.error(f"❌ Error {site_response.status_code} accessing SharePoint site")
+            logger.error(f"   Graph URL: {graph_site_url}")
+            logger.error(f"   Response: {site_response.text[:500]}")
+            return False
+        
         site_data = site_response.json()
-        site_id = site_data["id"]
+        site_id = site_data.get("id")
+        
+        if not site_id:
+            logger.error(f"❌ Site ID not found in response")
+            logger.error(f"   Response keys: {list(site_data.keys())}")
+            return False
+        
+        logger.info(f"✅ Site ID resolved: {site_id[:40]}...")
         
         # Get admin list ID from environment
         admin_list_id = os.environ.get('SHAREPOINT_ADMIN_LIST_ID', 'c07805eb-b91c-47df-ac6e-b8dc811862c0')
         
-        logger.info(f"🔍 Checking admin authorization for {email} in list {admin_list_id}")
+        logger.info(f"🔍 Checking admin authorization for {email}")
+        logger.info(f"   Site ID: {site_id[:40]}...")
+        logger.info(f"   List ID: {admin_list_id}")
         
         # Query SharePoint admin list
         list_items_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{admin_list_id}/items?expand=fields"
-        items_response = requests.get(list_items_url, headers=headers)
-        items_response.raise_for_status()
+        logger.info(f"   Graph URL: {list_items_url}")
+        
+        items_response = requests.get(list_items_url, headers=headers, timeout=10)
+        logger.info(f"📥 List query response status: {items_response.status_code}")
+        
+        if items_response.status_code == 401:
+            logger.error(f"❌ 401 Unauthorized accessing admin list")
+            logger.error(f"   Response: {items_response.text[:500]}")
+            return False
+        
+        if items_response.status_code == 404:
+            logger.error(f"❌ 404 Not Found - admin list does not exist")
+            logger.error(f"   List ID: {admin_list_id}")
+            logger.error(f"   Response: {items_response.text[:500]}")
+            return False
+        
+        if items_response.status_code != 200:
+            logger.error(f"❌ Error {items_response.status_code} accessing admin list")
+            logger.error(f"   Response: {items_response.text[:500]}")
+            return False
+        
         items_data = items_response.json()
         
         items = items_data.get("value", [])
-        logger.info(f"Found {len(items)} admin records in SharePoint list")
+        logger.info(f"✅ Found {len(items)} admin records in SharePoint list")
+        
+        # Log sample fields for debugging (first item only)
+        if len(items) > 0:
+            sample_fields = items[0].get("fields", {})
+            logger.info(f"📋 Sample admin record field names: {list(sample_fields.keys())}")
         
         # Search for matching admin
         for item in items:
@@ -957,7 +999,10 @@ def check_admin_authorization(email):
             ).lower().strip()
             
             if not admin_email:
+                logger.debug(f"   Skipping record with no email")
                 continue
+            
+            logger.debug(f"   Comparing: list_email='{admin_email}' vs user_email='{email}'")
             
             # Check if email matches
             if admin_email == email:
