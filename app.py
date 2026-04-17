@@ -535,15 +535,10 @@ def setup_session_from_easy_auth_middleware():
         if request.path in ['/health', '/debug-ping', '/debug-auth']:
             return
         
-        # Allow anonymous access to landing page (for login selection)
+        # Skip session setup for landing page - let user choose their login path
+        # Session will be established when they navigate to admin/resident routes
         if request.path in ['/', '/login']:
-            # Only proceed with auth if user is already authenticated
-            # This allows the landing page to be shown without forcing login
-            claims = get_easy_auth_claims()
-            if not claims:
-                # Not authenticated - allow landing page to show
-                return
-            # Authenticated - continue processing to set role
+            return
         
         # Skip for static files
         if request.path.startswith('/static/'):
