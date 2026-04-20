@@ -1669,6 +1669,17 @@ def admin_dashboard():
     # Calculate total outstanding balance
     total_outstanding = sum(r.get('total_balance', 0) if r.get('total_balance', 0) > 0 else r.get('amount_past_due', 0) for r in source_residents)
     
+    # Diagnostic logging for outstanding balances
+    residents_with_balance = [r for r in source_residents if r.get('total_balance', 0) > 0]
+    if residents_with_balance:
+        logger.info(f"📊 OUTSTANDING BALANCE BREAKDOWN (Data Source: {data_source}):")
+        logger.info(f"   Total Outstanding: ${total_outstanding:,.2f}")
+        logger.info(f"   Residents with balance: {len(residents_with_balance)}")
+        for r in residents_with_balance[:10]:  # Log first 10
+            logger.info(f"      {r.get('name', 'Unknown')}: ${r.get('total_balance', 0):,.2f} (days_late={r.get('days_late', 0)})")
+        if len(residents_with_balance) > 10:
+            logger.info(f"      ... and {len(residents_with_balance) - 10} more")
+    
     # Calculate average days late (only for delinquent accounts)
     delinquent_with_days = [r.get('days_late', 0) for r in source_residents if r.get('days_late', 0) > 0]
     avg_days_late = sum(delinquent_with_days) / len(delinquent_with_days) if delinquent_with_days else 0
