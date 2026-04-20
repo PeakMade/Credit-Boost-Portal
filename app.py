@@ -657,6 +657,7 @@ def setup_session_from_easy_auth_middleware():
         user_roles = claims.get('roles', [])
         if 'Admin' in user_roles:
             is_admin = True
+            session.permanent = True  # Enforce PERMANENT_SESSION_LIFETIME (1 hour)
             session['role'] = 'admin'
             session['user_email'] = user_email
             logger.info(f"✅ ADMIN AUTHORIZED via Azure AD app role: {user_email}")
@@ -669,6 +670,7 @@ def setup_session_from_easy_auth_middleware():
             is_admin = check_admin_authorization(user_email)
             
             if is_admin:
+                session.permanent = True  # Enforce PERMANENT_SESSION_LIFETIME (1 hour)
                 session['role'] = 'admin'
                 session['user_email'] = user_email
                 logger.info(f"✅ ADMIN AUTHORIZED: email={user_email}")
@@ -677,6 +679,7 @@ def setup_session_from_easy_auth_middleware():
         # User is not admin - check if they have a valid resident record
         if resident:
             # Regular resident user with matched record
+            session.permanent = True  # Enforce PERMANENT_SESSION_LIFETIME (1 hour)
             session['role'] = 'resident'
             session['resident_id'] = resident_id
             session['user_email'] = user_email
@@ -685,6 +688,7 @@ def setup_session_from_easy_auth_middleware():
             # CRITICAL SECURITY: No match found - DENY ACCESS
             # Do NOT default to any resident account
             # User is authenticated but not authorized for this application
+            session.permanent = True  # Enforce PERMANENT_SESSION_LIFETIME (1 hour)
             session['role'] = 'unauthorized'
             session['user_email'] = user_email
             logger.warning(f"🚨 SECURITY: Unauthorized access attempt - authenticated user not found in system")
@@ -1414,11 +1418,13 @@ def login():
     # Check admin authorization via SharePoint
     from utils.sharepoint_verification import check_admin_authorization
     if password == 'admin' and check_admin_authorization(email):
+        session.permanent = True  # Enforce PERMANENT_SESSION_LIFETIME (1 hour)
         session['role'] = 'admin'
         session['user_email'] = email
         return redirect(url_for('admin_dashboard'))
     elif password == 'resident':
         # All users with correct password become residents
+        session.permanent = True  # Enforce PERMANENT_SESSION_LIFETIME (1 hour)
         session['role'] = 'resident'
         session['user_email'] = email
         
@@ -1441,9 +1447,11 @@ def login():
 def select_role():
     role = request.form.get('role')
     if role == 'resident':
+        session.permanent = True  # Enforce PERMANENT_SESSION_LIFETIME (1 hour)
         session['role'] = 'resident'
         return redirect(url_for('resident_dashboard'))
     elif role == 'admin':
+        session.permanent = True  # Enforce PERMANENT_SESSION_LIFETIME (1 hour)
         session['role'] = 'admin'
         return redirect(url_for('admin_dashboard'))
     else:
