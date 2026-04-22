@@ -9,6 +9,44 @@ from openpyxl.utils import get_column_letter
 from datetime import datetime
 
 
+def mask_email(email):
+    """Mask email address for privacy"""
+    if not email:
+        return ''
+    try:
+        if '@' not in email:
+            return '***@***'
+        local, domain = email.split('@', 1)
+        if len(local) <= 2:
+            masked_local = local[0] + '*'
+        else:
+            masked_local = local[0] + '*' * (len(local) - 2) + local[-1]
+        return f"{masked_local}@{domain}"
+    except Exception:
+        return '***@***'
+
+
+def mask_phone(phone):
+    """Mask phone number for privacy"""
+    if not phone:
+        return ''
+    try:
+        digits = ''.join(filter(str.isdigit, str(phone)))
+        if len(digits) < 4:
+            return '***-***-****'
+        last_four = digits[-4:]
+        return f"***-***-{last_four}"
+    except Exception:
+        return '***-***-****'
+
+
+def mask_dob(dob):
+    """Mask date of birth for privacy"""
+    if not dob:
+        return ''
+    return '**/**/****'
+
+
 def auto_adjust_column_width(worksheet, extra_width=2):
     """
     Auto-adjust column widths based on content
@@ -117,7 +155,7 @@ def create_excel_export(data, headers, title="Export", sheet_name="Data"):
 
 
 def create_resident_list_export(residents):
-    """Export resident list"""
+    """Export resident list with masked PII"""
     headers = ['Account Number', 'Name', 'Email', 'Unit', 'Enrollment Status', 'Monthly Rent', 'Lease Start']
     data = []
     
@@ -132,7 +170,7 @@ def create_resident_list_export(residents):
         data.append({
             'Account Number': resident.get('account_number', f"ACC2024{resident.get('id', ''):06d}"),
             'Name': resident.get('name', ''),
-            'Email': resident.get('email', ''),
+            'Email': mask_email(resident.get('email', '')),  # MASKED FOR PRIVACY
             'Unit': resident.get('unit', ''),
             'Enrollment Status': enrollment_status,
             'Monthly Rent': f"${resident.get('monthly_rent', 0):,.2f}",
@@ -187,15 +225,20 @@ def create_disputes_export(disputes):
 
 
 def create_audit_logs_export(logs):
-    """Export audit logs"""
+    """Export audit logs with masked email addresses"""
     headers = ['ID', 'Timestamp', 'User', 'Action', 'Details']
     data = []
     
     for log in logs:
+        user = log.get('user', '')
+        # Mask user field if it's an email address
+        if user and '@' in user:
+            user = mask_email(user)
+        
         data.append({
             'ID': log.get('id', ''),
             'Timestamp': log.get('timestamp', ''),
-            'User': log.get('user', ''),
+            'User': user,  # MASKED IF EMAIL
             'Action': log.get('action', ''),
             'Details': log.get('details', '')
         })
