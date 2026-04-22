@@ -263,7 +263,6 @@
       {{ resident.first_name }}
     </button>
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu" style="box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-      <li><a class="dropdown-item" href="{{ url_for('resident_profile') }}"><i class="bi bi-person"></i> Profile</a></li>
       <li><a class="dropdown-item" href="{{ url_for('resident_settings') }}"><i class="bi bi-gear"></i> Settings</a></li>
       <li><hr class="dropdown-divider"></li>
       <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
@@ -379,9 +378,9 @@
           <dt class="col-sm-5">Name:</dt>
           <dd class="col-sm-7">{{ resident.name }}</dd>
           <dt class="col-sm-5">Email:</dt>
-          <dd class="col-sm-7">{{ resident.email }}</dd>
+          <dd class="col-sm-7">{{ resident.email|mask_email }}</dd>
           <dt class="col-sm-5">Phone:</dt>
-          <dd class="col-sm-7">{{ resident.phone }}</dd>
+          <dd class="col-sm-7">{{ resident.phone|mask_phone }}</dd>
           <dt class="col-sm-5">Date of Birth:</dt>
           <dd class="col-sm-7">{{ resident.dob|mask_dob }}</dd>
           <dt class="col-sm-5">Property:</dt>

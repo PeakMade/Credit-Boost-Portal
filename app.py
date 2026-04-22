@@ -232,6 +232,46 @@ def mask_dob_filter(value):
         return ''
     return '**/**/****'
 
+# Custom Jinja filter for masking email
+@app.template_filter('mask_email')
+def mask_email_filter(value):
+    """Mask email address for privacy (show first char + domain)"""
+    if not value:
+        return ''
+    try:
+        email_str = str(value)
+        if '@' not in email_str:
+            return '***@***'
+        
+        local, domain = email_str.split('@', 1)
+        if len(local) <= 2:
+            masked_local = local[0] + '*'
+        else:
+            # Show first char and last char, mask middle
+            masked_local = local[0] + '*' * (len(local) - 2) + local[-1]
+        
+        return f"{masked_local}@{domain}"
+    except Exception:
+        return '***@***'
+
+# Custom Jinja filter for masking phone
+@app.template_filter('mask_phone')
+def mask_phone_filter(value):
+    """Mask phone number for privacy (show last 4 digits only)"""
+    if not value:
+        return ''
+    try:
+        # Remove all non-digit characters
+        digits = ''.join(filter(str.isdigit, str(value)))
+        if len(digits) < 4:
+            return '***-***-****'
+        
+        # Show last 4 digits only
+        last_four = digits[-4:]
+        return f"***-***-{last_four}"
+    except Exception:
+        return '***-***-****'
+
 # Custom Jinja filter to filter payments during enrollment
 @app.template_filter('enrolled_payments')
 def enrolled_payments_filter(payments, enrollment_history):
@@ -1415,12 +1455,16 @@ def login():
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '').strip()
     
+    if not email or not password:
+        return render_template('landing.html', error='Please provide both email and password')
+    
     # Check admin authorization via SharePoint
     from utils.sharepoint_verification import check_admin_authorization
     if password == 'admin' and check_admin_authorization(email):
         session.permanent = True  # Enforce PERMANENT_SESSION_LIFETIME (1 hour)
         session['role'] = 'admin'
         session['user_email'] = email
+        logger.info(f"✅ DEV LOGIN: Admin - {email}")
         return redirect(url_for('admin_dashboard'))
     elif password == 'resident':
         # All users with correct password become residents
@@ -1437,6 +1481,9 @@ def login():
         
         if resident_id:
             session['resident_id'] = resident_id
+            logger.info(f"✅ DEV LOGIN: Resident - {email} (ID: {resident_id})")
+        else:
+            logger.warning(f"⚠️ DEV LOGIN: Resident - {email} (no matching record, using generic)")
         
         return redirect(url_for('resident_dashboard'))
     else:
@@ -1591,24 +1638,6 @@ def resident_settings():
     resident_id = session.get('resident_id')
     resident = get_resident_by_id(resident_id)
     return render_template('resident/settings.html', resident=resident)
-
-
-@app.route('/resident/profile', methods=['GET', 'POST'])
-@require_resident
-def resident_profile():
-    resident_id = session.get('resident_id')
-    resident = get_resident_by_id(resident_id)
-    
-    if request.method == 'POST':
-        resident['name'] = request.form.get('name', resident['name'])
-        resident['dob'] = request.form.get('dob', resident['dob'])
-        resident['address'] = request.form.get('address', resident['address'])
-        resident['last4_ssn'] = request.form.get('last4_ssn', resident['last4_ssn'])
-        
-        flash('Profile updated successfully!', 'success')
-        return redirect(url_for('resident_rent_reporting'))
-    
-    return render_template('resident/profile.html', resident=resident)
 
 
 @app.route('/resident/opt-out', methods=['GET', 'POST'])
