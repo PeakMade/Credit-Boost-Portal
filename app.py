@@ -1522,9 +1522,9 @@ def logout():
     logger.info(f"🔓 User logged out from app: email={user_email}, role={user_role}, resident_id={resident_id}")
     logger.info(f"   Session cleared (app-only logout, Microsoft account remains signed in)")
     
-    # Create response that redirects to landing page
-    # This clears the app session without triggering global Microsoft logout
-    response = make_response(redirect(url_for('landing')))
+    # Create response that redirects to landing page with logged_out flag
+    # This signals the UI to force account selection on next login
+    response = make_response(redirect(url_for('landing', logged_out='true')))
     
     # Clear Easy Auth session cookie (app-only, doesn't affect global Microsoft sign-in)
     response.set_cookie('AppServiceAuthSession', '', expires=0, path='/', httponly=True, secure=True, samesite='Lax')

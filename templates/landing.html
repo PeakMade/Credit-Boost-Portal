@@ -58,14 +58,15 @@
                 
                 {% else %}
                 <!-- PRODUCTION MODE - Easy Auth Login Buttons -->
+                {% set prompt_param = '&prompt=select_account' if request.args.get('logged_out') else '' %}
                 <div class="d-grid gap-3 mb-3">
-                    <a href="/.auth/login/external_oidc?post_login_redirect_uri=/resident/dashboard" class="btn btn-primary btn-lg">
+                    <a href="/.auth/login/external_oidc?post_login_redirect_uri=/resident/dashboard{{ prompt_param }}" class="btn btn-primary btn-lg">
                         <i class="bi bi-person"></i> Resident Login
                     </a>
                 </div>
                 
                 <div class="d-grid gap-3">
-                    <a href="/.auth/login/aad?post_login_redirect_uri=/admin/dashboard" class="btn btn-secondary btn-lg">
+                    <a href="/.auth/login/aad?post_login_redirect_uri=/admin/dashboard{{ prompt_param }}" class="btn btn-secondary btn-lg">
                         <i class="bi bi-shield-check"></i> Admin Login
                     </a>
                 </div>
