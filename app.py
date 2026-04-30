@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify, make_response
 from flask_cors import CORS, cross_origin
 from werkzeug.exceptions import HTTPException
 from datetime import datetime
@@ -1509,7 +1509,8 @@ def select_role():
 @app.route('/logout')
 def logout():
     """
-    Logout route - clears Flask session and redirects to Easy Auth logout.
+    Logout route - clears Flask session and app authentication only.
+    Does NOT log user out of their Microsoft account globally.
     """
     user_email = session.get('user_email', 'unknown')
     user_role = session.get('role', 'unknown')
@@ -1518,12 +1519,38 @@ def logout():
     # Clear ALL session data
     session.clear()
     
-    logger.info(f"🔓 User logged out: email={user_email}, role={user_role}, resident_id={resident_id}")
-    logger.info(f"   Session cleared completely")
+    logger.info(f"🔓 User logged out from app: email={user_email}, role={user_role}, resident_id={resident_id}")
+    logger.info(f"   Session cleared (app-only logout, Microsoft account remains signed in)")
+    
+    # Create response that redirects to landing page
+    # This clears the app session without triggering global Microsoft logout
+    response = make_response(redirect(url_for('landing')))
+    
+    # Clear Easy Auth session cookie (app-only, doesn't affect global Microsoft sign-in)
+    response.set_cookie('AppServiceAuthSession', '', expires=0, path='/', httponly=True, secure=True, samesite='Lax')
+    
+    return response
+
+
+@app.route('/logout/full')
+def logout_full():
+    """
+    Full logout route - clears app session AND logs out of Microsoft account globally.
+    Use this only when user wants to sign out of ALL Microsoft services.
+    """
+    user_email = session.get('user_email', 'unknown')
+    user_role = session.get('role', 'unknown')
+    resident_id = session.get('resident_id', 'N/A')
+    
+    # Clear ALL session data
+    session.clear()
+    
+    logger.info(f"🔓 User logged out fully (global): email={user_email}, role={user_role}, resident_id={resident_id}")
+    logger.info(f"   Full Microsoft account logout initiated")
     
     # Easy Auth logout endpoint with redirect back to landing page
-    # Build the post-logout redirect URL dynamically
-    post_logout_url = request.host_url.rstrip('/')  # Get base URL (works for both local and production)
+    # This will log the user out of their Microsoft account globally
+    post_logout_url = request.host_url.rstrip('/')
     logout_url = f'/.auth/logout?post_logout_redirect_uri={post_logout_url}'
     
     return redirect(logout_url)
