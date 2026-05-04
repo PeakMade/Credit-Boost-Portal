@@ -1523,10 +1523,9 @@ def logout():
     logger.info(f"🔓 User logged out from app: email={user_email}, role={user_role}, resident_id={resident_id}")
     logger.info(f"   Easy Auth logout initiated (app-only, other Microsoft services remain signed in)")
     
-    # Use Easy Auth logout endpoint to clear app authentication
-    # Redirect to landing page with logged_out=true to force account selection on next login
-    post_logout_url = f"{request.host_url.rstrip('/')}/?logged_out=true"
-    logout_url = f'/.auth/logout?post_logout_redirect_uri={post_logout_url}'
+    # Use Easy Auth logout endpoint with simple path redirect
+    # This clears the Easy Auth session and redirects to landing page with logged_out flag
+    logout_url = '/.auth/logout?post_logout_redirect_uri=/?logged_out=true'
     
     return redirect(logout_url)
 
@@ -1534,10 +1533,8 @@ def logout():
 @app.route('/logout/full')
 def logout_full():
     """
-    Full logout route - clears app session AND logs out of Microsoft account globally.
-    WARNING: This logs the user out of ALL Microsoft services (Outlook, Teams, OneDrive, etc.).
-    Use this only when user explicitly wants to sign out of their entire Microsoft account.
-    For normal app logout, use /logout instead.
+    Full logout route - clears app session AND calls Easy Auth logout endpoint.
+    Use /logout instead for standard logout behavior.
     """
     user_email = session.get('user_email', 'unknown')
     user_role = session.get('role', 'unknown')
@@ -1546,13 +1543,11 @@ def logout_full():
     # Clear ALL session data
     session.clear()
     
-    logger.info(f"🔓 User logged out fully (GLOBAL): email={user_email}, role={user_role}, resident_id={resident_id}")
-    logger.info(f"   ⚠️ Full Microsoft account logout initiated - affects ALL Microsoft services")
+    logger.info(f"🔓 User full logout: email={user_email}, role={user_role}, resident_id={resident_id}")
+    logger.info(f"   Easy Auth logout endpoint called")
     
-    # Easy Auth logout endpoint with redirect back to landing page
-    # This will log the user out of their Microsoft account globally
-    post_logout_url = f"{request.host_url.rstrip('/')}/?logged_out=true"
-    logout_url = f'/.auth/logout?post_logout_redirect_uri={post_logout_url}'
+    # Easy Auth logout endpoint with simple path redirect
+    logout_url = '/.auth/logout?post_logout_redirect_uri=/?logged_out=true'
     
     return redirect(logout_url)
 
