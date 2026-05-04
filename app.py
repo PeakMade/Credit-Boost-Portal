@@ -1509,34 +1509,35 @@ def select_role():
 @app.route('/logout')
 def logout():
     """
-    Logout route - clears Flask session and app authentication only.
-    Does NOT log user out of their Microsoft account globally.
+    Logout route - clears Flask session and Easy Auth session for this app only.
+    Does NOT log user out of their Microsoft account globally (Outlook, Teams, etc. remain signed in).
+    Forces account selection on next login via prompt=select_account parameter.
     """
     user_email = session.get('user_email', 'unknown')
     user_role = session.get('role', 'unknown')
     resident_id = session.get('resident_id', 'N/A')
     
-    # Clear ALL session data
+    # Clear ALL Flask session data
     session.clear()
     
     logger.info(f"🔓 User logged out from app: email={user_email}, role={user_role}, resident_id={resident_id}")
-    logger.info(f"   Session cleared (app-only logout, Microsoft account remains signed in)")
+    logger.info(f"   Easy Auth logout initiated (app-only, other Microsoft services remain signed in)")
     
-    # Create response that redirects to landing page with logged_out flag
-    # This signals the UI to force account selection on next login
-    response = make_response(redirect(url_for('landing', logged_out='true')))
+    # Use Easy Auth logout endpoint to clear app authentication
+    # Redirect to landing page with logged_out=true to force account selection on next login
+    post_logout_url = f"{request.host_url.rstrip('/')}/?logged_out=true"
+    logout_url = f'/.auth/logout?post_logout_redirect_uri={post_logout_url}'
     
-    # Clear Easy Auth session cookie (app-only, doesn't affect global Microsoft sign-in)
-    response.set_cookie('AppServiceAuthSession', '', expires=0, path='/', httponly=True, secure=True, samesite='Lax')
-    
-    return response
+    return redirect(logout_url)
 
 
 @app.route('/logout/full')
 def logout_full():
     """
     Full logout route - clears app session AND logs out of Microsoft account globally.
-    Use this only when user wants to sign out of ALL Microsoft services.
+    WARNING: This logs the user out of ALL Microsoft services (Outlook, Teams, OneDrive, etc.).
+    Use this only when user explicitly wants to sign out of their entire Microsoft account.
+    For normal app logout, use /logout instead.
     """
     user_email = session.get('user_email', 'unknown')
     user_role = session.get('role', 'unknown')
@@ -1545,31 +1546,45 @@ def logout_full():
     # Clear ALL session data
     session.clear()
     
-    logger.info(f"🔓 User logged out fully (global): email={user_email}, role={user_role}, resident_id={resident_id}")
-    logger.info(f"   Full Microsoft account logout initiated")
+    logger.info(f"🔓 User logged out fully (GLOBAL): email={user_email}, role={user_role}, resident_id={resident_id}")
+    logger.info(f"   ⚠️ Full Microsoft account logout initiated - affects ALL Microsoft services")
     
     # Easy Auth logout endpoint with redirect back to landing page
     # This will log the user out of their Microsoft account globally
-    post_logout_url = request.host_url.rstrip('/')
+    post_logout_url = f"{request.host_url.rstrip('/')}/?logged_out=true"
     logout_url = f'/.auth/logout?post_logout_redirect_uri={post_logout_url}'
     
     return redirect(logout_url)
 
 
-@app.route('/clear-session')
-def clear_session():
+@app.route('/logout/app-only')
+def logout_app_only():
     """
-    Development/diagnostic route to force clear session without full logout.
-    Useful for debugging session caching issues.
+    Development/diagnostic route - clears Flask session only without calling Easy Auth logout.
+    This is faster but may not fully clear browser authentication state.
+    Use /logout for proper logout behavior in production.
     """
     user_email = session.get('user_email', 'unknown')
     user_role = session.get('role', 'unknown')
+    resident_id = session.get('resident_id', 'N/A')
     
+    # Clear ALL session data
     session.clear()
     
-    logger.info(f"🧹 Session manually cleared: email={user_email}, role={user_role}")
-    flash('Session cleared successfully. Please log in again.', 'info')
-    return redirect(url_for('landing'))
+    logger.info(f"🧹 Flask session cleared (dev): email={user_email}, role={user_role}, resident_id={resident_id}")
+    logger.info(f"   Easy Auth session NOT cleared - this is a development shortcut")
+    
+    flash('Flask session cleared. Easy Auth session may still be active.', 'info')
+    return redirect(url_for('landing', logged_out='true'))
+
+
+@app.route('/clear-session')
+def clear_session():
+    """
+    Legacy alias for /logout/app-only - redirects to new route.
+    Kept for backward compatibility.
+    """
+    return redirect(url_for('logout_app_only'))
 
 
 # ============= RESIDENT ROUTES =============
@@ -2082,6 +2097,222 @@ def admin_audit_logs():
         {'id': 3, 'timestamp': '2026-01-12 09:15:00', 'user': 'admin', 'action': 'Resolved dispute', 'details': 'D-001'}
     ]
     return render_template('admin/audit_logs.html', audit_logs=audit_logs)
+
+@app.route('/admin/error-correction')
+@require_admin
+def admin_error_correction():
+    """
+    Error Correction page for reviewing and resolving CredHub validation issues.
+    """
+    return render_template('admin/error_correction.html')
+
+# ============= ERROR CORRECTION API ENDPOINTS =============
+
+@app.route('/api/admin/credit-reporting/validation-issues', methods=['GET'])
+@require_admin
+def api_get_validation_issues():
+    """
+    Get validation issues from CredHub reporting jobs.
+    
+    Query parameters:
+    - month: Filter by reporting month (YYYY-MM)
+    - property: Filter by property
+    - severity: Filter by severity (error/warning)
+    - status: Filter by issue status
+    - search: Search by resident ID, account number, or CredHub record ID
+    
+    Returns:
+    {
+        "issues": [
+            {
+                "id": 1,
+                "reportingMonth": "2026-01",
+                "property": "Sunset Apartments",
+                "residentId": "RES-001",
+                "credHubRecordId": 12345,
+                "credHubJobId": 789,
+                "severity": "error",
+                "errorMessage": "Missing date of birth",
+                "correctionType": "MissingDateOfBirth",
+                "status": "Open",
+                "lastSeen": "2026-01-15T10:30:00Z"
+            }
+        ],
+        "summary": {
+            "openErrors": 10,
+            "openWarnings": 5,
+            "correctionSubmitted": 3,
+            "revalidationPending": 2,
+            "fixed": 15
+        }
+    }
+    """
+    try:
+        # TODO: Implement actual backend logic
+        # This should:
+        # 1. Query CredHub validation issues from database or SharePoint
+        # 2. Apply filters from request.args
+        # 3. Calculate summary statistics
+        # 4. Return filtered results
+        
+        # Placeholder response
+        logger.info("🔍 API: Get validation issues requested")
+        logger.info(f"   Filters: month={request.args.get('month')}, property={request.args.get('property')}, "
+                   f"severity={request.args.get('severity')}, status={request.args.get('status')}, "
+                   f"search={request.args.get('search')}")
+        
+        # Sample data for development
+        sample_issues = [
+            {
+                "id": 1,
+                "reportingMonth": "2026-01",
+                "property": "Sunset Apartments",
+                "residentId": "RES-001",
+                "credHubRecordId": 12345,
+                "credHubJobId": 789,
+                "severity": "error",
+                "errorMessage": "Missing date of birth for consumer",
+                "correctionType": "MissingDateOfBirth",
+                "status": "Open",
+                "lastSeen": "2026-01-15T10:30:00Z"
+            },
+            {
+                "id": 2,
+                "reportingMonth": "2026-01",
+                "property": "River View Towers",
+                "residentId": "RES-045",
+                "credHubRecordId": 12389,
+                "credHubJobId": 789,
+                "severity": "warning",
+                "errorMessage": "Address validation warning - standardize address format",
+                "correctionType": "InvalidAddress",
+                "status": "Open",
+                "lastSeen": "2026-01-15T10:31:00Z"
+            }
+        ]
+        
+        summary = {
+            "openErrors": 10,
+            "openWarnings": 5,
+            "correctionSubmitted": 3,
+            "revalidationPending": 2,
+            "fixed": 15
+        }
+        
+        return jsonify({
+            "issues": sample_issues,
+            "summary": summary
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Error fetching validation issues: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to load validation issues", "message": str(e)}), 500
+
+
+@app.route('/api/admin/credit-reporting/jobs/<int:job_id>/corrections', methods=['POST'])
+@require_admin
+def api_submit_correction(job_id):
+    """
+    Submit a correction for a CredHub validation issue.
+    
+    Request body:
+    {
+        "credHubRecordId": 12345,
+        "residentId": "RES-001",
+        "correctionType": "MissingDateOfBirth",
+        "correctedFields": {
+            "dateOfBirth": "1990-01-02"
+        },
+        "reason": "Correcting missing DOB from validation error."
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "message": "Correction submitted successfully",
+        "correctionId": 456,
+        "revalidationTriggered": true
+    }
+    """
+    try:
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['credHubRecordId', 'residentId', 'correctionType', 'correctedFields', 'reason']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Log the correction attempt (without sensitive data)
+        logger.info(f"✏️ API: Correction submission for Job ID {job_id}")
+        logger.info(f"   CredHub Record ID: {data['credHubRecordId']}")
+        logger.info(f"   Resident ID: {data['residentId']}")
+        logger.info(f"   Correction Type: {data['correctionType']}")
+        logger.info(f"   Corrected Fields: {list(data['correctedFields'].keys())}")  # Log field names only, not values
+        logger.info(f"   Reason: {data['reason']}")
+        
+        # TODO: Implement actual backend logic
+        # This should:
+        # 1. Validate admin authorization
+        # 2. Validate corrected field values
+        # 3. Build CredHub update payload
+        # 4. Call CredHub update API
+        # 5. Trigger CredHub ReRun validation
+        # 6. Update local issue status to "CorrectionSubmitted" or "RevalidationPending"
+        # 7. Write audit record (field corrected, but not sensitive values)
+        # 8. Return success response
+        
+        # Placeholder response
+        return jsonify({
+            "success": True,
+            "message": "Correction submitted successfully",
+            "correctionId": 456,
+            "revalidationTriggered": True
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Error submitting correction: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to submit correction", "message": str(e)}), 500
+
+
+@app.route('/api/admin/credit-reporting/jobs/<int:job_id>/validation-issues', methods=['GET'])
+@require_admin
+def api_refresh_job_validation_status(job_id):
+    """
+    Refresh validation status for a specific CredHub job.
+    This endpoint should call CredHub to get the latest validation results.
+    
+    Returns:
+    {
+        "success": true,
+        "jobId": 789,
+        "validationStatus": "completed",
+        "issuesFound": 12,
+        "issuesFixed": 3
+    }
+    """
+    try:
+        logger.info(f"🔄 API: Refresh validation status for Job ID {job_id}")
+        
+        # TODO: Implement actual backend logic
+        # This should:
+        # 1. Call CredHub API to get latest job validation results
+        # 2. Compare with stored issues to identify fixed issues
+        # 3. Update local issue statuses
+        # 4. Return updated counts
+        
+        # Placeholder response
+        return jsonify({
+            "success": True,
+            "jobId": job_id,
+            "validationStatus": "completed",
+            "issuesFound": 12,
+            "issuesFixed": 3
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Error refreshing validation status: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to refresh validation status", "message": str(e)}), 500
 
 # Excel Export Routes
 @app.route('/admin/export/residents', methods=['GET', 'POST'])

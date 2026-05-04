@@ -63,6 +63,30 @@
                         </a>
                     </div>
                 </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-4">
+                        <a href="{{ url_for('admin_error_correction') }}" class="text-decoration-none">
+                            <div class="card border-danger border-2 quick-access-card h-100">
+                                <div class="card-body text-center py-2 px-3">
+                                    <i class="bi bi-exclamation-diamond text-danger" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2 mb-1">Error Correction</h6>
+                                    <p class="text-muted mb-0" style="font-size: 0.8rem;">Resolve CredHub validation issues</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('admin_audit_logs') }}" class="text-decoration-none">
+                            <div class="card border-secondary border-2 quick-access-card h-100">
+                                <div class="card-body text-center py-2 px-3">
+                                    <i class="bi bi-clock-history text-secondary" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2 mb-1">Audit Logs</h6>
+                                    <p class="text-muted mb-0" style="font-size: 0.8rem;">View system activity</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 

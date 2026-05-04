@@ -1,0 +1,717 @@
+{% extends "base.html" %}
+
+{% block title %}Error Correction - Admin Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- User Dropdown in Top-Right Corner -->
+<div style="position: absolute; top: 85px; right: 40px; z-index: 1000;">
+  <div class="dropdown">
+    <button class="btn btn-light dropdown-toggle" type="button" id="adminUserMenu" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; padding: 8px 16px; font-weight: 500;">
+      <i class="bi bi-person-circle"></i>
+      Admin
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminUserMenu" style="box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+      <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+      <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+    </ul>
+  </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="mb-4">
+            <h2 class="mb-1"><i class="bi bi-exclamation-diamond text-danger"></i> Error Correction</h2>
+            <p class="text-muted mb-0">Review and resolve CredHub validation issues from monthly reporting jobs</p>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="bi bi-funnel"></i> Filters</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Reporting Month</label>
+                        <input type="month" class="form-control" id="filterMonth">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Property</label>
+                        <select class="form-select" id="filterProperty">
+                            <option value="">All Properties</option>
+                            <!-- Properties will be loaded dynamically -->
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Severity</label>
+                        <select class="form-select" id="filterSeverity">
+                            <option value="">All</option>
+                            <option value="error">Error</option>
+                            <option value="warning">Warning</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="filterStatus">
+                            <option value="">All</option>
+                            <option value="Open">Open</option>
+                            <option value="InProgress">In Progress</option>
+                            <option value="CorrectionSubmitted">Correction Submitted</option>
+                            <option value="RevalidationPending">Revalidation Pending</option>
+                            <option value="Fixed">Fixed</option>
+                            <option value="StillFailing">Still Failing</option>
+                            <option value="IgnoredWarning">Ignored Warning</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="applyFilters()">
+                            <i class="bi bi-search"></i> Apply
+                        </button>
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-10">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-control" id="filterSearch" placeholder="Search by Resident ID, Account Number, or CredHub Record ID">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-secondary w-100" onclick="clearFilters()">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-2">
+                <div class="card border-danger h-100">
+                    <div class="card-body text-center py-3">
+                        <h3 class="text-danger mb-1" id="statsOpenErrors">0</h3>
+                        <p class="text-muted mb-0 small">Open Errors</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card border-warning h-100">
+                    <div class="card-body text-center py-3">
+                        <h3 class="text-warning mb-1" id="statsOpenWarnings">0</h3>
+                        <p class="text-muted mb-0 small">Open Warnings</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card border-info h-100">
+                    <div class="card-body text-center py-3">
+                        <h3 class="text-info mb-1" id="statsCorrectionSubmitted">0</h3>
+                        <p class="text-muted mb-0 small">Corrections Submitted</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-primary h-100">
+                    <div class="card-body text-center py-3">
+                        <h3 class="text-primary mb-1" id="statsRevalidationPending">0</h3>
+                        <p class="text-muted mb-0 small">Revalidation Pending</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-success h-100">
+                    <div class="card-body text-center py-3">
+                        <h3 class="text-success mb-1" id="statsFixed">0</h3>
+                        <p class="text-muted mb-0 small">Fixed</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Table -->
+        <div class="card">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-table"></i> Validation Issues</h5>
+                <button class="btn btn-sm btn-secondary" onclick="refreshAllStatuses()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh All
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <!-- Loading State -->
+                <div id="loadingState" class="text-center py-5" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading validation issues...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="errorState" class="text-center py-5" style="display: none;">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                    <p class="text-danger mt-2 mb-0">Unable to load validation issues.</p>
+                    <button class="btn btn-sm btn-primary mt-3" onclick="loadValidationIssues()">
+                        <i class="bi bi-arrow-clockwise"></i> Retry
+                    </button>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="text-center py-5" style="display: none;">
+                    <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-2 mb-0">No validation issues found for the selected filters.</p>
+                </div>
+
+                <!-- Table -->
+                <div id="tableContainer" class="table-responsive" style="display: none;">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Reporting Month</th>
+                                <th>Property</th>
+                                <th>Resident ID</th>
+                                <th>CredHub Record ID</th>
+                                <th>CredHub Job ID</th>
+                                <th>Severity</th>
+                                <th>Error Message</th>
+                                <th>Correction Type</th>
+                                <th>Status</th>
+                                <th>Last Seen</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="issuesTableBody">
+                            <!-- Rows will be populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Correction Drawer (Off-canvas Panel) -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="correctionDrawer" style="width: 600px;">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title" id="correctionDrawerTitle">
+            <i class="bi bi-pencil-square"></i> Correction Details
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <!-- Issue Details -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="card-title mb-3">Issue Details</h6>
+                <div class="row mb-2">
+                    <div class="col-5 text-muted">Resident ID:</div>
+                    <div class="col-7 fw-bold" id="detailResidentId">-</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-5 text-muted">Property:</div>
+                    <div class="col-7" id="detailProperty">-</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-5 text-muted">CredHub Job ID:</div>
+                    <div class="col-7" id="detailCredHubJobId">-</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-5 text-muted">CredHub Record ID:</div>
+                    <div class="col-7" id="detailCredHubRecordId">-</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-5 text-muted">Severity:</div>
+                    <div class="col-7" id="detailSeverity">-</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-5 text-muted">Status:</div>
+                    <div class="col-7" id="detailStatus">-</div>
+                </div>
+                <div class="mt-3">
+                    <label class="text-muted small">CredHub Error Message:</label>
+                    <div class="alert alert-danger py-2 px-3 mb-0" id="detailErrorMessage">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Correction Form -->
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title mb-3">Correction Form</h6>
+                
+                <!-- Manual Review Message -->
+                <div id="manualReviewMessage" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-info-circle"></i> This issue requires manual review. Please contact support or investigate the underlying data source.
+                </div>
+
+                <!-- Dynamic Form Container -->
+                <form id="correctionForm">
+                    <div id="correctionFieldsContainer">
+                        <!-- Fields will be populated dynamically based on correction type -->
+                    </div>
+
+                    <!-- Correction Reason (shown for all non-manual corrections) -->
+                    <div id="correctionReasonContainer" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Correction Reason <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="correctionReason" rows="3" placeholder="Explain why this correction is being made..." required></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div id="correctionActionsContainer" style="display: none;">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="submitCorrectionBtn">
+                                <i class="bi bi-check-circle"></i> Submit Correction
+                            </button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Submit Loading State -->
+                <div id="submitLoadingState" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Submitting...</span>
+                    </div>
+                    <p class="text-muted mt-2 mb-0">Submitting correction...</p>
+                </div>
+
+                <!-- Submit Success State -->
+                <div id="submitSuccessState" class="alert alert-success" style="display: none;">
+                    <i class="bi bi-check-circle-fill"></i> Correction submitted. Revalidation has been requested.
+                </div>
+
+                <!-- Submit Error State -->
+                <div id="submitErrorState" class="alert alert-danger" style="display: none;">
+                    <i class="bi bi-exclamation-triangle-fill"></i> <span id="submitErrorMessage">Failed to submit correction.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .badge-severity-error {
+        background-color: #dc3545;
+        color: white;
+    }
+    .badge-severity-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .table tbody tr {
+        cursor: pointer;
+    }
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<script>
+    // Global state
+    let currentIssues = [];
+    let currentIssueData = null;
+
+    // Correction type field mappings
+    const CORRECTION_FIELD_CONFIGS = {
+        'MissingDateOfBirth': [
+            { name: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: true }
+        ],
+        'InvalidAddress': [
+            { name: 'addressLine1', label: 'Address Line 1', type: 'text', required: true },
+            { name: 'addressLine2', label: 'Address Line 2', type: 'text', required: false },
+            { name: 'city', label: 'City', type: 'text', required: true },
+            { name: 'state', label: 'State', type: 'text', required: true, maxlength: 2 },
+            { name: 'zip', label: 'ZIP Code', type: 'text', required: true, pattern: '[0-9]{5}' }
+        ],
+        'InvalidName': [
+            { name: 'firstName', label: 'First Name', type: 'text', required: true },
+            { name: 'middleName', label: 'Middle Name', type: 'text', required: false },
+            { name: 'surname', label: 'Last Name', type: 'text', required: true }
+        ],
+        'InvalidRentAmount': [
+            { name: 'monthlyRentAmount', label: 'Monthly Rent Amount', type: 'number', required: true, step: '0.01', min: '0' }
+        ],
+        'InvalidSSN': [
+            { name: 'ssn', label: 'SSN (Last 4 Digits Only)', type: 'text', required: true, pattern: '[0-9]{4}', maxlength: 4, 
+              placeholder: 'Last 4 digits only' }
+        ],
+        'InvalidPhoneNumber': [
+            { name: 'phoneNumber', label: 'Phone Number', type: 'tel', required: true, pattern: '[0-9]{10}', 
+              placeholder: '10 digits, no formatting' }
+        ],
+        'MissingLeaseStartDate': [
+            { name: 'leaseStartDate', label: 'Lease Start Date', type: 'date', required: true }
+        ],
+        'MissingLeaseEndDate': [
+            { name: 'leaseEndDate', label: 'Lease End Date', type: 'date', required: true }
+        ],
+        'ManualReview': []  // No editable fields
+    };
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadValidationIssues();
+        
+        // Form submission handler
+        document.getElementById('correctionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitCorrection();
+        });
+    });
+
+    // Load validation issues from backend
+    async function loadValidationIssues() {
+        showLoadingState();
+        
+        try {
+            // Build query params from filters
+            const params = new URLSearchParams();
+            const month = document.getElementById('filterMonth').value;
+            const property = document.getElementById('filterProperty').value;
+            const severity = document.getElementById('filterSeverity').value;
+            const status = document.getElementById('filterStatus').value;
+            const search = document.getElementById('filterSearch').value;
+            
+            if (month) params.append('month', month);
+            if (property) params.append('property', property);
+            if (severity) params.append('severity', severity);
+            if (status) params.append('status', status);
+            if (search) params.append('search', search);
+            
+            // TODO: Replace with actual backend endpoint
+            const response = await fetch(`/api/admin/credit-reporting/validation-issues?${params.toString()}`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to load validation issues');
+            }
+            
+            const data = await response.json();
+            currentIssues = data.issues || [];
+            
+            updateSummaryCards(data.summary || {});
+            renderIssuesTable(currentIssues);
+            
+            if (currentIssues.length === 0) {
+                showEmptyState();
+            } else {
+                showTableContainer();
+            }
+        } catch (error) {
+            console.error('Error loading validation issues:', error);
+            showErrorState();
+        }
+    }
+
+    // Update summary cards
+    function updateSummaryCards(summary) {
+        document.getElementById('statsOpenErrors').textContent = summary.openErrors || 0;
+        document.getElementById('statsOpenWarnings').textContent = summary.openWarnings || 0;
+        document.getElementById('statsCorrectionSubmitted').textContent = summary.correctionSubmitted || 0;
+        document.getElementById('statsRevalidationPending').textContent = summary.revalidationPending || 0;
+        document.getElementById('statsFixed').textContent = summary.fixed || 0;
+    }
+
+    // Render issues table
+    function renderIssuesTable(issues) {
+        const tbody = document.getElementById('issuesTableBody');
+        tbody.innerHTML = '';
+        
+        issues.forEach((issue, index) => {
+            const row = document.createElement('tr');
+            row.onclick = () => openCorrectionDrawer(issue);
+            
+            const severityBadge = issue.severity === 'error' 
+                ? '<span class="badge badge-severity-error">ERROR</span>'
+                : '<span class="badge badge-severity-warning">WARNING</span>';
+            
+            const statusBadge = getStatusBadge(issue.status);
+            
+            row.innerHTML = `
+                <td>${issue.reportingMonth || '-'}</td>
+                <td>${issue.property || '-'}</td>
+                <td>${issue.residentId || '-'}</td>
+                <td>${issue.credHubRecordId || '-'}</td>
+                <td>${issue.credHubJobId || '-'}</td>
+                <td>${severityBadge}</td>
+                <td><small>${truncateText(issue.errorMessage, 50)}</small></td>
+                <td><small>${issue.correctionType || '-'}</small></td>
+                <td>${statusBadge}</td>
+                <td><small>${formatDate(issue.lastSeen)}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); openCorrectionDrawer(currentIssues[${index}])">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); refreshIssueStatus(currentIssues[${index}])">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // Get status badge HTML
+    function getStatusBadge(status) {
+        const badges = {
+            'Open': '<span class="badge bg-danger status-badge">Open</span>',
+            'InProgress': '<span class="badge bg-warning status-badge">In Progress</span>',
+            'CorrectionSubmitted': '<span class="badge bg-info status-badge">Correction Submitted</span>',
+            'RevalidationPending': '<span class="badge bg-primary status-badge">Revalidation Pending</span>',
+            'Fixed': '<span class="badge bg-success status-badge">Fixed</span>',
+            'StillFailing': '<span class="badge bg-danger status-badge">Still Failing</span>',
+            'IgnoredWarning': '<span class="badge bg-secondary status-badge">Ignored Warning</span>'
+        };
+        return badges[status] || `<span class="badge bg-secondary status-badge">${status}</span>`;
+    }
+
+    // Open correction drawer
+    function openCorrectionDrawer(issue) {
+        currentIssueData = issue;
+        
+        // Populate issue details
+        document.getElementById('detailResidentId').textContent = issue.residentId || '-';
+        document.getElementById('detailProperty').textContent = issue.property || '-';
+        document.getElementById('detailCredHubJobId').textContent = issue.credHubJobId || '-';
+        document.getElementById('detailCredHubRecordId').textContent = issue.credHubRecordId || '-';
+        document.getElementById('detailSeverity').innerHTML = issue.severity === 'error' 
+            ? '<span class="badge badge-severity-error">ERROR</span>'
+            : '<span class="badge badge-severity-warning">WARNING</span>';
+        document.getElementById('detailStatus').innerHTML = getStatusBadge(issue.status);
+        document.getElementById('detailErrorMessage').textContent = issue.errorMessage || '-';
+        
+        // Build correction form based on correction type
+        buildCorrectionForm(issue.correctionType);
+        
+        // Reset form states
+        resetFormStates();
+        
+        // Open the drawer
+        const drawer = new bootstrap.Offcanvas(document.getElementById('correctionDrawer'));
+        drawer.show();
+    }
+
+    // Build correction form based on type
+    function buildCorrectionForm(correctionType) {
+        const container = document.getElementById('correctionFieldsContainer');
+        const manualReviewMsg = document.getElementById('manualReviewMessage');
+        const reasonContainer = document.getElementById('correctionReasonContainer');
+        const actionsContainer = document.getElementById('correctionActionsContainer');
+        
+        container.innerHTML = '';
+        
+        if (correctionType === 'ManualReview') {
+            // Show manual review message, hide form
+            manualReviewMsg.style.display = 'block';
+            reasonContainer.style.display = 'none';
+            actionsContainer.style.display = 'none';
+            return;
+        }
+        
+        // Hide manual review message, show form
+        manualReviewMsg.style.display = 'none';
+        reasonContainer.style.display = 'block';
+        actionsContainer.style.display = 'block';
+        
+        // Get field config for this correction type
+        const fields = CORRECTION_FIELD_CONFIGS[correctionType] || [];
+        
+        if (fields.length === 0) {
+            container.innerHTML = '<p class="text-muted">No specific fields configured for this correction type.</p>';
+            return;
+        }
+        
+        // Build form fields
+        fields.forEach(field => {
+            const formGroup = document.createElement('div');
+            formGroup.className = 'mb-3';
+            
+            const label = document.createElement('label');
+            label.className = 'form-label';
+            label.textContent = field.label;
+            if (field.required) {
+                label.innerHTML += ' <span class="text-danger">*</span>';
+            }
+            
+            const input = document.createElement('input');
+            input.type = field.type;
+            input.className = 'form-control';
+            input.id = `field_${field.name}`;
+            input.name = field.name;
+            input.required = field.required || false;
+            if (field.placeholder) input.placeholder = field.placeholder;
+            if (field.pattern) input.pattern = field.pattern;
+            if (field.maxlength) input.maxLength = field.maxlength;
+            if (field.step) input.step = field.step;
+            if (field.min) input.min = field.min;
+            
+            formGroup.appendChild(label);
+            formGroup.appendChild(input);
+            container.appendChild(formGroup);
+        });
+    }
+
+    // Submit correction
+    async function submitCorrection() {
+        if (!currentIssueData) return;
+        
+        // Show loading state
+        document.getElementById('correctionForm').style.display = 'none';
+        document.getElementById('submitLoadingState').style.display = 'block';
+        document.getElementById('submitErrorState').style.display = 'none';
+        document.getElementById('submitSuccessState').style.display = 'none';
+        
+        try {
+            // Collect form data
+            const correctedFields = {};
+            const formElements = document.getElementById('correctionFieldsContainer').querySelectorAll('input, select, textarea');
+            formElements.forEach(element => {
+                if (element.name) {
+                    correctedFields[element.name] = element.value;
+                }
+            });
+            
+            const reason = document.getElementById('correctionReason').value;
+            
+            // Build payload - DO NOT log sensitive data
+            const payload = {
+                credHubRecordId: currentIssueData.credHubRecordId,
+                residentId: currentIssueData.residentId,
+                correctionType: currentIssueData.correctionType,
+                correctedFields: correctedFields,
+                reason: reason
+            };
+            
+            // Submit to backend
+            // TODO: Replace with actual backend endpoint
+            const response = await fetch(`/api/admin/credit-reporting/jobs/${currentIssueData.credHubJobId}/corrections`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to submit correction');
+            }
+            
+            // Show success state
+            document.getElementById('submitLoadingState').style.display = 'none';
+            document.getElementById('submitSuccessState').style.display = 'block';
+            
+            // Reload issues after 2 seconds
+            setTimeout(() => {
+                const drawer = bootstrap.Offcanvas.getInstance(document.getElementById('correctionDrawer'));
+                drawer.hide();
+                loadValidationIssues();
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Error submitting correction:', error);
+            document.getElementById('submitLoadingState').style.display = 'none';
+            document.getElementById('submitErrorState').style.display = 'block';
+            document.getElementById('submitErrorMessage').textContent = error.message;
+            document.getElementById('correctionForm').style.display = 'block';
+        }
+    }
+
+    // Refresh single issue status
+    async function refreshIssueStatus(issue) {
+        try {
+            // TODO: Replace with actual backend endpoint
+            const response = await fetch(`/api/admin/credit-reporting/jobs/${issue.credHubJobId}/validation-issues`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to refresh status');
+            }
+            
+            // Reload all issues
+            loadValidationIssues();
+        } catch (error) {
+            console.error('Error refreshing issue status:', error);
+            alert('Failed to refresh status. Please try again.');
+        }
+    }
+
+    // Refresh all statuses
+    async function refreshAllStatuses() {
+        if (confirm('This will refresh the validation status for all issues. Continue?')) {
+            loadValidationIssues();
+        }
+    }
+
+    // Apply filters
+    function applyFilters() {
+        loadValidationIssues();
+    }
+
+    // Clear filters
+    function clearFilters() {
+        document.getElementById('filterMonth').value = '';
+        document.getElementById('filterProperty').value = '';
+        document.getElementById('filterSeverity').value = '';
+        document.getElementById('filterStatus').value = '';
+        document.getElementById('filterSearch').value = '';
+        loadValidationIssues();
+    }
+
+    // Reset form states
+    function resetFormStates() {
+        document.getElementById('correctionForm').style.display = 'block';
+        document.getElementById('correctionForm').reset();
+        document.getElementById('submitLoadingState').style.display = 'none';
+        document.getElementById('submitSuccessState').style.display = 'none';
+        document.getElementById('submitErrorState').style.display = 'none';
+    }
+
+    // UI state management
+    function showLoadingState() {
+        document.getElementById('loadingState').style.display = 'block';
+        document.getElementById('errorState').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('tableContainer').style.display = 'none';
+    }
+
+    function showErrorState() {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('tableContainer').style.display = 'none';
+    }
+
+    function showEmptyState() {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('tableContainer').style.display = 'none';
+    }
+
+    function showTableContainer() {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('tableContainer').style.display = 'block';
+    }
+
+    // Utility functions
+    function truncateText(text, maxLength) {
+        if (!text) return '-';
+        return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    }
+</script>
+
+{% endblock %}

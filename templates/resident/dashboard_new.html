@@ -270,14 +270,13 @@
                         <dd class="col-sm-7">{{ resident.name }}</dd>
                         
                         <dt class="col-sm-5">Email:</dt>
-                        <dd class="col-sm-7">{{ resident.email }}</dd>
-                        
+                        <dd class="col-sm-7">{{ resident.email|mask_email }}</dd>
+
                         <dt class="col-sm-5">Phone:</dt>
-                        <dd class="col-sm-7">{{ resident.phone }}</dd>
-                        
+                        <dd class="col-sm-7">{{ resident.phone|mask_phone }}</dd>
+
                         <dt class="col-sm-5">Date of Birth:</dt>
-                        <dd class="col-sm-7">{{ resident.dob|date_format }}</dd>
-                        
+                        <dd class="col-sm-7">{{ resident.dob|mask_dob }}</dd>
                         <dt class="col-sm-5">SSN:</dt>
                         <dd class="col-sm-7">***-**-{{ resident.ssn[-4:] }}</dd>
                         

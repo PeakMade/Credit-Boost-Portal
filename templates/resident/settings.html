@@ -33,7 +33,7 @@
                     <div class="col-md-6">
                         <label for="phoneNumber" class="form-label text-muted small">Phone Number</label>
                         <div class="input-group">
-                            <input type="tel" class="form-control" id="phoneNumber" value="{{ resident.phone|default('555-555-5555') }}" placeholder="555-555-5555">
+                            <input type="tel" class="form-control" id="phoneNumber" value="{{ resident.phone|mask_phone }}" placeholder="***-***-****">
                             <button class="btn btn-outline-primary" type="button" onclick="updatePhoneNumber()">
                                 <i class="bi bi-pencil"></i>
                             </button>
@@ -41,7 +41,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Email Address</label>
-                        <div class="fw-bold">{{ resident.email|default('jdoe@test.com') }}</div>
+                        <div class="fw-bold">{{ resident.email|mask_email }}</div>
                     </div>
                 </div>
             </div>

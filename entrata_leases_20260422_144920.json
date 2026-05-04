@@ -1,0 +1,2243 @@
+[
+  {
+    "id": "15471059",
+    "leaseStatusTypeId": "5",
+    "propertyId": "100162547",
+    "leaseSubStatus": "Renewal Transfer",
+    "moveInDate": "03/31/2026",
+    "noticeDate": "03/31/2026",
+    "transferLeaseId": "15650619",
+    "transferLeasePropertyId": "100162547",
+    "transferDate": "07/31/2026",
+    "moveOutDate": "07/31/2026",
+    "propertyName": "48 West",
+    "leaseIntervalStatus": "Notice",
+    "occupancyTypeId": "10",
+    "occupancyType": "Student",
+    "isMonthToMonth": 0,
+    "leaseIntervalId": "18444574",
+    "buildingId": "60296",
+    "buildingName": "J",
+    "floorPlanId": "800451",
+    "floorPlanName": "4x4 Premier",
+    "spaceConfiguration": "Private",
+    "paymentAllowanceType": "Allow All Payment Types",
+    "isRenewalBlacklist": "Renewable",
+    "customers": {
+      "customer": [
+        {
+          "id": 18526023,
+          "customerType": "Primary",
+          "firstName": "Brandon",
+          "lastName": "Spears",
+          "middleName": "Earl",
+          "nameFull": "Spears, Brandon",
+          "emailAddress": "spearsbrandon847@gmail.com.lcl",
+          "leaseCustomerStatus": "Notice",
+          "relationshipName": "Primary",
+          "moveInDate": "03/31/2026",
+          "moveOutDate": "07/31/2026",
+          "dateOfBirth": "02/23/2006",
+          "paymentAllowanceType": "Allow All Payment Types",
+          "addresses": {
+            "address": [
+              {
+                "addressType": "Previous",
+                "streetLine": "19438 Edinborough Rd",
+                "city": "Detroit",
+                "state": "MI",
+                "postalCode": "48219",
+                "countryName": "US"
+              },
+              {
+                "addressType": "Forwarding",
+                "streetLine": "10897 48th Ave",
+                "city": "Allendale Charter Twp",
+                "state": "MI",
+                "postalCode": "49401",
+                "countryName": "US"
+              }
+            ]
+          },
+          "phones": {
+            "phone": []
+          },
+          "customerContacts": {
+            "customerContact": [
+              {
+                "id": "9351167",
+                "contactTypeId": "7",
+                "contactTypeName": "Emergency Contact",
+                "firstName": "Lawanda",
+                "lastName": "Williams",
+                "email": "mslawanda6963@gmail.com.lcl",
+                "relationship": "Grandma",
+                "hasAccessToUnit": "0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "unitId": "4221438",
+    "unitSpaces": {
+      "unitSpace": [
+        {
+          "unitSpaceId": 4495491,
+          "unitSpace": "18-A"
+        }
+      ]
+    },
+    "scheduledCharges": {
+      "scheduledCharge": [
+        {
+          "id": "35387226",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18444574",
+          "chargeCodeId": "157001",
+          "startDate": "04/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Guarantor Waiver Program - TheGuarantors",
+          "amount": "41.00",
+          "chargeUsage": "Risk Premium",
+          "description": "Guarantor Waiver Fee"
+        },
+        {
+          "id": "35336457",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18444574",
+          "chargeCodeId": "154771",
+          "startDate": "04/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "Base Rent",
+          "chargeCode": "Rent",
+          "amount": "609.00",
+          "chargeUsage": "Base",
+          "description": "Rent"
+        },
+        {
+          "id": "35336461",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18444574",
+          "chargeCodeId": "155091",
+          "startDate": "04/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Utility Package",
+          "amount": "70.00",
+          "chargeUsage": "Base",
+          "description": "Utility Package"
+        },
+        {
+          "id": "36476803",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18444574",
+          "chargeCodeId": "155007",
+          "startDate": "04/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Amenity Premium",
+          "amount": "15.00",
+          "chargeUsage": "Amenity",
+          "description": "Amenity Premium"
+        }
+      ]
+    },
+    "specials": {
+      "special": [
+        {
+          "id": "8233891",
+          "name": "Waived App & Admin Fees",
+          "type": "1",
+          "typeName": "Standard",
+          "amount": "-250.00",
+          "chargeTimingId": "102",
+          "chargeTiming": "Application Completed",
+          "leaseIntervalId": "18444574",
+          "leaseIntervalStatusTypeId": "5",
+          "leaseStartDate": "04/01/2026",
+          "leaseEndDate": "04/01/2026"
+        },
+        {
+          "id": "8233891",
+          "name": "Waived App & Admin Fees",
+          "type": "1",
+          "typeName": "Standard",
+          "amount": "-125.00",
+          "chargeTimingId": "102",
+          "chargeTiming": "Application Completed",
+          "leaseIntervalId": "18444574",
+          "leaseIntervalStatusTypeId": "5",
+          "leaseStartDate": "04/01/2026",
+          "leaseEndDate": "04/01/2026"
+        }
+      ]
+    },
+    "leaseIntervals": {
+      "leaseInterval": [
+        {
+          "id": 18444574,
+          "startDate": "04/01/2026",
+          "endDate": "07/31/2026",
+          "leaseIntervalTypeId": 1,
+          "leaseIntervalTypeName": "Application",
+          "leaseIntervalStatusTypeId": 5,
+          "leaseIntervalStatusTypeName": "Notice",
+          "applicationCompletedOn": "09/18/2025 15:24:59.52726 MDT",
+          "applicationId": "17988292",
+          "intervalDateTime": "09/18/2025 15:13:36.918278 MDT",
+          "isActiveLeaseInterval": "t",
+          "applications": {
+            "application": [
+              {
+                "id": "17988292",
+                "leaseApprovedOn": "09/26/2025 11:36:54 MDT",
+                "applicationApprovedOn": "09/18/2025 15:25:51.63216 MDT",
+                "leaseCompletedOn": "09/18/2025 15:34:43.338372 MDT",
+                "leaseTerm": "Annual",
+                "applicationCompletedOn": "09/18/2025 15:24:59.52726 MDT",
+                "leaseIntervalTypeId": 1,
+                "isActiveLeaseInterval": "t",
+                "propertyFloorPlanId": "800451",
+                "leaseStartDate": "04/01/2026",
+                "leaseEndDate": "07/31/2026"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "arTransactions": {
+      "arTransaction": [
+        {
+          "id": 992565444,
+          "transactionTypeId": "9",
+          "chargeCodeId": 156669,
+          "chargeCodeName": "Damage Liability Waiver - POPIC",
+          "leaseIntervalId": 18444574,
+          "description": "Monthly Damage Liability Waiver Program Posted from 4/1/2026 to 4/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 17,
+          "amountPaid": 17
+        },
+        {
+          "id": 992545749,
+          "transactionTypeId": "3",
+          "chargeCodeId": 157001,
+          "chargeCodeName": "Guarantor Waiver Fee",
+          "leaseIntervalId": 18444574,
+          "description": "Posted from 04/01/2026 to 04/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 41,
+          "amountPaid": 41
+        },
+        {
+          "id": 992545022,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155007,
+          "chargeCodeName": "Amenity Premium",
+          "leaseIntervalId": 18444574,
+          "description": "Posted from 04/01/2026 to 04/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 15,
+          "amountPaid": 15
+        },
+        {
+          "id": 992543571,
+          "transactionTypeId": "2",
+          "chargeCodeId": 154771,
+          "chargeCodeName": "Rent",
+          "leaseIntervalId": 18444574,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Rent",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 609,
+          "amountPaid": 609
+        },
+        {
+          "id": 992542338,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155091,
+          "chargeCodeName": "Utility Package",
+          "leaseIntervalId": 18444574,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Utility Package",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 70,
+          "amountPaid": 70
+        },
+        {
+          "id": 992366927,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18444574,
+          "transactionDate": "03/31/2026",
+          "postDate": "03/31/2026",
+          "postMonth": "03/01/2026",
+          "amount": -100.74,
+          "amountPaid": -100.74
+        },
+        {
+          "id": 990355677,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18444574,
+          "transactionDate": "03/27/2026",
+          "postDate": "03/27/2026",
+          "postMonth": "03/01/2026",
+          "amount": -43.31,
+          "amountPaid": -43.31
+        },
+        {
+          "id": 990354114,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18444574,
+          "transactionDate": "03/27/2026",
+          "postDate": "03/27/2026",
+          "postMonth": "03/01/2026",
+          "amount": -607.95,
+          "amountPaid": -607.95
+        },
+        {
+          "id": 932333539,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156802,
+          "chargeCodeName": "Application Fee Concession",
+          "leaseIntervalId": 18444574,
+          "description": "Posted - Waive App & Admin Fees",
+          "transactionDate": "10/15/2025",
+          "postDate": "09/18/2025",
+          "postMonth": "10/01/2025",
+          "amount": -125,
+          "amountPaid": -125
+        },
+        {
+          "id": 932333527,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156801,
+          "chargeCodeName": "Admin Fees Concession",
+          "leaseIntervalId": 18444574,
+          "description": "Posted - Waive App & Admin Fees",
+          "transactionDate": "10/15/2025",
+          "postDate": "09/18/2025",
+          "postMonth": "10/01/2025",
+          "amount": -250,
+          "amountPaid": -250
+        },
+        {
+          "id": 921291065,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155012,
+          "chargeCodeName": "Admin Fees",
+          "leaseIntervalId": 18444574,
+          "description": "Posted - Admin Fees",
+          "transactionDate": "09/18/2025",
+          "postDate": "09/18/2025",
+          "postMonth": "09/01/2025",
+          "amount": 250,
+          "amountPaid": 250
+        },
+        {
+          "id": 921291064,
+          "transactionTypeId": "3",
+          "chargeCodeId": 154788,
+          "chargeCodeName": "Application Fee",
+          "leaseIntervalId": 18444574,
+          "description": "Posted - Application Fee",
+          "transactionDate": "09/18/2025",
+          "postDate": "09/18/2025",
+          "postMonth": "09/01/2025",
+          "amount": 125,
+          "amountPaid": 125
+        }
+      ]
+    }
+  },
+  {
+    "id": "15597944",
+    "leaseStatusTypeId": "4",
+    "propertyId": "100162547",
+    "moveInDate": "03/02/2026",
+    "propertyName": "48 West",
+    "leaseIntervalStatus": "Current",
+    "occupancyTypeId": "10",
+    "occupancyType": "Student",
+    "isMonthToMonth": 0,
+    "leaseIntervalId": "18664253",
+    "buildingId": "60301",
+    "buildingName": "N",
+    "floorPlanId": "800450",
+    "floorPlanName": "4 Bed 4.5 Bath Townhome",
+    "spaceConfiguration": "Private",
+    "paymentAllowanceType": "Allow All Payment Types",
+    "isRenewalBlacklist": "Renewable",
+    "customers": {
+      "customer": [
+        {
+          "id": 18975522,
+          "customerType": "Primary",
+          "firstName": "Allison",
+          "lastName": "Hoffman",
+          "middleName": "Marie",
+          "nameFull": "Hoffman, Allison",
+          "emailAddress": "hoffmall@mail.gvsu.edu.lcl",
+          "leaseCustomerStatus": "Current",
+          "relationshipName": "Primary",
+          "moveInDate": "03/02/2026",
+          "dateOfBirth": "02/06/2000",
+          "paymentAllowanceType": "Allow All Payment Types",
+          "addresses": {
+            "address": [
+              {
+                "addressType": "Previous",
+                "streetLine": "7675 Riverview Dr.",
+                "city": "Jenison",
+                "state": "MI",
+                "postalCode": "49428",
+                "countryName": "US"
+              }
+            ]
+          },
+          "phones": {
+            "phone": []
+          },
+          "customerContacts": {
+            "customerContact": [
+              {
+                "id": "9237133",
+                "contactTypeId": "7",
+                "contactTypeName": "Emergency Contact",
+                "firstName": "Maddie",
+                "lastName": "Rammler",
+                "email": "Gilbermr@mail.gvsu.edu.lcl",
+                "relationship": "Friend",
+                "hasAccessToUnit": "0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "unitId": "4221374",
+    "unitSpaces": {
+      "unitSpace": [
+        {
+          "unitSpaceId": 4495236,
+          "unitSpace": "06-D"
+        }
+      ]
+    },
+    "scheduledCharges": {
+      "scheduledCharge": [
+        {
+          "id": "36169104",
+          "frequency": "Once",
+          "leaseIntervalId": "18664253",
+          "chargeCodeId": "155021",
+          "startDate": "03/01/2026",
+          "chargeType": "other",
+          "chargeCode": "Telecom",
+          "amount": "140.00",
+          "chargeUsage": "Base",
+          "description": "Telecom"
+        },
+        {
+          "id": "36168850",
+          "frequency": "Once",
+          "leaseIntervalId": "18664253",
+          "chargeCodeId": "155052",
+          "startDate": "03/01/2026",
+          "chargeType": "other",
+          "chargeCode": "Parking",
+          "amount": "40.00",
+          "chargeUsage": "Add-On",
+          "description": "Parking"
+        },
+        {
+          "id": "36168851",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18664253",
+          "chargeCodeId": "155052",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2027",
+          "chargeType": "other",
+          "chargeCode": "Parking",
+          "amount": "15.00",
+          "chargeUsage": "Add-On",
+          "description": "Parking"
+        },
+        {
+          "id": "36169103",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18664253",
+          "chargeCodeId": "154771",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2027",
+          "chargeType": "Base Rent",
+          "chargeCode": "Rent",
+          "amount": "649.00",
+          "chargeUsage": "Base",
+          "description": "Rent"
+        },
+        {
+          "id": "36169105",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18664253",
+          "chargeCodeId": "155091",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2027",
+          "chargeType": "other",
+          "chargeCode": "Utility Package",
+          "amount": "75.00",
+          "chargeUsage": "Base",
+          "description": "Utility Package"
+        },
+        {
+          "id": "36240058",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18664253",
+          "chargeCodeId": "155001",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2027",
+          "chargeType": "other",
+          "chargeCode": "Rent (Entire Lease) Concession",
+          "amount": "-60.00",
+          "chargeUsage": "Special",
+          "description": "Rent (Entire Lease) Concession"
+        }
+      ]
+    },
+    "specials": {
+      "special": [
+        {
+          "id": "8236054",
+          "name": "Waived App & Admin Fee",
+          "type": "1",
+          "typeName": "Standard",
+          "amount": "-250.00",
+          "chargeTimingId": "102",
+          "chargeTiming": "Application Completed",
+          "leaseIntervalId": "18664253",
+          "leaseIntervalStatusTypeId": "4",
+          "leaseStartDate": "03/01/2026",
+          "leaseEndDate": "03/01/2026"
+        },
+        {
+          "id": "8236054",
+          "name": "Waived App & Admin Fee",
+          "type": "1",
+          "typeName": "Standard",
+          "amount": "-125.00",
+          "chargeTimingId": "102",
+          "chargeTiming": "Application Completed",
+          "leaseIntervalId": "18664253",
+          "leaseIntervalStatusTypeId": "4",
+          "leaseStartDate": "03/01/2026",
+          "leaseEndDate": "03/01/2026"
+        }
+      ]
+    },
+    "leaseIntervals": {
+      "leaseInterval": [
+        {
+          "id": 18664253,
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2027",
+          "leaseIntervalTypeId": 1,
+          "leaseIntervalTypeName": "Application",
+          "leaseIntervalStatusTypeId": 4,
+          "leaseIntervalStatusTypeName": "Current",
+          "applicationCompletedOn": "02/02/2026 13:51:13 MST",
+          "applicationId": "18131676",
+          "intervalDateTime": "01/26/2026 11:15:01.260614 MST",
+          "isActiveLeaseInterval": "t",
+          "applications": {
+            "application": [
+              {
+                "id": "18131676",
+                "leaseApprovedOn": "02/11/2026 13:56:15 MST",
+                "applicationApprovedOn": "02/02/2026 13:51:31.356585 MST",
+                "leaseCompletedOn": "02/04/2026 15:57:03.143491 MST",
+                "leaseTerm": "Special Lease Term",
+                "applicationCompletedOn": "02/02/2026 13:51:13 MST",
+                "leaseIntervalTypeId": 1,
+                "isActiveLeaseInterval": "t",
+                "propertyFloorPlanId": "800450",
+                "leaseStartDate": "03/01/2026",
+                "leaseEndDate": "07/31/2027"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "arTransactions": {
+      "arTransaction": [
+        {
+          "id": 994193161,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18664253,
+          "transactionDate": "04/03/2026",
+          "postDate": "04/03/2026",
+          "postMonth": "04/01/2026",
+          "amount": -380,
+          "amountPaid": -380
+        },
+        {
+          "id": 993419526,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155034,
+          "chargeCodeName": "Pet",
+          "leaseIntervalId": 18664253,
+          "description": "April Pet Rent",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 40,
+          "amountPaid": 40
+        },
+        {
+          "id": 993419417,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155034,
+          "chargeCodeName": "Pet",
+          "leaseIntervalId": 18664253,
+          "description": "March Pet Rent",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 40,
+          "amountPaid": 40
+        },
+        {
+          "id": 993419389,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155034,
+          "chargeCodeName": "Pet",
+          "leaseIntervalId": 18664253,
+          "description": "One Time Fee - Pet",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 300,
+          "amountPaid": 300
+        },
+        {
+          "id": 993349299,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18664253,
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": -723,
+          "amountPaid": -723
+        },
+        {
+          "id": 992545472,
+          "transactionTypeId": "2",
+          "chargeCodeId": 154771,
+          "chargeCodeName": "Rent",
+          "leaseIntervalId": 18664253,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Rent",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 649,
+          "amountPaid": 649
+        },
+        {
+          "id": 992544718,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155001,
+          "chargeCodeName": "Rent (Entire Lease) Concession",
+          "leaseIntervalId": 18664253,
+          "description": "Posted from 04/01/2026 to 04/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": -60,
+          "amountPaid": -60
+        },
+        {
+          "id": 992544191,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155091,
+          "chargeCodeName": "Utility Package",
+          "leaseIntervalId": 18664253,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Utility Package",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 75,
+          "amountPaid": 75
+        },
+        {
+          "id": 992543767,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155052,
+          "chargeCodeName": "Parking",
+          "leaseIntervalId": 18664253,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Parking : Open Parking",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 15,
+          "amountPaid": 15
+        },
+        {
+          "id": 990311122,
+          "transactionTypeId": "9",
+          "chargeCodeId": 155217,
+          "chargeCodeName": "RentPlus",
+          "leaseIntervalId": 18664253,
+          "description": "RentPlus for 04/01/26-04/30/26",
+          "transactionDate": "03/27/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 10,
+          "amountPaid": 10
+        },
+        {
+          "id": 989737968,
+          "transactionTypeId": "9",
+          "chargeCodeId": 156669,
+          "chargeCodeName": "Damage Liability Waiver - POPIC",
+          "leaseIntervalId": 18664253,
+          "description": "Monthly Damage Liability Waiver Program Posted from 4/1/2026 to 4/30/2026",
+          "transactionDate": "03/26/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 17,
+          "amountPaid": 17
+        },
+        {
+          "id": 977650443,
+          "transactionTypeId": "9",
+          "chargeCodeId": 156669,
+          "chargeCodeName": "Damage Liability Waiver - POPIC",
+          "leaseIntervalId": 18664253,
+          "description": "Monthly Damage Liability Waiver Program Posted from 3/1/2026 to 3/31/2026",
+          "transactionDate": "03/02/2026",
+          "postDate": "03/02/2026",
+          "postMonth": "03/01/2026",
+          "amount": 17,
+          "amountPaid": 17
+        },
+        {
+          "id": 976695629,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155091,
+          "chargeCodeName": "Utility Package",
+          "leaseIntervalId": 18664253,
+          "description": "Posted from 03/01/2026 to 03/31/2026 - Utility Package",
+          "transactionDate": "03/01/2026",
+          "postDate": "03/01/2026",
+          "postMonth": "03/01/2026",
+          "amount": 75,
+          "amountPaid": 75
+        },
+        {
+          "id": 976695335,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155052,
+          "chargeCodeName": "Parking",
+          "leaseIntervalId": 18664253,
+          "description": "Posted from 03/01/2026 to 03/31/2026 - Parking : Open Parking",
+          "transactionDate": "03/01/2026",
+          "postDate": "03/01/2026",
+          "postMonth": "03/01/2026",
+          "amount": 15,
+          "amountPaid": 15
+        },
+        {
+          "id": 976694655,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155001,
+          "chargeCodeName": "Rent (Entire Lease) Concession",
+          "leaseIntervalId": 18664253,
+          "description": "Posted from 03/01/2026 to 03/31/2026",
+          "transactionDate": "03/01/2026",
+          "postDate": "03/01/2026",
+          "postMonth": "03/01/2026",
+          "amount": -60,
+          "amountPaid": -60
+        },
+        {
+          "id": 976693117,
+          "transactionTypeId": "2",
+          "chargeCodeId": 154771,
+          "chargeCodeName": "Rent",
+          "leaseIntervalId": 18664253,
+          "description": "Posted from 03/01/2026 to 03/31/2026 - Rent",
+          "transactionDate": "03/01/2026",
+          "postDate": "03/01/2026",
+          "postMonth": "03/01/2026",
+          "amount": 649,
+          "amountPaid": 649
+        },
+        {
+          "id": 976689357,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155021,
+          "chargeCodeName": "Telecom",
+          "leaseIntervalId": 18664253,
+          "description": "fee posted - Telecom",
+          "transactionDate": "03/01/2026",
+          "postDate": "03/01/2026",
+          "postMonth": "03/01/2026",
+          "amount": 140,
+          "amountPaid": 140
+        },
+        {
+          "id": 976689356,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155052,
+          "chargeCodeName": "Parking",
+          "leaseIntervalId": 18664253,
+          "description": "fee posted - Parking : Open Parking",
+          "transactionDate": "03/01/2026",
+          "postDate": "03/01/2026",
+          "postMonth": "03/01/2026",
+          "amount": 40,
+          "amountPaid": 40
+        },
+        {
+          "id": 974681162,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18664253,
+          "transactionDate": "02/21/2026",
+          "postDate": "02/21/2026",
+          "postMonth": "02/01/2026",
+          "amount": -859,
+          "amountPaid": -859
+        },
+        {
+          "id": 969612779,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156801,
+          "chargeCodeName": "Admin Fees Concession",
+          "leaseIntervalId": 18664253,
+          "description": "Posted - Waived App & Admin Fees",
+          "transactionDate": "02/02/2026",
+          "postDate": "02/02/2026",
+          "postMonth": "02/01/2026",
+          "amount": -250,
+          "amountPaid": -250
+        },
+        {
+          "id": 969612778,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155012,
+          "chargeCodeName": "Admin Fees",
+          "leaseIntervalId": 18664253,
+          "description": "Posted - Admin Fees",
+          "transactionDate": "02/02/2026",
+          "postDate": "02/02/2026",
+          "postMonth": "02/01/2026",
+          "amount": 250,
+          "amountPaid": 250
+        },
+        {
+          "id": 969612777,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156802,
+          "chargeCodeName": "Application Fee Concession",
+          "leaseIntervalId": 18664253,
+          "description": "Posted - Waived App & Admin Fees",
+          "transactionDate": "02/02/2026",
+          "postDate": "02/02/2026",
+          "postMonth": "02/01/2026",
+          "amount": -125,
+          "amountPaid": -125
+        },
+        {
+          "id": 969612776,
+          "transactionTypeId": "3",
+          "chargeCodeId": 154788,
+          "chargeCodeName": "Application Fee",
+          "leaseIntervalId": 18664253,
+          "description": "Posted - Application Fee",
+          "transactionDate": "02/02/2026",
+          "postDate": "02/02/2026",
+          "postMonth": "02/01/2026",
+          "amount": 125,
+          "amountPaid": 125
+        }
+      ]
+    }
+  },
+  {
+    "id": "15625734",
+    "leaseStatusTypeId": "5",
+    "propertyId": "100162547",
+    "leaseSubStatus": "Renewal Transfer",
+    "moveInDate": "03/23/2026",
+    "noticeDate": "04/13/2026",
+    "transferLeaseId": "15667234",
+    "transferLeasePropertyId": "100162547",
+    "transferDate": "07/31/2026",
+    "moveOutDate": "07/31/2026",
+    "propertyName": "48 West",
+    "leaseIntervalStatus": "Notice",
+    "occupancyTypeId": "10",
+    "occupancyType": "Student",
+    "isMonthToMonth": 0,
+    "leaseIntervalId": "18716631",
+    "buildingId": "60290",
+    "buildingName": "F",
+    "floorPlanId": "800452",
+    "floorPlanName": "4x4A",
+    "spaceConfiguration": "Private",
+    "paymentAllowanceType": "Allow All Payment Types",
+    "isRenewalBlacklist": "Renewable",
+    "customers": {
+      "customer": [
+        {
+          "id": 19010038,
+          "customerType": "Primary",
+          "firstName": "Vasu",
+          "lastName": "Patel",
+          "nameFull": "Patel, Vasu",
+          "emailAddress": "vasup126@gmail.com.lcl",
+          "leaseCustomerStatus": "Notice",
+          "relationshipName": "Primary",
+          "moveInDate": "03/23/2026",
+          "moveOutDate": "07/31/2026",
+          "dateOfBirth": "06/12/1999",
+          "paymentAllowanceType": "Allow All Payment Types",
+          "addresses": {
+            "address": [
+              {
+                "addressType": "Previous",
+                "streetLine": "3701 Kettering ct, Apt 301",
+                "city": "Fairborn",
+                "state": "OH",
+                "postalCode": "45324",
+                "countryName": "US"
+              }
+            ]
+          },
+          "phones": {
+            "phone": []
+          },
+          "customerContacts": {
+            "customerContact": [
+              {
+                "id": "9385721",
+                "contactTypeId": "7",
+                "contactTypeName": "Emergency Contact",
+                "firstName": "Bonny",
+                "lastName": "Patel",
+                "email": "bonnypatel@icloud.com.lcl",
+                "relationship": "Cousin",
+                "hasAccessToUnit": "0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "unitId": "4221482",
+    "unitSpaces": {
+      "unitSpace": [
+        {
+          "unitSpaceId": 4495670,
+          "unitSpace": "07-B"
+        }
+      ]
+    },
+    "scheduledCharges": {
+      "scheduledCharge": [
+        {
+          "id": "36430956",
+          "frequency": "Once",
+          "leaseIntervalId": "18716631",
+          "chargeCodeId": "155052",
+          "startDate": "03/23/2026",
+          "chargeType": "other",
+          "chargeCode": "Parking",
+          "amount": "40.00",
+          "chargeUsage": "Add-On",
+          "description": "Parking"
+        },
+        {
+          "id": "36360295",
+          "frequency": "Once",
+          "leaseIntervalId": "18716631",
+          "chargeCodeId": "155021",
+          "startDate": "03/23/2026",
+          "chargeType": "other",
+          "chargeCode": "Telecom",
+          "amount": "140.00",
+          "chargeUsage": "Base",
+          "description": "Telecom"
+        },
+        {
+          "id": "36360292",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18716631",
+          "chargeCodeId": "154771",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "Base Rent",
+          "chargeCode": "Rent",
+          "amount": "679.00",
+          "chargeUsage": "Base",
+          "description": "Rent"
+        },
+        {
+          "id": "36360296",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18716631",
+          "chargeCodeId": "155091",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Utility Package",
+          "amount": "75.00",
+          "chargeUsage": "Base",
+          "description": "Utility Package"
+        },
+        {
+          "id": "36430925",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18716631",
+          "chargeCodeId": "155052",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Parking",
+          "amount": "15.00",
+          "chargeUsage": "Add-On",
+          "description": "Parking"
+        }
+      ]
+    },
+    "specials": {
+      "special": [
+        {
+          "id": "8236054",
+          "name": "Waived App & Admin Fee",
+          "type": "1",
+          "typeName": "Standard",
+          "amount": "-250.00",
+          "chargeTimingId": "102",
+          "chargeTiming": "Application Completed",
+          "leaseIntervalId": "18716631",
+          "leaseIntervalStatusTypeId": "5",
+          "leaseStartDate": "03/23/2026",
+          "leaseEndDate": "03/23/2026"
+        },
+        {
+          "id": "8236054",
+          "name": "Waived App & Admin Fee",
+          "type": "1",
+          "typeName": "Standard",
+          "amount": "-125.00",
+          "chargeTimingId": "102",
+          "chargeTiming": "Application Completed",
+          "leaseIntervalId": "18716631",
+          "leaseIntervalStatusTypeId": "5",
+          "leaseStartDate": "03/23/2026",
+          "leaseEndDate": "03/23/2026"
+        }
+      ]
+    },
+    "leaseIntervals": {
+      "leaseInterval": [
+        {
+          "id": 18716631,
+          "startDate": "03/23/2026",
+          "endDate": "07/31/2026",
+          "leaseIntervalTypeId": 1,
+          "leaseIntervalTypeName": "Application",
+          "leaseIntervalStatusTypeId": 5,
+          "leaseIntervalStatusTypeName": "Notice",
+          "applicationCompletedOn": "03/05/2026 13:21:15.684288 MST",
+          "applicationId": "18172734",
+          "intervalDateTime": "03/04/2026 08:39:36.503004 MST",
+          "isActiveLeaseInterval": "t",
+          "applications": {
+            "application": [
+              {
+                "id": "18172734",
+                "leaseApprovedOn": "03/16/2026 12:43:36 MDT",
+                "applicationApprovedOn": "03/05/2026 14:24:56.991186 MST",
+                "leaseCompletedOn": "03/10/2026 16:45:33.268657 MDT",
+                "leaseTerm": "Annual",
+                "applicationCompletedOn": "03/05/2026 13:21:15.684288 MST",
+                "leaseIntervalTypeId": 1,
+                "isActiveLeaseInterval": "t",
+                "propertyFloorPlanId": "800452",
+                "leaseStartDate": "03/23/2026",
+                "leaseEndDate": "07/31/2026"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "arTransactions": {
+      "arTransaction": [
+        {
+          "id": 994904983,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18716631,
+          "transactionDate": "04/05/2026",
+          "postDate": "04/05/2026",
+          "postMonth": "04/01/2026",
+          "amount": -17,
+          "amountPaid": -17
+        },
+        {
+          "id": 992545063,
+          "transactionTypeId": "2",
+          "chargeCodeId": 154771,
+          "chargeCodeName": "Rent",
+          "leaseIntervalId": 18716631,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Rent",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 679,
+          "amountPaid": 679
+        },
+        {
+          "id": 992544877,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155052,
+          "chargeCodeName": "Parking",
+          "leaseIntervalId": 18716631,
+          "description": "Posted from 04/01/2026 to 04/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 15,
+          "amountPaid": 15
+        },
+        {
+          "id": 992542549,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155091,
+          "chargeCodeName": "Utility Package",
+          "leaseIntervalId": 18716631,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Utility Package",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 75,
+          "amountPaid": 75
+        },
+        {
+          "id": 989737972,
+          "transactionTypeId": "9",
+          "chargeCodeId": 156669,
+          "chargeCodeName": "Damage Liability Waiver - POPIC",
+          "leaseIntervalId": 18716631,
+          "description": "Monthly Damage Liability Waiver Program Posted from 4/1/2026 to 4/30/2026",
+          "transactionDate": "03/26/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 17,
+          "amountPaid": 17
+        },
+        {
+          "id": 988271181,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18716631,
+          "transactionDate": "03/23/2026",
+          "postDate": "03/23/2026",
+          "postMonth": "03/01/2026",
+          "amount": -826,
+          "amountPaid": -826
+        },
+        {
+          "id": 986969611,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155052,
+          "chargeCodeName": "Parking",
+          "leaseIntervalId": 18716631,
+          "description": "fee posted",
+          "transactionDate": "03/21/2026",
+          "postDate": "03/23/2026",
+          "postMonth": "03/01/2026",
+          "amount": 40,
+          "amountPaid": 40
+        },
+        {
+          "id": 986579979,
+          "transactionTypeId": "9",
+          "chargeCodeId": 156669,
+          "chargeCodeName": "Damage Liability Waiver - POPIC",
+          "leaseIntervalId": 18716631,
+          "description": "Damage Liability Waiver Program Posted From 3/23/2026-3/31/2026",
+          "transactionDate": "03/20/2026",
+          "postDate": "03/23/2026",
+          "postMonth": "03/01/2026",
+          "amount": 17,
+          "amountPaid": 17
+        },
+        {
+          "id": 979820174,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155012,
+          "chargeCodeName": "Admin Fees",
+          "leaseIntervalId": 18716631,
+          "description": "Posted - Admin Fees",
+          "transactionDate": "03/05/2026",
+          "postDate": "03/05/2026",
+          "postMonth": "03/01/2026",
+          "amount": 250,
+          "amountPaid": 250
+        },
+        {
+          "id": 979820173,
+          "transactionTypeId": "3",
+          "chargeCodeId": 154788,
+          "chargeCodeName": "Application Fee",
+          "leaseIntervalId": 18716631,
+          "description": "Posted - Application Fee",
+          "transactionDate": "03/05/2026",
+          "postDate": "03/05/2026",
+          "postMonth": "03/01/2026",
+          "amount": 125,
+          "amountPaid": 125
+        },
+        {
+          "id": 979820172,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156801,
+          "chargeCodeName": "Admin Fees Concession",
+          "leaseIntervalId": 18716631,
+          "description": "Posted - Waived App & Admin Fees",
+          "transactionDate": "03/05/2026",
+          "postDate": "03/05/2026",
+          "postMonth": "03/01/2026",
+          "amount": -250,
+          "amountPaid": -250
+        },
+        {
+          "id": 979820171,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156802,
+          "chargeCodeName": "Application Fee Concession",
+          "leaseIntervalId": 18716631,
+          "description": "Posted - Waived App & Admin Fees",
+          "transactionDate": "03/05/2026",
+          "postDate": "03/05/2026",
+          "postMonth": "03/01/2026",
+          "amount": -125,
+          "amountPaid": -125
+        }
+      ]
+    }
+  },
+  {
+    "id": "15631742",
+    "leaseStatusTypeId": "5",
+    "propertyId": "100162547",
+    "moveInDate": "03/17/2026",
+    "noticeDate": "03/31/2026",
+    "moveOutDate": "07/31/2026",
+    "moveOutReason": "End of Lease Term/No Reason Given",
+    "propertyName": "48 West",
+    "leaseIntervalStatus": "Notice",
+    "occupancyTypeId": "10",
+    "occupancyType": "Student",
+    "isMonthToMonth": 0,
+    "leaseIntervalId": "18724256",
+    "buildingId": "60294",
+    "buildingName": "H",
+    "floorPlanId": "800452",
+    "floorPlanName": "4x4A",
+    "spaceConfiguration": "Private",
+    "paymentAllowanceType": "Allow All Payment Types",
+    "isRenewalBlacklist": "Renewable",
+    "customers": {
+      "customer": [
+        {
+          "id": 19015387,
+          "customerType": "Primary",
+          "firstName": "Alexia",
+          "lastName": "Rufus",
+          "middleName": "Lavone",
+          "nameFull": "Rufus, Alexia",
+          "emailAddress": "koolkidalex12@gmail.com.lcl",
+          "leaseCustomerStatus": "Notice",
+          "relationshipName": "Primary",
+          "moveInDate": "03/17/2026",
+          "moveOutDate": "07/31/2026",
+          "dateOfBirth": "12/23/1997",
+          "paymentAllowanceType": "Allow All Payment Types",
+          "addresses": {
+            "address": [
+              {
+                "addressType": "Previous",
+                "streetLine": "3659 Perry Ave sw",
+                "city": "Wyoming",
+                "state": "MI",
+                "postalCode": "49519",
+                "countryName": "US"
+              }
+            ]
+          },
+          "phones": {
+            "phone": []
+          },
+          "customerContacts": {
+            "customerContact": [
+              {
+                "id": "9301661",
+                "contactTypeId": "7",
+                "contactTypeName": "Emergency Contact",
+                "firstName": "Mikki",
+                "lastName": "Sutton",
+                "email": "Angelicsounds17@gmail.com.lcl",
+                "relationship": "Mother",
+                "hasAccessToUnit": "0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "unitId": "4221507",
+    "unitSpaces": {
+      "unitSpace": [
+        {
+          "unitSpaceId": 4495769,
+          "unitSpace": "15-B"
+        }
+      ]
+    },
+    "scheduledCharges": {
+      "scheduledCharge": [
+        {
+          "id": "36384279",
+          "frequency": "Once",
+          "leaseIntervalId": "18724256",
+          "chargeCodeId": "155052",
+          "startDate": "03/17/2026",
+          "chargeType": "other",
+          "chargeCode": "Parking",
+          "amount": "40.00",
+          "chargeUsage": "Add-On",
+          "description": "Parking"
+        },
+        {
+          "id": "36384280",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18724256",
+          "chargeCodeId": "155052",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Parking",
+          "amount": "15.00",
+          "chargeUsage": "Add-On",
+          "description": "Parking"
+        },
+        {
+          "id": "36386512",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18724256",
+          "chargeCodeId": "154771",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "Base Rent",
+          "chargeCode": "Rent",
+          "amount": "679.00",
+          "chargeUsage": "Base",
+          "description": "Rent"
+        },
+        {
+          "id": "36386514",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18724256",
+          "chargeCodeId": "155091",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Utility Package",
+          "amount": "75.00",
+          "chargeUsage": "Base",
+          "description": "Utility Package"
+        }
+      ]
+    },
+    "leaseIntervals": {
+      "leaseInterval": [
+        {
+          "id": 18724256,
+          "startDate": "03/17/2026",
+          "endDate": "07/31/2026",
+          "leaseIntervalTypeId": 1,
+          "leaseIntervalTypeName": "Application",
+          "leaseIntervalStatusTypeId": 5,
+          "leaseIntervalStatusTypeName": "Notice",
+          "applicationCompletedOn": "03/10/2026 13:20:00.379591 MDT",
+          "applicationId": "18179199",
+          "intervalDateTime": "03/10/2026 12:25:57.018877 MDT",
+          "isActiveLeaseInterval": "t",
+          "applications": {
+            "application": [
+              {
+                "id": "18179199",
+                "leaseApprovedOn": "03/16/2026 08:29:18 MDT",
+                "applicationApprovedOn": "03/11/2026 07:14:04.296285 MDT",
+                "leaseCompletedOn": "03/11/2026 08:44:37.905692 MDT",
+                "leaseTerm": "Annual",
+                "applicationCompletedOn": "03/10/2026 13:20:00.379591 MDT",
+                "leaseIntervalTypeId": 1,
+                "isActiveLeaseInterval": "t",
+                "propertyFloorPlanId": "800452",
+                "leaseStartDate": "03/17/2026",
+                "leaseEndDate": "07/31/2026"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "arTransactions": {
+      "arTransaction": [
+        {
+          "id": 996253521,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18724256,
+          "transactionDate": "04/10/2026",
+          "postDate": "04/10/2026",
+          "postMonth": "04/01/2026",
+          "amount": -27,
+          "amountPaid": -27
+        },
+        {
+          "id": 992545376,
+          "transactionTypeId": "2",
+          "chargeCodeId": 154771,
+          "chargeCodeName": "Rent",
+          "leaseIntervalId": 18724256,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Rent",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 679,
+          "amountPaid": 679
+        },
+        {
+          "id": 992543406,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155091,
+          "chargeCodeName": "Utility Package",
+          "leaseIntervalId": 18724256,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Utility Package",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 75,
+          "amountPaid": 75
+        },
+        {
+          "id": 992542727,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155052,
+          "chargeCodeName": "Parking",
+          "leaseIntervalId": 18724256,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Parking : Open Parking",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 15,
+          "amountPaid": 15
+        },
+        {
+          "id": 990311114,
+          "transactionTypeId": "9",
+          "chargeCodeId": 155217,
+          "chargeCodeName": "RentPlus",
+          "leaseIntervalId": 18724256,
+          "description": "RentPlus for 04/01/26-04/30/26",
+          "transactionDate": "03/27/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 10,
+          "amountPaid": 10
+        },
+        {
+          "id": 989737971,
+          "transactionTypeId": "9",
+          "chargeCodeId": 156669,
+          "chargeCodeName": "Damage Liability Waiver - POPIC",
+          "leaseIntervalId": 18724256,
+          "description": "Monthly Damage Liability Waiver Program Posted from 4/1/2026 to 4/30/2026",
+          "transactionDate": "03/26/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 17,
+          "amountPaid": 17
+        },
+        {
+          "id": 985913602,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18724256,
+          "transactionDate": "03/18/2026",
+          "postDate": "03/18/2026",
+          "postMonth": "03/01/2026",
+          "amount": -17,
+          "amountPaid": -17
+        },
+        {
+          "id": 985017081,
+          "transactionTypeId": "9",
+          "chargeCodeId": 156669,
+          "chargeCodeName": "Damage Liability Waiver - POPIC",
+          "leaseIntervalId": 18724256,
+          "description": "Damage Liability Waiver Program Posted From 3/17/2026-3/31/2026",
+          "transactionDate": "03/17/2026",
+          "postDate": "03/17/2026",
+          "postMonth": "03/01/2026",
+          "amount": 17,
+          "amountPaid": 17
+        },
+        {
+          "id": 985016757,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155052,
+          "chargeCodeName": "Parking",
+          "leaseIntervalId": 18724256,
+          "description": "fee posted - Parking : Open Parking",
+          "transactionDate": "03/17/2026",
+          "postDate": "03/17/2026",
+          "postMonth": "03/01/2026",
+          "amount": 40,
+          "amountPaid": 40
+        },
+        {
+          "id": 984902702,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18724256,
+          "transactionDate": "03/16/2026",
+          "postDate": "03/16/2026",
+          "postMonth": "03/01/2026",
+          "amount": -809,
+          "amountPaid": -809
+        },
+        {
+          "id": 982165031,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156802,
+          "chargeCodeName": "Application Fee Concession",
+          "leaseIntervalId": 18724256,
+          "description": "Posted - Waived App & Admin Fees",
+          "transactionDate": "03/10/2026",
+          "postDate": "03/10/2026",
+          "postMonth": "03/01/2026",
+          "amount": -125,
+          "amountPaid": -125
+        },
+        {
+          "id": 982165030,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155012,
+          "chargeCodeName": "Admin Fees",
+          "leaseIntervalId": 18724256,
+          "description": "Posted - Admin Fees",
+          "transactionDate": "03/10/2026",
+          "postDate": "03/10/2026",
+          "postMonth": "03/01/2026",
+          "amount": 250,
+          "amountPaid": 250
+        },
+        {
+          "id": 982165029,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156801,
+          "chargeCodeName": "Admin Fees Concession",
+          "leaseIntervalId": 18724256,
+          "description": "Posted - Waived App & Admin Fees",
+          "transactionDate": "03/10/2026",
+          "postDate": "03/10/2026",
+          "postMonth": "03/01/2026",
+          "amount": -250,
+          "amountPaid": -250
+        },
+        {
+          "id": 982165028,
+          "transactionTypeId": "3",
+          "chargeCodeId": 154788,
+          "chargeCodeName": "Application Fee",
+          "leaseIntervalId": 18724256,
+          "description": "Posted - Application Fee",
+          "transactionDate": "03/10/2026",
+          "postDate": "03/10/2026",
+          "postMonth": "03/01/2026",
+          "amount": 125,
+          "amountPaid": 125
+        }
+      ]
+    }
+  },
+  {
+    "id": "15634943",
+    "leaseStatusTypeId": "5",
+    "propertyId": "100162547",
+    "moveInDate": "03/29/2026",
+    "noticeDate": "03/31/2026",
+    "moveOutDate": "07/31/2026",
+    "moveOutReason": "End of Lease Term/No Reason Given",
+    "propertyName": "48 West",
+    "leaseIntervalStatus": "Notice",
+    "occupancyTypeId": "10",
+    "occupancyType": "Student",
+    "isMonthToMonth": 0,
+    "leaseIntervalId": "18728701",
+    "buildingId": "60296",
+    "buildingName": "J",
+    "floorPlanId": "800451",
+    "floorPlanName": "4x4 Premier",
+    "spaceConfiguration": "Private",
+    "paymentAllowanceType": "Allow All Payment Types",
+    "isRenewalBlacklist": "Renewable",
+    "customers": {
+      "customer": [
+        {
+          "id": 19018663,
+          "customerType": "Primary",
+          "firstName": "Aditya",
+          "lastName": "Mishra",
+          "nameFull": "Mishra, Aditya (adi)",
+          "emailAddress": "adityamishrawork2021@gmail.com.lcl",
+          "leaseCustomerStatus": "Notice",
+          "relationshipName": "Primary",
+          "moveInDate": "03/29/2026",
+          "moveOutDate": "07/31/2026",
+          "dateOfBirth": "10/10/2001",
+          "paymentAllowanceType": "Allow All Payment Types",
+          "addresses": {
+            "address": [
+              {
+                "addressType": "Previous",
+                "streetLine": "554 carrier st ne",
+                "city": "Grand rapids",
+                "state": "MI",
+                "postalCode": "49505",
+                "countryName": "US"
+              },
+              {
+                "addressType": "Forwarding",
+                "streetLine": "554 Carrier St NE",
+                "city": "Grand Rapids",
+                "state": "MI",
+                "postalCode": "49505",
+                "countryName": "US"
+              }
+            ]
+          },
+          "phones": {
+            "phone": []
+          },
+          "customerContacts": {
+            "customerContact": [
+              {
+                "id": "9345650",
+                "contactTypeId": "7",
+                "contactTypeName": "Emergency Contact",
+                "firstName": "Susan",
+                "lastName": "Storm",
+                "email": "susanstorm2000@gmail.com.lcl",
+                "relationship": "Friend",
+                "hasAccessToUnit": "0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "unitId": "4221438",
+    "unitSpaces": {
+      "unitSpace": [
+        {
+          "unitSpaceId": 4495494,
+          "unitSpace": "18-C"
+        }
+      ]
+    },
+    "scheduledCharges": {
+      "scheduledCharge": [
+        {
+          "id": "36417845",
+          "frequency": "Once",
+          "leaseIntervalId": "18728701",
+          "chargeCodeId": "154999",
+          "startDate": "07/01/2026",
+          "chargeType": "other",
+          "chargeCode": "Rent Concession",
+          "amount": "-719.00",
+          "chargeUsage": "Special",
+          "description": "Rent Concession"
+        },
+        {
+          "id": "36400472",
+          "frequency": "Once",
+          "leaseIntervalId": "18728701",
+          "chargeCodeId": "155021",
+          "startDate": "03/29/2026",
+          "chargeType": "other",
+          "chargeCode": "Telecom",
+          "amount": "140.00",
+          "chargeUsage": "Base",
+          "description": "Telecom"
+        },
+        {
+          "id": "36400469",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18728701",
+          "chargeCodeId": "154771",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "Base Rent",
+          "chargeCode": "Rent",
+          "amount": "719.00",
+          "chargeUsage": "Base",
+          "description": "Rent"
+        },
+        {
+          "id": "36400473",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18728701",
+          "chargeCodeId": "155091",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Utility Package",
+          "amount": "75.00",
+          "chargeUsage": "Base",
+          "description": "Utility Package"
+        },
+        {
+          "id": "36417000",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18728701",
+          "chargeCodeId": "155001",
+          "startDate": "03/01/2026",
+          "endDate": "06/30/2026",
+          "chargeType": "other",
+          "chargeCode": "Rent (Entire Lease) Concession",
+          "amount": "-94.00",
+          "chargeUsage": "Special",
+          "description": "Rent (Entire Lease) Concession"
+        },
+        {
+          "id": "36429161",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18728701",
+          "chargeCodeId": "155007",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Amenity Premium",
+          "amount": "15.00",
+          "chargeUsage": "Amenity",
+          "description": "Amenity Premium"
+        }
+      ]
+    },
+    "specials": {
+      "special": [
+        {
+          "id": "8236054",
+          "name": "Waived App & Admin Fee",
+          "type": "1",
+          "typeName": "Standard",
+          "amount": "-250.00",
+          "chargeTimingId": "102",
+          "chargeTiming": "Application Completed",
+          "leaseIntervalId": "18728701",
+          "leaseIntervalStatusTypeId": "5",
+          "leaseStartDate": "03/29/2026",
+          "leaseEndDate": "03/29/2026"
+        },
+        {
+          "id": "8236054",
+          "name": "Waived App & Admin Fee",
+          "type": "1",
+          "typeName": "Standard",
+          "amount": "-125.00",
+          "chargeTimingId": "102",
+          "chargeTiming": "Application Completed",
+          "leaseIntervalId": "18728701",
+          "leaseIntervalStatusTypeId": "5",
+          "leaseStartDate": "03/29/2026",
+          "leaseEndDate": "03/29/2026"
+        }
+      ]
+    },
+    "leaseIntervals": {
+      "leaseInterval": [
+        {
+          "id": 18728701,
+          "startDate": "03/29/2026",
+          "endDate": "07/31/2026",
+          "leaseIntervalTypeId": 1,
+          "leaseIntervalTypeName": "Application",
+          "leaseIntervalStatusTypeId": 5,
+          "leaseIntervalStatusTypeName": "Notice",
+          "applicationCompletedOn": "03/14/2026 13:51:00.357871 MDT",
+          "applicationId": "18182917",
+          "intervalDateTime": "03/14/2026 13:39:34.40118 MDT",
+          "isActiveLeaseInterval": "t",
+          "applications": {
+            "application": [
+              {
+                "id": "18182917",
+                "leaseApprovedOn": "03/17/2026 09:12:08 MDT",
+                "applicationApprovedOn": "03/16/2026 12:58:35.319136 MDT",
+                "leaseCompletedOn": "03/17/2026 08:26:02.995513 MDT",
+                "leaseTerm": "Annual",
+                "applicationCompletedOn": "03/14/2026 13:51:00.357871 MDT",
+                "leaseIntervalTypeId": 1,
+                "isActiveLeaseInterval": "t",
+                "propertyFloorPlanId": "800451",
+                "leaseStartDate": "03/29/2026",
+                "leaseEndDate": "07/31/2026"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "arTransactions": {
+      "arTransaction": [
+        {
+          "id": 992545076,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155001,
+          "chargeCodeName": "Rent (Entire Lease) Concession",
+          "leaseIntervalId": 18728701,
+          "description": "Posted from 04/01/2026 to 04/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": -94,
+          "amountPaid": -94
+        },
+        {
+          "id": 992544612,
+          "transactionTypeId": "2",
+          "chargeCodeId": 154771,
+          "chargeCodeName": "Rent",
+          "leaseIntervalId": 18728701,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Rent",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 719,
+          "amountPaid": 719
+        },
+        {
+          "id": 992543814,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155091,
+          "chargeCodeName": "Utility Package",
+          "leaseIntervalId": 18728701,
+          "description": "Posted from 04/01/2026 to 04/30/2026 - Utility Package",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 75,
+          "amountPaid": 75
+        },
+        {
+          "id": 992543790,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155007,
+          "chargeCodeName": "Amenity Premium",
+          "leaseIntervalId": 18728701,
+          "description": "Posted from 04/01/2026 to 04/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 15,
+          "amountPaid": 15
+        },
+        {
+          "id": 991801073,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155021,
+          "chargeCodeName": "Telecom",
+          "leaseIntervalId": 18728701,
+          "description": "fee posted - Telecom",
+          "transactionDate": "03/30/2026",
+          "postDate": "03/29/2026",
+          "postMonth": "03/01/2026",
+          "amount": 140,
+          "amountPaid": 140
+        },
+        {
+          "id": 991300493,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18728701,
+          "transactionDate": "03/29/2026",
+          "postDate": "03/29/2026",
+          "postMonth": "03/01/2026",
+          "amount": -855,
+          "amountPaid": -855
+        },
+        {
+          "id": 984053881,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156802,
+          "chargeCodeName": "Application Fee Concession",
+          "leaseIntervalId": 18728701,
+          "description": "Posted - Waived App & Admin Fees",
+          "transactionDate": "03/14/2026",
+          "postDate": "03/14/2026",
+          "postMonth": "03/01/2026",
+          "amount": -125,
+          "amountPaid": -125
+        },
+        {
+          "id": 984053880,
+          "transactionTypeId": "3",
+          "chargeCodeId": 154788,
+          "chargeCodeName": "Application Fee",
+          "leaseIntervalId": 18728701,
+          "description": "Posted - Application Fee",
+          "transactionDate": "03/14/2026",
+          "postDate": "03/14/2026",
+          "postMonth": "03/01/2026",
+          "amount": 125,
+          "amountPaid": 125
+        },
+        {
+          "id": 984053879,
+          "transactionTypeId": "3",
+          "chargeCodeId": 156801,
+          "chargeCodeName": "Admin Fees Concession",
+          "leaseIntervalId": 18728701,
+          "description": "Posted - Waived App & Admin Fees",
+          "transactionDate": "03/14/2026",
+          "postDate": "03/14/2026",
+          "postMonth": "03/01/2026",
+          "amount": -250,
+          "amountPaid": -250
+        },
+        {
+          "id": 984053878,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155012,
+          "chargeCodeName": "Admin Fees",
+          "leaseIntervalId": 18728701,
+          "description": "Posted - Admin Fees",
+          "transactionDate": "03/14/2026",
+          "postDate": "03/14/2026",
+          "postMonth": "03/01/2026",
+          "amount": 250,
+          "amountPaid": 250
+        }
+      ]
+    }
+  },
+  {
+    "id": "15644611",
+    "leaseStatusTypeId": "5",
+    "propertyId": "100162547",
+    "originalLeaseStartDate": "08/21/2025",
+    "parentLeaseId": "15432297",
+    "parentLeasePropertyId": "100162547",
+    "parentUnitNumberCache": "01-A",
+    "moveInDate": "03/25/2026",
+    "noticeDate": "03/31/2026",
+    "moveOutDate": "07/31/2026",
+    "moveOutReason": "End of Lease Term/No Reason Given",
+    "propertyName": "48 West",
+    "leaseIntervalStatus": "Notice",
+    "occupancyTypeId": "10",
+    "occupancyType": "Student",
+    "isMonthToMonth": 0,
+    "leaseIntervalId": "18741503",
+    "buildingId": "60311",
+    "buildingName": "Z",
+    "floorPlanId": "800454",
+    "floorPlanName": "2x2.5 Townhome",
+    "spaceConfiguration": "Private",
+    "paymentAllowanceType": "Allow All Payment Types",
+    "isRenewalBlacklist": "Renewable",
+    "customers": {
+      "customer": [
+        {
+          "id": 18813267,
+          "customerType": "Primary",
+          "firstName": "Yarne",
+          "lastName": "Vaerewyck",
+          "nameFull": "Vaerewyck, Yarne",
+          "emailAddress": "y.vaerewyck@icloud.com.lcl",
+          "leaseCustomerStatus": "Notice",
+          "relationshipName": "Primary",
+          "moveInDate": "03/25/2026",
+          "moveOutDate": "07/31/2026",
+          "dateOfBirth": "08/13/2003",
+          "paymentAllowanceType": "Allow All Payment Types",
+          "addresses": {
+            "address": [
+              {
+                "addressType": "Previous",
+                "streetLine": "Speelhofdreef 17",
+                "city": "Antwerp",
+                "postalCode": "2970",
+                "countryName": "BE"
+              },
+              {
+                "addressType": "Forwarding",
+                "streetLine": "10897 48TH AVE UNIT Z1, UNIT Z1",
+                "city": "ALLENDALE",
+                "state": "MI",
+                "postalCode": "49401-8158",
+                "countryName": "US"
+              }
+            ]
+          },
+          "phones": {
+            "phone": []
+          },
+          "customerContacts": {
+            "customerContact": [
+              {
+                "id": "9333228",
+                "contactTypeId": "7",
+                "contactTypeName": "Emergency Contact",
+                "firstName": "Willem",
+                "lastName": "Vaerewyck",
+                "email": "W.Vaerewyck@me.com.lcl",
+                "relationship": "Father",
+                "hasAccessToUnit": "0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "unitId": "4221539",
+    "unitSpaces": {
+      "unitSpace": [
+        {
+          "unitSpaceId": 4495880,
+          "unitSpace": "04-B"
+        }
+      ]
+    },
+    "scheduledCharges": {
+      "scheduledCharge": [
+        {
+          "id": "36476419",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18741503",
+          "chargeCodeId": "155001",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Rent (Entire Lease) Concession",
+          "amount": "-194.00",
+          "chargeUsage": "Special",
+          "description": "Rent (Entire Lease) Concession"
+        },
+        {
+          "id": "36442775",
+          "frequency": "Once",
+          "leaseIntervalId": "18741503",
+          "chargeCodeId": "155021",
+          "startDate": "12/01/2099",
+          "chargeType": "other",
+          "chargeCode": "Telecom",
+          "amount": "90.00",
+          "chargeUsage": "Base",
+          "description": "Telecom"
+        },
+        {
+          "id": "36442774",
+          "frequency": "Once",
+          "leaseIntervalId": "18741503",
+          "chargeCodeId": "155021",
+          "startDate": "03/25/2026",
+          "chargeType": "other",
+          "chargeCode": "Telecom",
+          "amount": "140.00",
+          "chargeUsage": "Base",
+          "description": "Telecom"
+        },
+        {
+          "id": "36442771",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18741503",
+          "chargeCodeId": "154771",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "Base Rent",
+          "chargeCode": "Rent",
+          "amount": "1059.00",
+          "chargeUsage": "Base",
+          "description": "Rent"
+        },
+        {
+          "id": "36442776",
+          "frequency": "Monthly",
+          "leaseIntervalId": "18741503",
+          "chargeCodeId": "155091",
+          "startDate": "03/01/2026",
+          "endDate": "07/31/2026",
+          "chargeType": "other",
+          "chargeCode": "Utility Package",
+          "amount": "70.00",
+          "chargeUsage": "Base",
+          "description": "Utility Package"
+        }
+      ]
+    },
+    "leaseIntervals": {
+      "leaseInterval": [
+        {
+          "id": 18741503,
+          "startDate": "03/25/2026",
+          "endDate": "07/31/2026",
+          "leaseIntervalTypeId": 5,
+          "leaseIntervalTypeName": "Transfer",
+          "leaseIntervalStatusTypeId": 5,
+          "leaseIntervalStatusTypeName": "Notice",
+          "applicationCompletedOn": "03/24/2026 14:36:38.715863 MDT",
+          "applicationId": "18193863",
+          "intervalDateTime": "08/04/2025 03:00:11.007336 MDT",
+          "isActiveLeaseInterval": "t",
+          "applications": {
+            "application": [
+              {
+                "id": "18193863",
+                "leaseApprovedOn": "03/30/2026 12:24:42 MDT",
+                "applicationApprovedOn": "03/24/2026 14:37:17.319903 MDT",
+                "leaseCompletedOn": "03/24/2026 14:53:32.771897 MDT",
+                "leaseTerm": "Annual",
+                "applicationCompletedOn": "03/24/2026 14:36:38.715863 MDT",
+                "leaseIntervalTypeId": 5,
+                "isActiveLeaseInterval": "t",
+                "propertyFloorPlanId": "800454",
+                "leaseStartDate": "03/25/2026",
+                "leaseEndDate": "07/31/2026"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "arTransactions": {
+      "arTransaction": [
+        {
+          "id": 993225074,
+          "transactionTypeId": "1",
+          "chargeCodeId": 154776,
+          "chargeCodeName": "Payment",
+          "leaseIntervalId": 18741503,
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": -758,
+          "amountPaid": -758
+        },
+        {
+          "id": 992545684,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155091,
+          "chargeCodeName": "Utility Package",
+          "leaseIntervalId": 18741503,
+          "description": "Posted from 04/01/2026 to 04/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 70,
+          "amountPaid": 70
+        },
+        {
+          "id": 992545418,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155001,
+          "chargeCodeName": "Rent (Entire Lease) Concession",
+          "leaseIntervalId": 18741503,
+          "description": "Posted from 04/01/2026 to 04/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": -194,
+          "amountPaid": -194
+        },
+        {
+          "id": 992542933,
+          "transactionTypeId": "2",
+          "chargeCodeId": 154771,
+          "chargeCodeName": "Rent",
+          "leaseIntervalId": 18741503,
+          "description": "Posted from 04/01/2026 to 04/30/2026",
+          "transactionDate": "04/01/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 1059,
+          "amountPaid": 1059
+        },
+        {
+          "id": 991890494,
+          "transactionTypeId": "9",
+          "chargeCodeId": 156669,
+          "chargeCodeName": "Damage Liability Waiver - POPIC",
+          "leaseIntervalId": 18741503,
+          "description": "Monthly Damage Liability Waiver Program Posted from 4/1/2026 to 4/30/2026",
+          "transactionDate": "03/31/2026",
+          "postDate": "04/01/2026",
+          "postMonth": "04/01/2026",
+          "amount": 17,
+          "amountPaid": 17
+        },
+        {
+          "id": 992414731,
+          "transactionTypeId": "3",
+          "chargeCodeId": 155001,
+          "chargeCodeName": "Rent (Entire Lease) Concession",
+          "leaseIntervalId": 18741503,
+          "description": "Posted from 03/01/2026 to 03/31/2026",
+          "transactionDate": "03/31/2026",
+          "postDate": "03/01/2026",
+          "postMonth": "03/01/2026",
+          "amount": -194,
+          "amountPaid": -194
+        }
+      ]
+    }
+  }
+]
